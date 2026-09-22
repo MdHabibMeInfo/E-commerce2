@@ -1,0 +1,16 @@
+[90m= [39m[34;4mApp\Models\Product[39;24m {#8261
+    [34mid[39m: [35m1[39m,
+    [34mcategory_id[39m: [35m1[39m,
+    [34mname[39m: [32m"[39m[32miPhone 15[39m[32m"[39m,
+    [34mslug[39m: [32m"[39m[32miphone-15[39m[32m"[39m,
+    [34msku[39m: [32m"[39m[32mIPH15-001[39m[32m"[39m,
+    [34mshort_description[39m: [32m"[39m[32mApple iPhone 15[39m[32m"[39m,
+    [34mdescription[39m: [32m"[39m[32mA sample product for testing.[39m[32m"[39m,
+    [34mprice[39m: [32m"[39m[32m79999.00[39m[32m"[39m,
+    [34mcompare_at_price[39m: [32m"[39m[32m84999.00[39m[32m"[39m,
+    [34mstock[39m: [35m10[39m,
+    [34mis_active[39m: [35m1[39m,
+    [34mcreated_at[39m: [32m"[39m[32m2026-09-11 16:48:38[39m[32m"[39m,
+    [34mupdated_at[39m: [32m"[39m[32m2026-09-11 16:48:38[39m[32m"[39m,
+    [34mdeleted_at[39m: [36mnull[39m,
+  }

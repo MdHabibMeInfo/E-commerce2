@@ -1,0 +1,20 @@
+[90m= [39m[34;4mIlluminate\Database\Eloquent\Collection[39;24m {#8827
+    [34mall[39m: [
+      [34;4mSpatie\Permission\Models\Permission[39;24m {#8836
+        [34mid[39m: [35m6[39m,
+        [34mname[39m: [32m"[39m[32mcategories.create[39m[32m"[39m,
+      },
+      [34;4mSpatie\Permission\Models\Permission[39;24m {#8839
+        [34mid[39m: [35m8[39m,
+        [34mname[39m: [32m"[39m[32mcategories.delete[39m[32m"[39m,
+      },
+      [34;4mSpatie\Permission\Models\Permission[39;24m {#8840
+        [34mid[39m: [35m7[39m,
+        [34mname[39m: [32m"[39m[32mcategories.update[39m[32m"[39m,
+      },
+      [34;4mSpatie\Permission\Models\Permission[39;24m {#8829
+        [34mid[39m: [35m5[39m,
+        [34mname[39m: [32m"[39m[32mcategories.view[39m[32m"[39m,
+      },
+    ],
+  }
