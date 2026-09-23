@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductAttributeAssignmentController;
 use App\Http\Controllers\Api\ProductAttributeController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\ProductVariantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -64,6 +65,39 @@ Route::middleware('auth:sanctum')->group(function () {
     )->withTrashed();
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | Product Image Routes
+    |--------------------------------------------------------------------------
+    */
+
+    Route::scopeBindings()->group(function () {
+
+        Route::get(
+            '/products/{product}/images',
+            [ProductImageController::class, 'index']
+        );
+
+        Route::get(
+            '/products/{product}/images/{productImage}',
+            [ProductImageController::class, 'show']
+        );
+
+        Route::post(
+            '/products/{product}/images',
+            [ProductImageController::class, 'store']
+        );
+
+        Route::put(
+            '/products/{product}/images/{productImage}',
+            [ProductImageController::class, 'update']
+        );
+
+        Route::delete(
+            '/products/{product}/images/{productImage}',
+            [ProductImageController::class, 'destroy']
+        );
+    });
 
     /*
     |--------------------------------------------------------------------------
