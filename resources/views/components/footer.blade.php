@@ -17,10 +17,10 @@
             <div>
                 <h2 class="text-sm font-bold uppercase tracking-wider text-[#e2c775]">Shop</h2>
                 <div class="mt-4 grid gap-3 text-sm text-white/70">
-                    <a href="#" class="transition hover:text-white">All Products</a>
-                    <a href="#" class="transition hover:text-white">Categories</a>
-                    <a href="#" class="transition hover:text-white">Featured Products</a>
-                    <a href="#" class="transition hover:text-white">Offers</a>
+                    <a href="{{ route('shop') }}" class="transition hover:text-white">All Products</a>
+                    <a href="{{ route('shop') }}" class="transition hover:text-white">Categories</a>
+                    <a href="{{ route('home') }}#featured-products" class="transition hover:text-white">Featured Products</a>
+                    <a href="{{ route('checkout') }}" class="transition hover:text-white">Checkout</a>
                 </div>
             </div>
 

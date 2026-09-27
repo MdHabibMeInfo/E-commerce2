@@ -1,9 +1,16 @@
 <x-layouts.app>
 
     <x-slot:title>
-        {{ config('app.name') }} — Fresh &amp; Quality Products
+        {{ config('app.name') }} — Fresh &amp; Quality Food &amp; Grocery Products
     </x-slot:title>
 
+    <x-slot:metaDescription>
+        Shop fresh, natural and high-quality food and grocery products. Discover quality essentials and everyday products delivered to your door.
+    </x-slot:metaDescription>
+
+    <x-slot:canonicalUrl>
+        {{ route('home') }}
+    </x-slot:canonicalUrl>
     {{-- Hero --}}
     <section class="relative overflow-hidden bg-[#f0f2dc]">
         <div class="absolute -left-20 top-10 h-48 w-48 rounded-full bg-[#d9dfbd]/50 blur-3xl"></div>
@@ -30,11 +37,11 @@
                 </p>
 
                 <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                    <a href="#featured-products" class="inline-flex items-center justify-center gap-3 rounded-full bg-[#145943] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#145943]/15 transition hover:-translate-y-0.5 hover:bg-[#0f4d3a]">
+                        <a href="{{ route('shop') }}" class="inline-flex items-center justify-center gap-3 rounded-full bg-[#145943] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#145943]/15 transition hover:-translate-y-0.5 hover:bg-[#0f4d3a]">
                         Shop Now
                         <span aria-hidden="true">→</span>
                     </a>
-                    <a href="#categories" class="inline-flex items-center justify-center rounded-full border border-[#b99a4b] bg-white/40 px-7 py-3.5 text-sm font-bold text-[#145943] transition hover:bg-white">
+                    <a href="{{ route('shop') }}" class="inline-flex items-center justify-center rounded-full border border-[#b99a4b] bg-white/40 px-7 py-3.5 text-sm font-bold text-[#145943] transition hover:bg-white">
                         Explore Categories
                     </a>
                 </div>
@@ -73,31 +80,89 @@
     </section>
 
     {{-- Categories --}}
-    <section id="categories" class="border-b border-[#e8e6db] bg-white">
+    <section id="categories" class="border-y border-[#e8e6db] bg-white">
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="grid gap-6 lg:grid-cols-[150px_1fr] lg:items-center">
+            <div class="flex items-end justify-between gap-4">
                 <div>
-                    <h2 class="text-2xl font-extrabold leading-tight text-[#145943]">Shop by<br class="hidden lg:block"> Category</h2>
-                    <p class="mt-2 text-sm leading-5 text-[#738078]">Find what you need, all in one place.</p>
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Browse our collection</p>
+                    <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-[#145943] sm:text-3xl">Featured Categories</h2>
+                </div>
+            </div>
+
+            <div class="relative mt-6">
+                {{-- Previous category --}}
+                <button
+                    type="button"
+                    data-category-prev
+                    class="absolute left-0 top-1/2 z-20 grid h-10 w-10 -translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] shadow-md transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:opacity-0"
+                    aria-label="Previous categories"
+                    disabled
+                >
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="m15 18-6-6 6-6"></path>
+                    </svg>
+                </button>
+
+                <div class="mx-8 overflow-hidden">
+                    <div
+                        data-category-track
+                        class="flex gap-3 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4"
+                        aria-label="Featured categories"
+                    >
+                    @forelse ($categories as $category)
+                        <a
+                            href="{{ route('shop', ['category' => $category->slug]) }}"
+                            data-carousel-item
+                            class="category-card group flex shrink-0 cursor-pointer flex-col items-center gap-2 rounded-xl bg-transparent text-center"
+                        >
+                            <span
+                                class="grid h-[92px] w-full place-items-center overflow-hidden rounded-2xl border border-[#e8e6db] bg-white shadow-sm sm:h-[104px]"
+                            >
+                                @if ($category->image)
+                                    <img
+                                        src="{{ asset('storage/' . $category->image) }}"
+                                        alt="{{ $category->name }}"
+                                        width="104"
+                                        height="104"
+                                        loading="lazy"
+                                        decoding="async"
+                                        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    >
+                                @else
+                                    <span
+                                        class="text-[3.2rem] leading-none sm:text-[3.6rem]"
+                                        aria-hidden="true"
+                                    >
+                                        🛒
+                                    </span>
+                                @endif
+                            </span>
+
+                            <span
+                                class="category-name w-full px-1 text-xs font-medium leading-4 text-[#26352f] transition-colors duration-200 sm:text-sm"
+                            >
+                                {{ $category->name }}
+                            </span>
+                        </a>
+                    @empty
+                        <p class="px-4 py-8 text-sm text-[#738078]">
+                            No categories available right now.
+                        </p>
+                    @endforelse
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                    @foreach ([
-                        ['icon' => '🥬', 'name' => 'Fresh Produce'],
-                        ['icon' => '🛒', 'name' => 'Groceries'],
-                        ['icon' => '🥤', 'name' => 'Beverages'],
-                        ['icon' => '🥜', 'name' => 'Snacks'],
-                        ['icon' => '🌿', 'name' => 'Organic & Healthy'],
-                        ['icon' => '🧴', 'name' => 'Household'],
-                    ] as $category)
-                        <a href="#" class="group flex flex-col items-center gap-3 rounded-2xl p-3 text-center transition hover:-translate-y-1 hover:bg-[#f5f6e9]">
-                            <span class="grid h-16 w-16 place-items-center rounded-full bg-[#edf1d9] text-3xl shadow-sm transition group-hover:bg-[#e0e8c5]">
-                                {{ $category['icon'] }}
-                            </span>
-                            <span class="text-xs font-bold leading-5 text-[#145943] sm:text-sm">{{ $category['name'] }}</span>
-                        </a>
-                    @endforeach
-                </div>
+                {{-- Next category --}}
+                <button
+                    type="button"
+                    data-category-next
+                    class="absolute right-0 top-1/2 z-20 grid h-10 w-10 translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] shadow-md transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:opacity-0"
+                    aria-label="Next categories"
+                >
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="m9 18 6-6-6-6"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     </section>
@@ -105,12 +170,7 @@
     {{-- Benefits --}}
     <section class="bg-[#f2f4e5]">
         <div class="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-[#dfe3cf] px-4 sm:px-6 lg:grid-cols-4 lg:divide-y-0 lg:px-8">
-            @foreach ([
-                ['icon' => '🚚', 'title' => 'Free Shipping', 'text' => 'On orders over ৳1000'],
-                ['icon' => '🌿', 'title' => 'Fresh & Natural', 'text' => 'Quality products'],
-                ['icon' => '🛡️', 'title' => 'Secure Payment', 'text' => '100% secure transactions'],
-                ['icon' => '◉', 'title' => '24/7 Support', 'text' => 'We are here to help'],
-            ] as $benefit)
+            @foreach ($benefits as $benefit)
                 <div class="flex items-center gap-3 px-3 py-6 sm:gap-4 sm:px-6 lg:py-7">
                     <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#e0e8c5] text-xl sm:h-14 sm:w-14 sm:text-2xl">{{ $benefit['icon'] }}</span>
                     <div>
@@ -131,50 +191,110 @@
                     <h2 class="mt-1 text-3xl font-extrabold tracking-tight text-[#145943] sm:text-4xl">Featured Products</h2>
                     <p class="mt-2 text-sm text-[#738078]">Quality products selected for your everyday needs.</p>
                 </div>
-                <a href="#" class="inline-flex items-center gap-2 text-sm font-bold text-[#145943] transition hover:text-[#a48335]">View All Products <span>→</span></a>
+
+                <a href="{{ route('shop') }}" class="inline-flex items-center gap-2 text-sm font-bold text-[#145943] transition hover:text-[#a48335]">
+                    View All Products
+                    <span>→</span>
+                </a>
             </div>
 
-            <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                @foreach ([
-                    ['badge' => 'Organic', 'badgeClass' => 'bg-[#145943]', 'emoji' => '🍅', 'name' => 'Fresh Tomatoes', 'rating' => '4.8', 'reviews' => '124', 'price' => '৳120/kg'],
-                    ['badge' => 'Best Seller', 'badgeClass' => 'bg-[#a48335]', 'emoji' => '🌾', 'name' => 'Organic Rice (5kg)', 'rating' => '4.7', 'reviews' => '98', 'price' => '৳450'],
-                    ['badge' => 'New', 'badgeClass' => 'bg-[#145943]', 'emoji' => '🥜', 'name' => 'Almonds (500g)', 'rating' => '4.9', 'reviews' => '210', 'price' => '৳650'],
-                    ['badge' => 'Popular', 'badgeClass' => 'bg-[#145943]', 'emoji' => '🍵', 'name' => 'Green Tea (50 Bags)', 'rating' => '4.6', 'reviews' => '166', 'price' => '৳320'],
-                    ['badge' => 'Sale', 'badgeClass' => 'bg-[#d84c43]', 'emoji' => '🫒', 'name' => 'Pure Mustard Oil (1L)', 'rating' => '4.5', 'reviews' => '89', 'price' => '৳280'],
-                ] as $product)
-                    <article class="group overflow-hidden rounded-2xl border border-[#e7e5da] bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#145943]/8">
-                        <div class="relative p-3 sm:p-4">
-                            <span class="absolute left-3 top-3 z-10 rounded-md px-2 py-1 text-[9px] font-bold text-white sm:left-4 sm:top-4 sm:text-[10px] {{ $product['badgeClass'] }}">
-                                {{ $product['badge'] }}
-                            </span>
-                            <button type="button" class="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-white text-[#145943] shadow-sm transition hover:bg-[#eef4e8] sm:right-4 sm:top-4" aria-label="Add {{ $product['name'] }} to wishlist">
-                                ♡
-                            </button>
-                            <div class="grid aspect-square place-items-center overflow-hidden rounded-xl bg-[#f5f5e7] text-6xl transition duration-300 group-hover:scale-[1.02] sm:text-7xl">
-                                {{ $product['emoji'] }}
-                            </div>
-                        </div>
+            <div class="relative mt-8">
+                <div class="overflow-hidden">
+                    <div data-product-track class="flex gap-3 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4" aria-label="Featured products">
+                    @forelse ($featuredProducts as $product)
 
-                        <div class="px-3 pb-4 sm:px-4">
-                            <h3 class="truncate text-sm font-bold text-[#173b32]">{{ $product['name'] }}</h3>
-                            <div class="mt-1 flex items-center gap-1 text-[11px] text-[#7a847f]">
-                                <span class="text-[#d39d22]">★</span>
-                                <span class="font-semibold text-[#53615b]">{{ $product['rating'] }}</span>
-                                <span>({{ $product['reviews'] }})</span>
+                        @php
+                            $primaryImage = $product->images->firstWhere('is_primary', true)
+                                ?? $product->images->first();
+                        @endphp
+
+                        <article
+                            data-carousel-item
+                            data-product-card
+                            data-product-name="{{ $product->name }}"
+                            data-product-price="{{ (float) $product->price }}"
+                            data-product-emoji="🛍️"
+                            class="group relative shrink-0 overflow-hidden rounded-xl border border-[#e3e2d9] bg-white shadow-sm"
+                        >
+
+                            <a
+                                href="{{ route('products.show', ['product' => $product->slug]) }}"
+                                class="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#145943]"
+                                aria-label="View {{ $product->name }}"
+                            ></a>
+
+                            <div class="relative z-10 overflow-hidden bg-[#f4f5e9]">
+
+                                @if ($primaryImage)
+                                    <div class="aspect-square overflow-hidden">
+                                        <img
+                                            src="{{ asset('storage/' . $primaryImage->image_path) }}"
+                                            alt="{{ $primaryImage->alt_text ?: $product->name }}"
+                                            width="500"
+                                            height="500"
+                                            loading="lazy"
+                                            decoding="async"
+                                            class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        >
+                                    </div>
+                                @else
+                                    <div
+                                        class="grid aspect-square place-items-center text-[5.5rem] leading-none sm:text-[7rem]"
+                                        aria-hidden="true"
+                                    >
+                                        🛍️
+                                    </div>
+                                @endif
+
                             </div>
-                            <div class="mt-3 flex items-center justify-between gap-2">
-                                <span class="text-sm font-extrabold text-[#145943] sm:text-base">{{ $product['price'] }}</span>
-                                <button type="button" class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#145943] text-white transition hover:bg-[#0f4d3a]" aria-label="Add {{ $product['name'] }} to cart">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                        <path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L20 8H6"></path>
-                                        <circle cx="9" cy="19" r="1.2"></circle>
-                                        <circle cx="18" cy="19" r="1.2"></circle>
-                                    </svg>
-                                </button>
+
+                            <div class="relative z-10 px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4">
+
+                                <h3 class="truncate text-sm font-bold text-[#173b32]">
+                                    {{ $product->name }}
+                                </h3>
+
+                                @if ($product->short_description)
+                                    <p class="mt-1 line-clamp-2 text-[11px] leading-4 text-[#7a847f]">
+                                        {{ $product->short_description }}
+                                    </p>
+                                @endif
+
+                                <div class="mt-3 flex items-center justify-between gap-2">
+
+                                    @if ($product->price !== null)
+                                        <span class="text-sm font-extrabold text-[#145943] sm:text-base">
+                                            ৳{{ number_format((float) $product->price, 2) }}
+                                        </span>
+                                    @endif
+
+                                    <button
+                                        type="button"
+                                        aria-label="Add {{ $product->name }} to cart"
+                                        data-product-id="{{ $product->id }}"
+                                        data-product-name="{{ $product->name }}"
+                                        data-product-price="{{ (float) $product->price }}"
+                                        data-product-emoji="🛍️"
+                                        class="inline-flex items-center justify-center rounded-lg bg-[#145943] px-3 py-2 text-[10px] font-bold text-white transition hover:bg-[#a48335] sm:px-3.5 sm:text-xs"
+                                    >
+                                        Add to Cart
+                                    </button>
+
+                                </div>
                             </div>
-                        </div>
-                    </article>
-                @endforeach
+
+                        </article>
+
+                    @empty
+
+                        <p class="py-10 text-center text-sm text-[#738078]">
+                            No featured products available right now.
+                        </p>
+
+                    @endforelse
+                    </div>
+                </div>
+                <div data-product-pagination class="flex items-center justify-center gap-2.5 pt-5" role="group" aria-label="Featured product pages"></div>
             </div>
         </div>
     </section>
@@ -188,7 +308,7 @@
                     <h2 class="mt-2 text-2xl font-extrabold sm:text-3xl">Fresh choices, delivered to your door.</h2>
                     <p class="mt-2 max-w-2xl text-sm leading-6 text-white/70">Explore our complete collection and find everything you need in one place.</p>
                 </div>
-                <a href="#" class="shrink-0 rounded-full bg-[#d7b45a] px-6 py-3.5 text-sm font-bold text-[#173b32] transition hover:bg-[#e4c779]">Start Shopping →</a>
+                <a href="{{ route('shop') }}" class="shrink-0 rounded-full bg-[#d7b45a] px-6 py-3.5 text-sm font-bold text-[#173b32] transition hover:bg-[#e4c779]">Start Shopping →</a>
             </div>
         </div>
     </section>

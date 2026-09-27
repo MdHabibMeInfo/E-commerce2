@@ -196,7 +196,7 @@ class CategoryService
     ?Category $ignore = null
   ): string {
     $baseSlug = Str::slug(
-      $requestedSlug ?: $name
+      trim((string) ($requestedSlug ?? '')) ?: $name
     );
 
     $slug = $baseSlug;
@@ -207,8 +207,7 @@ class CategoryService
       ->where('slug', $slug)
       ->when(
         $ignore,
-        fn($query) =>
-        $query->where('id', '!=', $ignore->id)
+        fn($query) => $query->where('id', '!=', $ignore->id)
       )
       ->exists()
     ) {

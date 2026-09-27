@@ -1,0 +1,105 @@
+@extends('admin.layout')
+
+@section('content')
+    <header class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#a48335]">Dashboard</p>
+                <h1 class="mt-2 text-3xl font-extrabold text-[#145943]">System Owner Overview</h1>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="rounded-full bg-[#edf2e4] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#145943]">Online</span>
+                <a href="{{ route('admin.products.index') }}" class="rounded-xl bg-[#145943] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#a48335]">Manage Products</a>
+                <a href="{{ route('admin.orders') }}" class="rounded-xl border border-[#dfe3cf] bg-white px-4 py-2 text-sm font-bold text-[#145943] transition hover:bg-[#f7f4ee]">Orders</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-[20px] bg-[#145943] p-5 text-white shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Products</p>
+            <h3 class="mt-3 text-3xl font-extrabold">{{ $stats['products'] }}</h3>
+            <p class="mt-3 text-sm text-white/80">Active catalog items</p>
+        </div>
+
+        <div class="rounded-[20px] bg-[#5a6f70] p-5 text-white shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Orders</p>
+            <h3 class="mt-3 text-3xl font-extrabold">{{ $stats['orders'] }}</h3>
+            <p class="mt-3 text-sm text-white/80">Total orders in system</p>
+        </div>
+
+        <div class="rounded-[20px] bg-[#a48335] p-5 text-white shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Users</p>
+            <h3 class="mt-3 text-3xl font-extrabold">{{ $stats['users'] }}</h3>
+            <p class="mt-3 text-sm text-white/80">Logged-in and managed users</p>
+        </div>
+
+        <div class="rounded-[20px] bg-[#d4721d] p-5 text-white shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Revenue</p>
+            <h3 class="mt-3 text-3xl font-extrabold">৳{{ number_format((float) $stats['revenue'], 2) }}</h3>
+            <p class="mt-3 text-sm text-white/80">Gross order value</p>
+        </div>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-xl font-extrabold text-[#145943]">Current User Permissions</h2>
+                <span class="rounded-full bg-[#edf2e4] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#145943]">Authorized</span>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+                @foreach (array_slice($permissions, 0, 8) as $permission)
+                    <div class="rounded-xl border border-[#e5e2d9] bg-[#fafaf5] px-3 py-2 text-sm font-medium text-[#173b32]">
+                        {{ str_replace(['.', '_'], ' • ', $permission) }}
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+            <h2 class="text-xl font-extrabold text-[#145943]">Maintainable Actions</h2>
+            <div class="mt-4 space-y-3 text-sm">
+                <a href="{{ route('admin.products.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">
+                    Manage Products
+                </a>
+                <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
+                    Manage Orders
+                </div>
+                <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
+                    Manage Users & Roles
+                </div>
+                <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
+                    Site Settings & Security
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+        <div class="mb-5 flex items-center justify-between gap-3">
+            <h2 class="text-xl font-extrabold text-[#145943]">Access Summary</h2>
+            <span class="text-sm font-bold text-[#a48335]">{{ $currentUser?->email ?? 'owner@site.com' }}</span>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-[#e5e2d9]">
+            <table class="min-w-full text-left text-sm text-[#4d5c56]">
+                <thead class="bg-[#f7f4ee] text-[#145943]">
+                    <tr>
+                        <th class="px-4 py-3 font-bold">Role</th>
+                        <th class="px-4 py-3 font-bold">Access Level</th>
+                        <th class="px-4 py-3 font-bold">Maintenance Scope</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-t border-[#e5e2d9]">
+                        <td class="px-4 py-3 font-semibold text-[#173b32]">{{ $roleNames[0] ?? 'System Owner' }}</td>
+                        <td class="px-4 py-3">Full control</td>
+                        <td class="px-4 py-3">Platform, users, orders, settings, security</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+@endsection

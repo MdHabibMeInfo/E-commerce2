@@ -10,7 +10,6 @@ use Illuminate\Validation\ValidationException;
 
 class ProductService
 {
-
   private function validateProductTypeUpdate(
     Product $product,
     array $data
@@ -32,7 +31,13 @@ class ProductService
       return $product->slug;
     }
 
-    $baseSlug = Str::slug($requestedSlug);
+    $normalizedSlug = trim((string) $requestedSlug);
+
+    if ($normalizedSlug === '') {
+      return $product->slug;
+    }
+
+    $baseSlug = Str::slug($normalizedSlug);
 
     $slug = $baseSlug;
     $counter = 2;
@@ -178,7 +183,7 @@ class ProductService
     string $name
   ): string {
     $baseSlug = Str::slug(
-      $requestedSlug ?: $name
+      trim((string) ($requestedSlug ?? '')) ?: $name
     );
 
     $slug = $baseSlug;

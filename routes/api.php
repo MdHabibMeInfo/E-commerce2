@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AttributeValueController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductAttributeAssignmentController;
 use App\Http\Controllers\Api\ProductAttributeController;
@@ -9,6 +10,13 @@ use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\ProductVariantController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware('web')->group(function () {
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart/items', [CartController::class, 'store']);
+    Route::patch('/cart/items/{cartItem}', [CartController::class, 'update']);
+    Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
@@ -63,7 +71,6 @@ Route::middleware('auth:sanctum')->group(function () {
         '/products/{product}/restore',
         [ProductController::class, 'restore']
     )->withTrashed();
-
 
     /*
     |--------------------------------------------------------------------------
@@ -183,7 +190,6 @@ Route::middleware('auth:sanctum')->group(function () {
         );
     });
 });
-
 
 // $user = \App\Models\User::find(1);
 

@@ -54,8 +54,8 @@
                 <a href="{{ route('home') }}" class="relative py-3 text-sm font-semibold text-[#145943] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-[#b28d35]">
                     Home
                 </a>
-                <a href="#" class="py-3 text-sm font-medium text-[#4d5c56] transition hover:text-[#145943]">Shop</a>
-                <a href="#" class="py-3 text-sm font-medium text-[#4d5c56] transition hover:text-[#145943]">Categories</a>
+                <a href="{{ route('shop') }}" class="py-3 text-sm font-medium text-[#4d5c56] transition hover:text-[#145943]">Shop</a>
+                <a href="{{ route('shop') }}" class="py-3 text-sm font-medium text-[#4d5c56] transition hover:text-[#145943]">Categories</a>
                 <a href="#" class="py-3 text-sm font-medium text-[#4d5c56] transition hover:text-[#145943]">About</a>
                 <a href="#" class="py-3 text-sm font-medium text-[#4d5c56] transition hover:text-[#145943]">Contact</a>
             </nav>
@@ -68,13 +68,13 @@
                     </svg>
                 </a>
 
-                <a href="#" class="relative grid h-10 w-10 place-items-center rounded-full text-[#145943] transition hover:bg-[#eef4e8]" aria-label="Shopping cart">
+                <a href="#" data-open-cart class="relative grid h-10 w-10 place-items-center rounded-full text-[#145943] transition hover:bg-[#eef4e8]" aria-label="Shopping cart">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
                         <path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L20 8H6"></path>
                         <circle cx="9" cy="19" r="1.2"></circle>
                         <circle cx="18" cy="19" r="1.2"></circle>
                     </svg>
-                    <span class="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#145943] px-1 text-[10px] font-bold text-white">0</span>
+                    <span data-cart-count-badge class="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#145943] px-1 text-[10px] font-bold text-white">0</span>
                 </a>
 
                 <button
@@ -115,13 +115,13 @@
 
                 <nav class="grid gap-1" aria-label="Mobile navigation">
                     <a href="{{ route('home') }}" class="rounded-xl bg-[#eef4e8] px-4 py-3 text-sm font-semibold text-[#145943]">Home</a>
-                    <a href="#" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">Shop</a>
-                    <a href="#" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">Categories</a>
+                    <a href="{{ route('shop') }}" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">Shop</a>
+                    <a href="{{ route('shop') }}" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">Categories</a>
                     <a href="#" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">About</a>
                     <a href="#" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">Contact</a>
                     <div class="mt-2 flex gap-2 border-t border-[#e7e4d8] pt-3">
                         <a href="#" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Track Order</a>
-                        <a href="#" class="flex-1 rounded-xl bg-[#145943] px-4 py-3 text-center text-sm font-semibold text-white">Login / Register</a>
+                        <a href="{{ route('checkout') }}" class="flex-1 rounded-xl bg-[#145943] px-4 py-3 text-center text-sm font-semibold text-white">Login / Register</a>
                     </div>
                 </nav>
             </div>

@@ -9,7 +9,22 @@
         content="width=device-width, initial-scale=1"
     >
 
-    <meta name="theme-color" content="#145943">
+    <meta
+        name="theme-color"
+        content="#145943"
+    >
+
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <meta
+        name="description"
+        content="{{ $metaDescription ?? 'Discover fresh, high-quality food and grocery products delivered to your door.' }}"
+    >
+
+    <link
+        rel="canonical"
+        href="{{ $canonicalUrl ?? url()->current() }}"
+    >
 
     <title>{{ $title ?? config('app.name') }}</title>
 

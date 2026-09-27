@@ -77,8 +77,7 @@ class ProductVariantService
 
         $invalidAttributeValues = $attributeValues
             ->filter(
-                fn(AttributeValue $attributeValue) =>
-                ! $allowedAttributeIds->contains(
+                fn (AttributeValue $attributeValue) => ! $allowedAttributeIds->contains(
                     $attributeValue->product_attribute_id
                 )
             );
@@ -255,7 +254,6 @@ class ProductVariantService
         });
     }
 
-
     public function updateVariant(
         Product $product,
         ProductVariant $variant,
@@ -329,13 +327,31 @@ class ProductVariantService
     }
 
     /**
-     * Delete a product variant permanently.
+     * Delete a product variant.
      */
     public function deleteVariant(
         ProductVariant $variant
     ): void {
         DB::transaction(function () use ($variant) {
             $variant->delete();
+        });
+    }
+
+    public function restoreVariant(
+        ProductVariant $variant
+    ): ProductVariant {
+        if (! $variant->trashed()) {
+            throw ValidationException::withMessages([
+                'variant' => [
+                    'This variant is not deleted.',
+                ],
+            ]);
+        }
+
+        return DB::transaction(function () use ($variant) {
+            $variant->restore();
+
+            return $variant->refresh();
         });
     }
 }
