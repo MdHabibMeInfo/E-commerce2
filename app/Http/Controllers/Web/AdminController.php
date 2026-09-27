@@ -101,6 +101,46 @@ class AdminController extends Controller
     return view('admin.categories.trashed', compact('categories'));
   }
 
+  public function attributesIndex(): View
+  {
+    $attributes = ProductAttribute::query()
+      ->latest()
+      ->get();
+
+    return view('admin.attributes.index', compact('attributes'));
+  }
+
+  public function createAttribute(): View
+  {
+    return view('admin.attributes.create');
+  }
+
+  public function showAttribute(ProductAttribute $attribute): View
+  {
+    $attribute->load([
+      'values' => function ($query) {
+        $query->orderBy('sort_order')->orderBy('id');
+      },
+    ]);
+
+    return view('admin.attributes.show', compact('attribute'));
+  }
+
+  public function editAttribute(ProductAttribute $attribute): View
+  {
+    return view('admin.attributes.edit', compact('attribute'));
+  }
+
+  public function trashedAttributes(): View
+  {
+    $attributes = ProductAttribute::query()
+      ->onlyTrashed()
+      ->latest('deleted_at')
+      ->get();
+
+    return view('admin.attributes.trashed', compact('attributes'));
+  }
+
   public function createProduct(): View
   {
     $categories = Category::query()
@@ -297,9 +337,12 @@ class AdminController extends Controller
       'is_active' => ['sometimes', 'boolean'],
     ]);
 
+    $validated['slug'] = trim((string) ($validated['slug'] ?? '')) !== '' ? $validated['slug'] : null;
+    $validated['is_active'] = $request->boolean('is_active', true);
+
     $productAttributeService->create($validated);
 
-    return redirect()->route('admin')->with('success', 'Attribute created successfully.');
+    return redirect()->route('admin.attributes.index')->with('success', 'Attribute created successfully.');
   }
 
   public function updateAttribute(Request $request, ProductAttribute $attribute, ProductAttributeService $productAttributeService): RedirectResponse
@@ -311,23 +354,32 @@ class AdminController extends Controller
       'is_active' => ['sometimes', 'boolean'],
     ]);
 
+    $validated['slug'] = trim((string) ($validated['slug'] ?? '')) !== '' ? $validated['slug'] : null;
+    $validated['is_active'] = $request->boolean('is_active', $attribute->is_active);
+
     $productAttributeService->update($attribute, $validated);
 
-    return redirect()->route('admin')->with('success', 'Attribute updated successfully.');
+    return redirect()->route('admin.attributes.index')->with('success', 'Attribute updated successfully.');
   }
 
   public function deleteAttribute(ProductAttribute $attribute, ProductAttributeService $productAttributeService): RedirectResponse
   {
     $productAttributeService->delete($attribute);
 
-    return redirect()->route('admin')->with('success', 'Attribute deleted successfully.');
+    return redirect()->route('admin.attributes.index')->with('success', 'Attribute deleted successfully.');
   }
 
-  public function restoreAttribute(ProductAttribute $attribute, ProductAttributeService $productAttributeService): RedirectResponse
+  public function destroyAttribute(ProductAttribute $attribute, ProductAttributeService $productAttributeService): RedirectResponse
   {
+    return $this->deleteAttribute($attribute, $productAttributeService);
+  }
+
+  public function restoreAttribute(string $attributeId, ProductAttributeService $productAttributeService): RedirectResponse
+  {
+    $attribute = ProductAttribute::withTrashed()->findOrFail($attributeId);
     $productAttributeService->restore($attribute);
 
-    return redirect()->route('admin')->with('success', 'Attribute restored successfully.');
+    return redirect()->route('admin.attributes.index')->with('success', 'Attribute restored successfully.');
   }
 
   public function storeAttributeValue(Request $request, AttributeValueService $attributeValueService): RedirectResponse

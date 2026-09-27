@@ -81,7 +81,7 @@ class ProductAttributeService
         string $name
     ): string {
         $baseSlug = Str::slug(
-            $requestedSlug ?: $name
+            trim((string) ($requestedSlug ?? '')) ?: $name
         );
 
         $slug = $baseSlug;
@@ -107,7 +107,13 @@ class ProductAttributeService
             return $productAttribute->slug;
         }
 
-        $baseSlug = Str::slug($requestedSlug);
+        $normalizedSlug = trim((string) $requestedSlug);
+
+        if ($normalizedSlug === '') {
+            return $productAttribute->slug;
+        }
+
+        $baseSlug = Str::slug($normalizedSlug);
 
         $slug = $baseSlug;
         $counter = 2;

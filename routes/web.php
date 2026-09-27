@@ -37,6 +37,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::delete('/categories/{category}', [AdminController::class, 'destroyCategory'])->name('categories.destroy');
     Route::post('/categories/{category}/restore', [AdminController::class, 'restoreCategory'])->name('categories.restore');
 
+    Route::get('/attributes', [AdminController::class, 'attributesIndex'])->name('attributes.index');
+    Route::get('/attributes/create', [AdminController::class, 'createAttribute'])->name('attributes.create');
+    Route::post('/attributes', [AdminController::class, 'storeAttribute'])->name('attributes.store');
+    Route::get('/attributes/trashed', [AdminController::class, 'trashedAttributes'])->name('attributes.trashed');
+    Route::get('/attributes/{attribute}', [AdminController::class, 'showAttribute'])->name('attributes.show');
+    Route::get('/attributes/{attribute}/edit', [AdminController::class, 'editAttribute'])->name('attributes.edit');
+    Route::put('/attributes/{attribute}', [AdminController::class, 'updateAttribute'])->name('attributes.update');
+    Route::delete('/attributes/{attribute}', [AdminController::class, 'destroyAttribute'])->name('attributes.destroy');
+    Route::post('/attributes/{attribute}/restore', [AdminController::class, 'restoreAttribute'])->name('attributes.restore');
+
     Route::get('/products', [AdminController::class, 'productsIndex'])->name('products.index');
     Route::get('/products/create', [AdminController::class, 'createProduct'])->name('products.create');
     Route::post('/products', [AdminController::class, 'storeProduct'])->name('products.store');

@@ -29,6 +29,7 @@
                         @php
                             $isProductsMenuOpen = request()->routeIs('admin.products.*');
                             $isCategoriesMenuOpen = request()->routeIs('admin.categories.*');
+                            $isAttributesMenuOpen = request()->routeIs('admin.attributes.*');
                         @endphp
 
                         <a
@@ -54,6 +55,25 @@
                                 </a>
                                 <a href="{{ route('admin.categories.trashed') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.categories.trashed') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     Deleted Categories
+                                </a>
+                            </div>
+                        </details>
+
+                        <details class="group rounded-xl" {{ $isAttributesMenuOpen ? 'open' : '' }}>
+                            <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]" style="list-style: none;">
+                                <span class="font-semibold text-[#4d5c56]">Attributes</span>
+                                <span class="text-xs text-[#4d5c56] transition-transform group-open:rotate-90">›</span>
+                            </summary>
+
+                            <div class="mt-2 space-y-1 border-l border-[#e5e2d9] pl-4">
+                                <a href="{{ route('admin.attributes.index') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.attributes.index') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
+                                    All Attributes
+                                </a>
+                                <a href="{{ route('admin.attributes.create') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.attributes.create') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
+                                    Create Attribute
+                                </a>
+                                <a href="{{ route('admin.attributes.trashed') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.attributes.trashed') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
+                                    Deleted Attributes
                                 </a>
                             </div>
                         </details>
