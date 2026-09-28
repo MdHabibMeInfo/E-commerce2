@@ -66,6 +66,92 @@
                     {!! nl2br(e($product->description ?: 'No detailed description yet.')) !!}
                 </div>
             </div>
+
+            {{-- Product Gallery & Image Management --}}
+            <div class="mt-6 rounded-2xl border border-[#e5e2d9] bg-white p-5 shadow-xs">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-[#efeae0] pb-4">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Gallery</p>
+                        <h3 class="text-xl font-extrabold text-[#145943]">Product Images ({{ $product->images->count() }})</h3>
+                    </div>
+                    <span class="text-xs text-[#738078]">The primary image appears as the main thumbnail in shop and home</span>
+                </div>
+
+                @if ($product->images->isNotEmpty())
+                    <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                        @foreach ($product->images as $img)
+                            <div class="group relative flex flex-col overflow-hidden rounded-xl border {{ $img->is_primary ? 'border-[#145943] ring-2 ring-[#145943]/30' : 'border-[#e5e2d9]' }} bg-white shadow-xs transition hover:shadow-md">
+                                <div class="relative aspect-square w-full overflow-hidden bg-[#f1f4e5]">
+                                    <img
+                                        src="/storage/{{ ltrim($img->image_path, '/') }}"
+                                        alt="{{ $img->alt_text ?: $product->name }}"
+                                        class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                        loading="lazy"
+                                    >
+                                    @if ($img->is_primary)
+                                        <span class="absolute left-2.5 top-2.5 rounded-md bg-[#145943] px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+                                            ★ Primary
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="flex items-center justify-between border-t border-[#f0eee6] bg-[#fafaf6] p-2.5">
+                                    @if (! $img->is_primary)
+                                        <form method="POST" action="{{ route('admin.products.images.primary', [$product, $img]) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-[#145943] border border-[#dfe3cf] transition hover:bg-[#edf2e4]">
+                                                Set Primary
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-xs font-bold text-[#145943]">Primary</span>
+                                    @endif
+
+                                    <form method="POST" action="{{ route('admin.products.images.destroy', [$product, $img]) }}" onsubmit="return confirm('Delete this image?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="rounded-lg p-1.5 text-[#b3261e] transition hover:bg-[#fdeeed]" title="Delete Image">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="mt-4 rounded-xl border border-dashed border-[#dfe3cf] bg-[#fafaf5] p-6 text-center text-sm text-[#738078]">
+                        No images uploaded yet. Upload images below to showcase this product.
+                    </div>
+                @endif
+
+                {{-- Quick Upload Section --}}
+                <form method="POST" action="{{ route('admin.products.images.store', $product) }}" enctype="multipart/form-data" class="mt-6 rounded-xl border border-[#dfe3cf] bg-[#fafaf6] p-4">
+                    @csrf
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-[0.16em] text-[#145943]">Add More Images</h4>
+                            <p class="text-xs text-[#738078]">Upload one or multiple images at once (JPEG, PNG, WebP up to 5MB).</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <input
+                            type="file"
+                            name="images[]"
+                            id="show_upload_images"
+                            multiple
+                            required
+                            accept="image/jpeg,image/png,image/webp,image/avif"
+                            class="block w-full cursor-pointer rounded-xl border border-[#dfe3cf] bg-white px-3 py-2 text-sm text-[#173b32] file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[#145943] file:px-4 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-[#a48335] focus:outline-none"
+                        >
+                        <button type="submit" class="shrink-0 rounded-xl bg-[#145943] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#a48335]">
+                            Upload Images
+                        </button>
+                    </div>
+                    <div id="show_image_preview_container" class="mt-4 hidden grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6"></div>
+                </form>
+            </div>
         </div>
 
         <div class="space-y-6">
@@ -119,4 +205,39 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.getElementById('show_upload_images')?.addEventListener('change', function(e) {
+            const container = document.getElementById('show_image_preview_container');
+            if (!container) return;
+
+            container.innerHTML = '';
+            const files = Array.from(e.target.files || []);
+
+            if (!files.length) {
+                container.classList.add('hidden');
+                container.classList.remove('grid');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            container.classList.add('grid');
+
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const card = document.createElement('div');
+                    card.className = 'group relative aspect-square overflow-hidden rounded-xl border border-[#dfe3cf] bg-white p-1 shadow-xs';
+                    card.innerHTML = `
+                        <img src="${event.target.result}" alt="Preview ${index + 1}" class="h-full w-full rounded-lg object-cover">
+                        <span class="absolute left-2 top-2 rounded-md bg-[#145943] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            Ready
+                        </span>
+                    `;
+                    container.appendChild(card);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    </script>
 @endsection

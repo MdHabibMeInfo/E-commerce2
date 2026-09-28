@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ...item,
         qty: Number(item.qty ?? item.quantity ?? 0),
         price: Number(item.price ?? 0),
+        image_url: item.image_url || item.image || '',
         emoji: item.emoji || '🛍️',
     });
 
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cartUi.innerHTML = `
         <button type="button" data-floating-cart aria-label="Open shopping cart" aria-expanded="false"
             class="fixed right-0 top-[58%] z-[80] flex w-[68px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-xl border border-[#e7e4d8] bg-white text-center shadow-lg transition-transform hover:-translate-x-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943] sm:w-[76px]">
-            <span class="flex w-full flex-col items-center bg-[#f58216] px-2 py-2.5 text-white">
+            <span class="flex w-full flex-col items-center bg-[#145943] px-2 py-2.5 text-white">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
                     <path d="M5 8h14l1 13H4L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>
                 </svg>
@@ -35,27 +36,57 @@ document.addEventListener('DOMContentLoaded', () => {
         <div data-cart-overlay class="fixed inset-0 z-[89] hidden bg-[#102a22]/45 opacity-0 transition-opacity duration-200" aria-hidden="true"></div>
 
         <aside data-cart-drawer aria-label="Shopping cart" aria-modal="true" role="dialog"
-            class="fixed inset-y-0 right-0 z-[90] flex w-full max-w-[390px] translate-x-full flex-col bg-[#fffef9] shadow-2xl transition-transform duration-300 ease-out" aria-hidden="true">
-            <div class="flex items-center justify-between border-b border-[#e7e4d8] bg-white px-5 py-4">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-[#a48335]">Your basket</p>
-                    <h2 class="mt-0.5 text-xl font-extrabold text-[#145943]">Shopping Cart <span data-drawer-count class="text-sm font-semibold text-[#738078]">(0)</span></h2>
-                </div>
-                <button type="button" data-close-cart aria-label="Close cart" class="grid h-9 w-9 place-items-center rounded-full text-xl text-[#145943] transition hover:bg-[#eef4e8]">&times;</button>
+            class="fixed inset-y-0 right-0 z-[90] flex w-full max-w-[420px] translate-x-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out" aria-hidden="true">
+            <div class="flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
+                <h2 class="text-sm font-bold tracking-wider text-gray-900 uppercase">SHOPPING CART</h2>
+                <button type="button" data-close-cart aria-label="Close cart" class="group flex items-center gap-1 text-xs font-semibold text-gray-500 transition hover:text-gray-900">
+                    <span>Close</span>
+                    <span class="text-sm font-bold transition group-hover:translate-x-0.5">→</span>
+                </button>
             </div>
 
-            <div data-cart-items class="flex-1 space-y-3 overflow-y-auto p-4"></div>
+            <div data-cart-items class="flex-1 space-y-3 overflow-y-auto px-5 py-4 divide-y divide-gray-100"></div>
 
-            <div class="border-t border-[#e7e4d8] bg-white p-5">
-                <div class="mb-3 flex items-center justify-between text-sm">
-                    <span class="text-[#56665f]">Subtotal</span>
-                    <strong data-cart-subtotal class="text-lg text-[#145943]">৳0.00</strong>
+            <div class="border-t border-gray-200 bg-white p-5">
+                <div class="mb-4 flex items-center justify-between text-sm">
+                    <span class="font-medium text-gray-700">Total:</span>
+                    <strong data-cart-total-amount class="text-base font-bold text-gray-900">৳0.00</strong>
                 </div>
-                <p class="mb-3 text-xs text-[#738078]">Delivery and any applicable charges are calculated at checkout.</p>
-                <button type="button" data-cart-checkout class="w-full rounded-lg bg-[#145943] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#a48335]">Proceed to Checkout</button>
-                <button type="button" data-close-cart class="mt-2 w-full rounded-lg border border-[#d9dfcd] px-4 py-2.5 text-sm font-semibold text-[#145943] transition hover:bg-[#f0f2e7]">Continue Shopping</button>
+                <button type="button" data-cart-checkout class="w-full rounded-xl bg-[#145943] py-3.5 text-center text-sm font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-[#d96e16] active:scale-[0.99]">
+                    CHECKOUT
+                </button>
             </div>
         </aside>
+
+        <div data-cart-loading-overlay role="status" aria-label="Adding product to cart" aria-hidden="true" inert
+            class="pointer-events-none fixed inset-0 z-[94] grid place-items-center opacity-0 transition-opacity duration-100">
+            <span class="relative grid h-20 w-20 place-items-center text-[#145943]" aria-hidden="true">
+                <span class="absolute inset-0 rounded-full border-[3px] border-[#145943]/15 border-t-[#145943] motion-safe:animate-[spin_0.65s_linear_infinite]"></span>
+                <svg class="h-9 w-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                    <path d="M3 3h2l2.4 12.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
+                    <circle cx="9" cy="21" r="1" />
+                    <circle cx="19" cy="21" r="1" />
+                </svg>
+            </span>
+        </div>
+
+        <div data-cart-toast role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" inert
+            class="pointer-events-none fixed right-0 top-0 z-[95] flex w-[min(92vw,380px)] translate-x-full items-start gap-3 rounded-lg border border-[#c8e2c3] bg-[#e8f5e9] p-4 text-[#145943] opacity-0 shadow-xl shadow-[#145943]/10 transition-all duration-300 ease-out">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#c8e2c3] text-[#145943]">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6"></path>
+                </svg>
+            </span>
+            <span class="min-w-0 flex-1 pt-0.5">
+                <span class="block text-sm font-bold">Added to your cart</span>
+                <span data-cart-toast-message class="mt-0.5 block truncate text-xs text-[#52745b]"></span>
+            </span>
+            <button type="button" data-dismiss-cart-toast aria-label="Dismiss notification" class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#567763] transition hover:bg-[#d6ecd8] hover:text-[#145943]">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="m6 6 12 12M18 6 6 18"></path>
+                </svg>
+            </button>
+        </div>
     `;
 
     document.body.appendChild(cartUi);
@@ -64,6 +95,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = cartUi.querySelector('[data-cart-overlay]');
     const drawer = cartUi.querySelector('[data-cart-drawer]');
     const itemsContainer = cartUi.querySelector('[data-cart-items]');
+    const cartLoadingOverlay = cartUi.querySelector('[data-cart-loading-overlay]');
+    const cartToast = cartUi.querySelector('[data-cart-toast]');
+    let cartToastTimer = null;
+    let cartToastVisible = false;
+
+    const showCartLoading = () => {
+        cartLoadingOverlay.inert = false;
+        cartLoadingOverlay.setAttribute('aria-hidden', 'false');
+        cartLoadingOverlay.classList.remove('pointer-events-none', 'opacity-0');
+    };
+
+    const hideCartLoading = () => {
+        cartLoadingOverlay.classList.add('pointer-events-none', 'opacity-0');
+        cartLoadingOverlay.setAttribute('aria-hidden', 'true');
+        cartLoadingOverlay.inert = true;
+    };
+
+    const positionCartToast = () => {
+        const cartRect = floatingCart.getBoundingClientRect();
+        const toastHeight = cartToast.offsetHeight;
+        const top = Math.max(12, cartRect.top - toastHeight - 96);
+        cartToast.style.top = `${top}px`;
+    };
+
+    const hideCartToast = () => {
+        cartToastVisible = false;
+        cartToast.classList.add('pointer-events-none', 'translate-x-full', 'opacity-0');
+        cartToast.setAttribute('aria-hidden', 'true');
+        cartToast.inert = true;
+    };
+
+    const showCartToast = (productName) => {
+        cartToast.querySelector('[data-cart-toast-message]').textContent = `${productName} added successfully.`;
+        positionCartToast();
+        cartToastVisible = true;
+        cartToast.inert = false;
+        cartToast.setAttribute('aria-hidden', 'false');
+        cartToast.classList.remove('pointer-events-none', 'translate-x-full', 'opacity-0');
+        window.clearTimeout(cartToastTimer);
+        cartToastTimer = window.setTimeout(hideCartToast, 3200);
+    };
+
+    cartUi.querySelector('[data-dismiss-cart-toast]').addEventListener('click', hideCartToast);
+    window.addEventListener('resize', () => {
+        if (cartToastVisible) {
+            positionCartToast();
+        }
+    }, { passive: true });
 
     const setCartDrawerState = (open) => {
         if (open) {
@@ -94,8 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cartUi.querySelector('[data-cart-count]').textContent = `${quantity} ${quantity === 1 ? 'Item' : 'Items'}`;
         cartUi.querySelector('[data-cart-total]').textContent = money(total);
-        cartUi.querySelector('[data-drawer-count]').textContent = `(${quantity})`;
-        cartUi.querySelector('[data-cart-subtotal]').textContent = money(total);
+        const totalAmountEl = cartUi.querySelector('[data-cart-total-amount]') || cartUi.querySelector('[data-cart-subtotal]');
+        if (totalAmountEl) {
+            totalAmountEl.textContent = money(total);
+        }
 
         document.querySelectorAll('[data-cart-count-badge]').forEach((badge) => {
             badge.textContent = String(quantity);
@@ -105,11 +186,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!cart.length) {
             const empty = document.createElement('div');
-            empty.className = 'flex h-full min-h-48 flex-col items-center justify-center text-center';
+            empty.className = 'flex h-full min-h-56 flex-col items-center justify-center text-center';
             empty.innerHTML = `
-                <span class="text-5xl" aria-hidden="true">🛒</span>
-                <p class="mt-3 font-bold text-[#145943]">Your cart is empty</p>
-                <p class="mt-1 text-sm text-[#738078]">Add some fresh products to get started.</p>
+                <div class="grid h-16 w-16 place-items-center rounded-full bg-gray-100 text-3xl">🛒</div>
+                <p class="mt-3 text-sm font-bold text-gray-800">Your cart is empty</p>
+                <p class="mt-1 text-xs text-gray-500">Add some fresh products to get started.</p>
             `;
             itemsContainer.appendChild(empty);
             return;
@@ -117,102 +198,128 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cart.forEach((item) => {
             const row = document.createElement('div');
-            row.className = 'flex gap-3 rounded-xl border border-[#e7e4d8] bg-white p-3';
+            row.className = 'flex items-center gap-3.5 pt-3.5 first:pt-0';
 
-            const emoji = document.createElement('div');
-            emoji.className = 'grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-[#f4f5e9] text-3xl';
-            emoji.textContent = item.emoji || '🛍️';
+            const imgBox = document.createElement('div');
+            imgBox.className = 'h-20 w-20 shrink-0 rounded-xl border border-gray-200 bg-white p-1 flex items-center justify-center overflow-hidden';
+
+            if (item.image_url) {
+                const img = document.createElement('img');
+                img.src = item.image_url;
+                img.alt = item.name;
+                img.className = 'h-full w-full object-contain';
+                imgBox.appendChild(img);
+            } else {
+                const placeholder = document.createElement('span');
+                placeholder.className = 'text-2xl';
+                placeholder.textContent = item.emoji || '🛍️';
+                imgBox.appendChild(placeholder);
+            }
+            row.appendChild(imgBox);
 
             const detail = document.createElement('div');
-            detail.className = 'min-w-0 flex-1';
+            detail.className = 'flex-1 min-w-0 pr-1';
 
             const name = document.createElement('p');
-            name.className = 'line-clamp-2 text-sm font-bold text-[#173b32]';
+            name.className = 'text-xs sm:text-sm font-semibold text-gray-800 line-clamp-1 truncate';
             name.textContent = item.name;
+            name.title = item.name;
 
-            const price = document.createElement('p');
-            price.className = 'mt-1 text-sm font-bold text-[#a48335]';
-            price.textContent = money(item.price);
+            const bottomRow = document.createElement('div');
+            bottomRow.className = 'mt-2 flex items-center gap-2 flex-wrap';
 
-            const controls = document.createElement('div');
-            controls.className = 'mt-2 flex items-center justify-between gap-2';
+            const qtyBox = document.createElement('div');
+            qtyBox.className = 'inline-flex items-center rounded border border-gray-300 bg-white text-xs';
 
-            const qty = document.createElement('div');
-            qty.className = 'flex items-center overflow-hidden rounded-md border border-[#dfe3cf]';
+            const currentQuantity = Number(item.qty ?? item.quantity ?? 1);
 
-            ['−', String(item.qty ?? item.quantity ?? 0), '+'].forEach((label, index) => {
-                const delta = index === 0 ? -1 : index === 2 ? 1 : 0;
-                const control = document.createElement('button');
-                control.type = 'button';
-                control.textContent = label;
-                control.className = 'min-w-8 px-2 py-1 text-sm font-semibold text-[#145943] transition hover:bg-[#eef4e8]';
-
-                if (delta === 0) {
-                    control.disabled = true;
-                    control.className += ' cursor-default';
+            const minusBtn = document.createElement('button');
+            minusBtn.type = 'button';
+            minusBtn.textContent = '−';
+            minusBtn.className = 'w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-semibold transition';
+            minusBtn.setAttribute('aria-label', 'Decrease quantity');
+            minusBtn.addEventListener('click', async () => {
+                if (!item.id) return;
+                const nextQty = currentQuantity - 1;
+                if (nextQty <= 0) {
+                    await fetch(`/api/cart/items/${item.id}`, {
+                        method: 'DELETE',
+                        headers: { ...apiHeaders },
+                        credentials: 'same-origin',
+                    });
                 } else {
-                    control.setAttribute('aria-label', delta > 0 ? 'Increase quantity' : 'Decrease quantity');
-                    control.addEventListener('click', async () => {
-                        const currentQty = Number(item.qty ?? item.quantity ?? 0);
-                        const nextQty = currentQty + delta;
-
-                        if (!item.id) return;
-
-                        if (nextQty <= 0) {
-                            await fetch(`/api/cart/items/${item.id}`, {
-                                method: 'DELETE',
-                                headers: { ...apiHeaders },
-                                credentials: 'same-origin',
-                            });
-                        } else {
-                            await fetch(`/api/cart/items/${item.id}`, {
-                                method: 'PATCH',
-                                headers: { ...apiHeaders, 'Content-Type': 'application/json' },
-                                credentials: 'same-origin',
-                                body: JSON.stringify({ quantity: nextQty }),
-                            });
-                        }
-
-                        const response = await fetch('/api/cart', {
-                            headers: apiHeaders,
-                            credentials: 'same-origin',
-                        });
-                        const data = await response.json();
-
-                        cart = (data.items || []).map(normalizeCartItem);
-                        renderCart();
+                    await fetch(`/api/cart/items/${item.id}`, {
+                        method: 'PATCH',
+                        headers: { ...apiHeaders, 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ quantity: nextQty }),
                     });
                 }
-
-                qty.appendChild(control);
+                const response = await fetch('/api/cart', { headers: apiHeaders, credentials: 'same-origin' });
+                const data = await response.json();
+                cart = (data.items || []).map(normalizeCartItem);
+                renderCart();
             });
 
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.textContent = 'Remove';
-            remove.className = 'text-xs font-semibold text-[#a64c3c] underline-offset-2 hover:underline';
-            remove.addEventListener('click', async () => {
-                if (!item.id) return;
+            const qtyNum = document.createElement('span');
+            qtyNum.className = 'min-w-[20px] text-center text-xs font-bold text-gray-800 px-1';
+            qtyNum.textContent = String(currentQuantity);
 
+            const plusBtn = document.createElement('button');
+            plusBtn.type = 'button';
+            plusBtn.textContent = '+';
+            plusBtn.className = 'w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-semibold transition';
+            plusBtn.setAttribute('aria-label', 'Increase quantity');
+            plusBtn.addEventListener('click', async () => {
+                if (!item.id) return;
+                const nextQty = currentQuantity + 1;
+                await fetch(`/api/cart/items/${item.id}`, {
+                    method: 'PATCH',
+                    headers: { ...apiHeaders, 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ quantity: nextQty }),
+                });
+                const response = await fetch('/api/cart', { headers: apiHeaders, credentials: 'same-origin' });
+                const data = await response.json();
+                cart = (data.items || []).map(normalizeCartItem);
+                renderCart();
+            });
+
+            qtyBox.append(minusBtn, qtyNum, plusBtn);
+
+            const priceCalc = document.createElement('span');
+            priceCalc.className = 'text-xs font-semibold text-gray-700 whitespace-nowrap';
+            const itemPrice = Number(item.price || 0);
+            const itemSubtotal = itemPrice * currentQuantity;
+            priceCalc.textContent = `× ${money(itemPrice)} = ${money(itemSubtotal)}`;
+
+            bottomRow.append(qtyBox, priceCalc);
+            detail.append(name, bottomRow);
+            row.appendChild(detail);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'shrink-0 p-1 text-gray-400 hover:text-red-500 transition';
+            removeBtn.setAttribute('aria-label', 'Remove ' + item.name);
+            removeBtn.innerHTML = `
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            `;
+            removeBtn.addEventListener('click', async () => {
+                if (!item.id) return;
                 await fetch(`/api/cart/items/${item.id}`, {
                     method: 'DELETE',
                     headers: { ...apiHeaders },
                     credentials: 'same-origin',
                 });
-
-                const response = await fetch('/api/cart', {
-                    headers: apiHeaders,
-                    credentials: 'same-origin',
-                });
+                const response = await fetch('/api/cart', { headers: apiHeaders, credentials: 'same-origin' });
                 const data = await response.json();
-
                 cart = (data.items || []).map(normalizeCartItem);
                 renderCart();
             });
+            row.appendChild(removeBtn);
 
-            controls.append(qty, remove);
-            detail.append(name, price, controls);
-            row.append(emoji, detail);
             itemsContainer.appendChild(row);
         });
     };
@@ -235,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const addToCart = async (button) => {
+    const addToCart = async (button, shouldCheckout = false) => {
         const productId = Number(button.dataset.productId || button.closest('[data-product-card]')?.dataset.productId || 0);
         const name = (button.dataset.productName || button.closest('[data-product-card]')?.dataset.productName || '').trim();
         const price = Number(button.dataset.productPrice || button.closest('[data-product-card]')?.dataset.productPrice || 0);
@@ -244,9 +351,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const originalLabel = button.textContent;
+        const buttonLabel = button.querySelector('[data-cart-button-label]') || button;
+        const buttonIcon = button.querySelector('[data-cart-button-icon]');
+        const buttonSpinner = button.querySelector('[data-cart-button-spinner]');
+        const buttonSuccess = button.querySelector('[data-cart-button-success]');
+        const originalLabel = buttonLabel.textContent.trim();
         button.disabled = true;
-        button.textContent = 'Adding...';
+        button.setAttribute('aria-busy', 'true');
+        buttonLabel.textContent = 'Adding...';
+        buttonIcon?.classList.add('hidden');
+        buttonSuccess?.classList.add('hidden');
+        buttonSpinner?.classList.remove('hidden');
+        button.classList.add('cart-button-loading');
+        button.classList.add('scale-95');
+        window.requestAnimationFrame(() => button.classList.remove('scale-95'));
+        showCartLoading();
+        const requestController = new AbortController();
+        const requestTimeout = window.setTimeout(() => requestController.abort(), 8000);
 
         try {
             const response = await fetch('/api/cart/items', {
@@ -254,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'same-origin',
                 headers: { ...apiHeaders, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_id: productId, quantity: 1 }),
+                signal: requestController.signal,
             });
 
             if (!response.ok) throw new Error('Failed to add cart item');
@@ -261,14 +383,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             cart = (data.items || []).map(normalizeCartItem);
             renderCart();
-            button.textContent = 'Added ✓';
+            hideCartLoading();
+
+            if (shouldCheckout) {
+                window.location.href = '/checkout';
+                return;
+            }
+
+            showCartToast(name);
+            buttonLabel.textContent = 'Added!';
+            buttonSpinner?.classList.add('hidden');
+            buttonSuccess?.classList.remove('hidden');
+            button.classList.remove('cart-button-loading');
+            button.classList.add('cart-button-success');
+            button.classList.add('border-[#145943]', 'bg-[#145943]', 'scale-105', 'text-white');
+            window.requestAnimationFrame(() => button.classList.remove('scale-105'));
         } catch (error) {
-            button.textContent = 'Error';
+            hideCartLoading();
+            buttonLabel.textContent = 'Error';
+            buttonSpinner?.classList.add('hidden');
+            buttonIcon?.classList.remove('hidden');
+            button.classList.remove('cart-button-loading');
         } finally {
+            window.clearTimeout(requestTimeout);
+            hideCartLoading();
             window.setTimeout(() => {
-                button.textContent = originalLabel;
+                buttonLabel.textContent = originalLabel;
+                buttonIcon?.classList.remove('hidden');
+                buttonSpinner?.classList.add('hidden');
+                buttonSuccess?.classList.add('hidden');
+                button.classList.remove('cart-button-loading', 'cart-button-success', 'border-[#145943]', 'bg-[#145943]', 'scale-95', 'scale-105', 'text-white');
                 button.disabled = false;
-            }, 1000);
+                button.setAttribute('aria-busy', 'false');
+            }, 1300);
         }
     };
 
@@ -292,17 +439,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (event) => {
-        const button = event.target.closest('button[aria-label^="Add "][aria-label$=" to cart"]');
+        const button = event.target.closest('button[aria-label^="Add "][aria-label$=" to cart"], button[data-buy-now]');
 
         if (button) {
             event.preventDefault();
             event.stopPropagation();
-            addToCart(button);
+            addToCart(button, button.hasAttribute('data-buy-now'));
         }
     });
 
     cartUi.querySelector('[data-cart-checkout]').addEventListener('click', () => {
-        alert('This demo cart is ready for checkout integration. No order has been placed.');
+        if (!cart.length) {
+            alert('Your cart is empty. Please add products before checking out.');
+            return;
+        }
+        setCartDrawerState(false);
+        window.location.href = '/checkout';
     });
 
     const syncPriceRangeInputs = () => {
@@ -406,13 +558,123 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const heroCarousel = document.querySelector('[data-hero-carousel]');
+    const heroTrack = heroCarousel?.querySelector('[data-hero-track]');
+    const heroSlides = heroTrack ? Array.from(heroTrack.querySelectorAll('[data-hero-slide]')) : [];
+    const heroDots = heroCarousel ? Array.from(heroCarousel.querySelectorAll('[data-hero-dot]')) : [];
+    const heroPrev = heroCarousel?.querySelector('[data-hero-prev]');
+    const heroNext = heroCarousel?.querySelector('[data-hero-next]');
+
+    if (heroCarousel && heroTrack && heroSlides.length > 1) {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let activeHeroIndex = 0;
+        let autoplayTimer = null;
+        let heroHovered = false;
+        let heroFocused = false;
+        let touchStartX = null;
+
+        const stopAutoplay = () => {
+            if (autoplayTimer) {
+                window.clearInterval(autoplayTimer);
+                autoplayTimer = null;
+            }
+        };
+
+        const showHeroSlide = (index) => {
+            activeHeroIndex = (index + heroSlides.length) % heroSlides.length;
+            heroTrack.style.transform = `translateX(-${activeHeroIndex * 100}%)`;
+
+            heroSlides.forEach((slide, slideIndex) => {
+                const isActive = slideIndex === activeHeroIndex;
+                slide.setAttribute('aria-hidden', String(!isActive));
+                slide.inert = !isActive;
+            });
+
+            heroDots.forEach((dot, dotIndex) => {
+                const isActive = dotIndex === activeHeroIndex;
+                dot.classList.toggle('w-8', isActive);
+                dot.classList.toggle('w-2.5', !isActive);
+                dot.classList.toggle('bg-[#145943]', isActive);
+                dot.classList.toggle('bg-[#c6c8b9]', !isActive);
+                dot.setAttribute('aria-current', String(isActive));
+            });
+        };
+
+        const startAutoplay = () => {
+            stopAutoplay();
+            if (reduceMotion || heroHovered || heroFocused) return;
+
+            autoplayTimer = window.setInterval(() => {
+                showHeroSlide(activeHeroIndex + 1);
+            }, 5000);
+        };
+
+        heroPrev?.addEventListener('click', () => {
+            showHeroSlide(activeHeroIndex - 1);
+            startAutoplay();
+        });
+
+        heroNext?.addEventListener('click', () => {
+            showHeroSlide(activeHeroIndex + 1);
+            startAutoplay();
+        });
+
+        heroDots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                showHeroSlide(index);
+                startAutoplay();
+            });
+        });
+
+        heroCarousel.addEventListener('mouseenter', () => {
+            heroHovered = true;
+            stopAutoplay();
+        });
+
+        heroCarousel.addEventListener('mouseleave', () => {
+            heroHovered = false;
+            startAutoplay();
+        });
+
+        heroCarousel.addEventListener('focusin', () => {
+            heroFocused = true;
+            stopAutoplay();
+        });
+
+        heroCarousel.addEventListener('focusout', (event) => {
+            if (!heroCarousel.contains(event.relatedTarget)) {
+                heroFocused = false;
+                startAutoplay();
+            }
+        });
+
+        heroCarousel.addEventListener('touchstart', (event) => {
+            touchStartX = event.changedTouches[0]?.clientX ?? null;
+        }, { passive: true });
+
+        heroCarousel.addEventListener('touchend', (event) => {
+            const touchEndX = event.changedTouches[0]?.clientX;
+            if (touchStartX === null || touchEndX === undefined) return;
+
+            const distance = touchEndX - touchStartX;
+            if (Math.abs(distance) > 45) {
+                showHeroSlide(activeHeroIndex + (distance < 0 ? 1 : -1));
+                startAutoplay();
+            }
+            touchStartX = null;
+        }, { passive: true });
+
+        startAutoplay();
+    }
+
     const setupCarousel = ({
         trackSelector,
-        prevSelector,
-        nextSelector,
+        prevSelector = null,
+        nextSelector = null,
         paginationSelector = null,
         minCardWidth,
         maxVisible,
+        centerWhenFits = false,
         initialDirection = 1,
         reversePauseMs = 2300,
     }) => {
@@ -422,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const items = Array.from(track.querySelectorAll('[data-carousel-item]'));
         if (!items.length) return;
 
-        const prev = document.querySelector(prevSelector);
+        const prev = prevSelector ? document.querySelector(prevSelector) : null;
         const next = nextSelector ? document.querySelector(nextSelector) : null;
         const pagination = paginationSelector ? document.querySelector(paginationSelector) : null;
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -505,6 +767,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             requestAnimationFrame(() => {
+                const fits = track.scrollWidth <= track.clientWidth + 2;
+                track.classList.toggle('justify-center', centerWhenFits && fits);
                 track.scrollLeft = Math.min(track.scrollLeft, maxScroll());
                 renderPagination();
                 updateButtons();
@@ -608,15 +872,29 @@ document.addEventListener('DOMContentLoaded', () => {
         nextSelector: '[data-category-next]',
         minCardWidth: 96,
         maxVisible: 8,
+        centerWhenFits: true,
     });
 
     setupCarousel({
         trackSelector: '[data-product-track]',
         paginationSelector: '[data-product-pagination]',
-        minCardWidth: 150,
+        minCardWidth: 220,
         maxVisible: 5,
         initialDirection: 1,
         reversePauseMs: 2300,
+    });
+
+    document.querySelectorAll('[data-category-product-track]').forEach((track) => {
+        const slug = track.getAttribute('data-category-product-track');
+
+        setupCarousel({
+            trackSelector: `[data-category-product-track="${slug}"]`,
+            paginationSelector: `[data-category-product-pagination="${slug}"]`,
+            minCardWidth: 220,
+            maxVisible: 5,
+            initialDirection: 1,
+            reversePauseMs: 2300,
+        });
     });
 
     renderCart();

@@ -32,6 +32,7 @@ class AttributeValue extends Model
     {
         return $this->belongsTo(ProductAttribute::class);
     }
+
     public function variants(): BelongsToMany
     {
         return $this->belongsToMany(

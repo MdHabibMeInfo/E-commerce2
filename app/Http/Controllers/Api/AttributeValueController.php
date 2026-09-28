@@ -96,8 +96,7 @@ class AttributeValueController extends Controller
         return response()->json([
             'message' => 'Attribute values retrieved successfully.',
 
-            'attribute_values' =>
-            AttributeValueResource::collection(
+            'attribute_values' => AttributeValueResource::collection(
                 $attributeValues->items()
             ),
 
@@ -127,8 +126,7 @@ class AttributeValueController extends Controller
         return response()->json([
             'message' => 'Attribute value retrieved successfully.',
 
-            'attribute_value' =>
-            new AttributeValueResource(
+            'attribute_value' => new AttributeValueResource(
                 $attributeValue
             ),
         ]);
@@ -155,8 +153,7 @@ class AttributeValueController extends Controller
         return response()->json([
             'message' => 'Attribute value created successfully.',
 
-            'attribute_value' =>
-            new AttributeValueResource(
+            'attribute_value' => new AttributeValueResource(
                 $attributeValue
             ),
         ], 201);
@@ -185,8 +182,7 @@ class AttributeValueController extends Controller
         return response()->json([
             'message' => 'Attribute value updated successfully.',
 
-            'attribute_value' =>
-            new AttributeValueResource(
+            'attribute_value' => new AttributeValueResource(
                 $attributeValue
             ),
         ]);
@@ -231,8 +227,7 @@ class AttributeValueController extends Controller
         return response()->json([
             'message' => 'Attribute value restored successfully.',
 
-            'attribute_value' =>
-            new AttributeValueResource(
+            'attribute_value' => new AttributeValueResource(
                 $attributeValue
             ),
         ]);

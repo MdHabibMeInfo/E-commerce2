@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ReorderProductImagesRequest;
 use App\Http\Requests\StoreProductImageRequest;
 use App\Http\Requests\UpdateProductImageRequest;
 use App\Http\Resources\ProductImageResource;
@@ -43,6 +44,20 @@ class ProductImageController extends Controller
     ): JsonResponse {
         $this->authorize('update', $product);
         $this->authorize('create', ProductImage::class);
+
+        if ($request->hasFile('images')) {
+            $images = $imageService->createMultipleImages(
+                $product,
+                $request->file('images'),
+                $request->filled('primary_index') ? (int) $request->input('primary_index') : null,
+                $request->input('alt_texts', [])
+            );
+
+            return response()->json([
+                'message' => 'Product images uploaded successfully.',
+                'images' => ProductImageResource::collection($images),
+            ], 201);
+        }
 
         $productImage = $imageService->createImage(
             $product,
@@ -87,6 +102,41 @@ class ProductImageController extends Controller
 
         return response()->json([
             'message' => 'Product image deleted successfully.',
+        ]);
+    }
+
+    public function setPrimary(
+        Product $product,
+        ProductImage $productImage,
+        ProductImageService $imageService
+    ): JsonResponse {
+        $this->authorize('update', $product);
+        $this->authorize('update', $productImage);
+
+        $productImage = $imageService->setPrimaryImage($productImage);
+
+        return response()->json([
+            'message' => 'Product primary image set successfully.',
+            'image' => new ProductImageResource($productImage),
+        ]);
+    }
+
+    public function reorder(
+        ReorderProductImagesRequest $request,
+        Product $product,
+        ProductImageService $imageService
+    ): JsonResponse {
+        $this->authorize('update', $product);
+        $this->authorize('update', ProductImage::class);
+
+        $imageService->reorderImages(
+            $product,
+            $request->validated('image_ids')
+        );
+
+        return response()->json([
+            'message' => 'Product images reordered successfully.',
+            'images' => ProductImageResource::collection($product->images()->get()),
         ]);
     }
 }

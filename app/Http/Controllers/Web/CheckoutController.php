@@ -15,7 +15,7 @@ class CheckoutController extends Controller
     public function index(Request $request): View
     {
         $cart = $this->resolveCart($request);
-        $items = $cart->items()->with('product')->get();
+        $items = $cart->items()->with(['product.primaryImage', 'product.images'])->get();
         $subtotal = $items->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
         $deliveryFee = $items->isNotEmpty() ? 60.00 : 0.00;
         $discount = 0.00;
@@ -91,6 +91,7 @@ class CheckoutController extends Controller
         }
 
         $cart->items()->delete();
+        $request->session()->forget('cart_id');
 
         return redirect()->route('checkout.success', ['order' => $order->id])->with('success', 'Order placed successfully.');
     }

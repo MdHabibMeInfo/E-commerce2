@@ -9,212 +9,212 @@ use Illuminate\Validation\ValidationException;
 
 class CategoryService
 {
-  public function create(array $data): Category
-  {
-    $parentId = $data['parent_id'] ?? null;
+    public function create(array $data): Category
+    {
+        $parentId = $data['parent_id'] ?? null;
 
-    if ($parentId !== null) {
-      $this->validateParent($parentId);
+        if ($parentId !== null) {
+            $this->validateParent($parentId);
+        }
+
+        $slug = $this->generateUniqueSlug(
+            $data['slug'] ?? null,
+            $data['name']
+        );
+
+        return DB::transaction(function () use (
+            $data,
+            $parentId,
+            $slug
+        ) {
+            return Category::create([
+                'parent_id' => $parentId,
+                'name' => $data['name'],
+                'slug' => $slug,
+                'description' => $data['description'] ?? null,
+                'image' => $data['image'] ?? null,
+                'is_active' => $data['is_active'] ?? true,
+                'sort_order' => $data['sort_order'] ?? 0,
+            ]);
+        });
     }
 
-    $slug = $this->generateUniqueSlug(
-      $data['slug'] ?? null,
-      $data['name']
-    );
+    public function update(
+        Category $category,
+        array $data
+    ): Category {
+        $parentId = $data['parent_id'] ?? null;
 
-    return DB::transaction(function () use (
-      $data,
-      $parentId,
-      $slug
-    ) {
-      return Category::create([
-        'parent_id' => $parentId,
-        'name' => $data['name'],
-        'slug' => $slug,
-        'description' => $data['description'] ?? null,
-        'image' => $data['image'] ?? null,
-        'is_active' => $data['is_active'] ?? true,
-        'sort_order' => $data['sort_order'] ?? 0,
-      ]);
-    });
-  }
+        if ($parentId !== null) {
+            $this->validateParentForUpdate(
+                $category,
+                $parentId
+            );
+        }
 
-  public function update(
-    Category $category,
-    array $data
-  ): Category {
-    $parentId = $data['parent_id'] ?? null;
+        $slug = $this->generateUniqueSlug(
+            $data['slug'] ?? null,
+            $data['name'],
+            $category
+        );
 
-    if ($parentId !== null) {
-      $this->validateParentForUpdate(
-        $category,
-        $parentId
-      );
+        return DB::transaction(function () use (
+            $category,
+            $data,
+            $parentId,
+            $slug
+        ) {
+            $category->update([
+                'parent_id' => $parentId,
+                'name' => $data['name'],
+                'slug' => $slug,
+                'description' => $data['description'] ?? null,
+                'image' => $data['image'] ?? null,
+                'is_active' => $data['is_active'] ?? $category->is_active,
+                'sort_order' => $data['sort_order'] ?? $category->sort_order,
+            ]);
+
+            return $category->refresh();
+        });
     }
 
-    $slug = $this->generateUniqueSlug(
-      $data['slug'] ?? null,
-      $data['name'],
-      $category
-    );
+    public function delete(Category $category): void
+    {
+        if ($category->children()->exists()) {
+            throw ValidationException::withMessages([
+                'category' => [
+                    'This category cannot be deleted because it has child categories.',
+                ],
+            ]);
+        }
 
-    return DB::transaction(function () use (
-      $category,
-      $data,
-      $parentId,
-      $slug
-    ) {
-      $category->update([
-        'parent_id' => $parentId,
-        'name' => $data['name'],
-        'slug' => $slug,
-        'description' => $data['description'] ?? null,
-        'image' => $data['image'] ?? null,
-        'is_active' => $data['is_active'] ?? $category->is_active,
-        'sort_order' => $data['sort_order'] ?? $category->sort_order,
-      ]);
+        if ($category->products()->exists()) {
+            throw ValidationException::withMessages([
+                'category' => [
+                    'This category cannot be deleted because it has products.',
+                ],
+            ]);
+        }
 
-      return $category->refresh();
-    });
-  }
-
-  public function delete(Category $category): void
-  {
-    if ($category->children()->exists()) {
-      throw ValidationException::withMessages([
-        'category' => [
-          'This category cannot be deleted because it has child categories.',
-        ],
-      ]);
+        $category->delete();
     }
 
-    if ($category->products()->exists()) {
-      throw ValidationException::withMessages([
-        'category' => [
-          'This category cannot be deleted because it has products.',
-        ],
-      ]);
+    public function restore(Category $category): Category
+    {
+        if (! $category->trashed()) {
+            throw ValidationException::withMessages([
+                'category' => [
+                    'This category is not deleted.',
+                ],
+            ]);
+        }
+
+        if ($category->parent_id !== null) {
+            $parent = Category::query()
+                ->whereKey($category->parent_id)
+                ->whereNull('deleted_at')
+                ->first();
+
+            if (! $parent) {
+                throw ValidationException::withMessages([
+                    'parent_id' => [
+                        'The parent category is deleted or no longer exists.',
+                    ],
+                ]);
+            }
+        }
+
+        return DB::transaction(function () use ($category) {
+            $category->restore();
+
+            return $category->refresh();
+        });
     }
 
-    $category->delete();
-  }
+    private function validateParent(int $parentId): void
+    {
+        $parent = Category::query()
+            ->whereKey($parentId)
+            ->whereNull('deleted_at')
+            ->first();
 
-  public function restore(Category $category): Category
-  {
-    if (! $category->trashed()) {
-      throw ValidationException::withMessages([
-        'category' => [
-          'This category is not deleted.',
-        ],
-      ]);
+        if (! $parent) {
+            throw ValidationException::withMessages([
+                'parent_id' => [
+                    'The selected parent category is invalid or deleted.',
+                ],
+            ]);
+        }
     }
 
-    if ($category->parent_id !== null) {
-      $parent = Category::query()
-        ->whereKey($category->parent_id)
-        ->whereNull('deleted_at')
-        ->first();
+    private function validateParentForUpdate(
+        Category $category,
+        int $parentId
+    ): void {
+        if ($category->id === $parentId) {
+            throw ValidationException::withMessages([
+                'parent_id' => [
+                    'A category cannot be its own parent.',
+                ],
+            ]);
+        }
 
-      if (! $parent) {
-        throw ValidationException::withMessages([
-          'parent_id' => [
-            'The parent category is deleted or no longer exists.',
-          ],
-        ]);
-      }
+        $this->validateParent($parentId);
+
+        $descendantIds = $this->getDescendantIds($category);
+
+        if (in_array($parentId, $descendantIds, true)) {
+            throw ValidationException::withMessages([
+                'parent_id' => [
+                    'A category cannot have one of its descendants as its parent.',
+                ],
+            ]);
+        }
     }
 
-    return DB::transaction(function () use ($category) {
-      $category->restore();
+    private function getDescendantIds(Category $category): array
+    {
+        $descendantIds = [];
 
-      return $category->refresh();
-    });
-  }
+        $children = $category->children()->get();
 
-  private function validateParent(int $parentId): void
-  {
-    $parent = Category::query()
-      ->whereKey($parentId)
-      ->whereNull('deleted_at')
-      ->first();
+        foreach ($children as $child) {
+            $descendantIds[] = $child->id;
 
-    if (! $parent) {
-      throw ValidationException::withMessages([
-        'parent_id' => [
-          'The selected parent category is invalid or deleted.',
-        ],
-      ]);
-    }
-  }
+            $descendantIds = array_merge(
+                $descendantIds,
+                $this->getDescendantIds($child)
+            );
+        }
 
-  private function validateParentForUpdate(
-    Category $category,
-    int $parentId
-  ): void {
-    if ($category->id === $parentId) {
-      throw ValidationException::withMessages([
-        'parent_id' => [
-          'A category cannot be its own parent.',
-        ],
-      ]);
+        return $descendantIds;
     }
 
-    $this->validateParent($parentId);
+    private function generateUniqueSlug(
+        ?string $requestedSlug,
+        string $name,
+        ?Category $ignore = null
+    ): string {
+        $baseSlug = Str::slug(
+            trim((string) ($requestedSlug ?? '')) ?: $name
+        );
 
-    $descendantIds = $this->getDescendantIds($category);
+        $slug = $baseSlug;
+        $counter = 2;
 
-    if (in_array($parentId, $descendantIds, true)) {
-      throw ValidationException::withMessages([
-        'parent_id' => [
-          'A category cannot have one of its descendants as its parent.',
-        ],
-      ]);
+        while (
+            Category::withTrashed()
+                ->where('slug', $slug)
+                ->when(
+                    $ignore,
+                    fn ($query) => $query->where('id', '!=', $ignore->id)
+                )
+                ->exists()
+        ) {
+            $slug = "{$baseSlug}-{$counter}";
+            $counter++;
+        }
+
+        return $slug;
     }
-  }
-
-  private function getDescendantIds(Category $category): array
-  {
-    $descendantIds = [];
-
-    $children = $category->children()->get();
-
-    foreach ($children as $child) {
-      $descendantIds[] = $child->id;
-
-      $descendantIds = array_merge(
-        $descendantIds,
-        $this->getDescendantIds($child)
-      );
-    }
-
-    return $descendantIds;
-  }
-
-  private function generateUniqueSlug(
-    ?string $requestedSlug,
-    string $name,
-    ?Category $ignore = null
-  ): string {
-    $baseSlug = Str::slug(
-      trim((string) ($requestedSlug ?? '')) ?: $name
-    );
-
-    $slug = $baseSlug;
-    $counter = 2;
-
-    while (
-      Category::withTrashed()
-      ->where('slug', $slug)
-      ->when(
-        $ignore,
-        fn($query) => $query->where('id', '!=', $ignore->id)
-      )
-      ->exists()
-    ) {
-      $slug = "{$baseSlug}-{$counter}";
-      $counter++;
-    }
-
-    return $slug;
-  }
 }

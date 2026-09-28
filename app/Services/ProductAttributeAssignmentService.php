@@ -32,8 +32,7 @@ class ProductAttributeAssignmentService
             ->with('attributeValues')
             ->get()
             ->flatMap(
-                fn($variant) =>
-                $variant->attributeValues
+                fn ($variant) => $variant->attributeValues
             )
             ->pluck('product_attribute_id')
             ->unique();

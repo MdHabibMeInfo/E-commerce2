@@ -11,83 +11,105 @@
     <x-slot:canonicalUrl>
         {{ route('home') }}
     </x-slot:canonicalUrl>
-    {{-- Hero --}}
-    <section class="relative overflow-hidden bg-[#f0f2dc]">
-        <div class="absolute -left-20 top-10 h-48 w-48 rounded-full bg-[#d9dfbd]/50 blur-3xl"></div>
-        <div class="absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-[#d7b45a]/10 blur-3xl"></div>
+    {{-- Hero carousel --}}
+    <section data-hero-carousel class="relative overflow-hidden bg-[#f0f2dc]" aria-label="Featured products" aria-roledescription="carousel">
+        <div class="relative mx-auto max-w-[1600px]">
+            <div data-hero-viewport class="overflow-hidden">
+                <div data-hero-track class="flex transition-transform duration-500 ease-out motion-reduce:transition-none">
+                    @forelse ($featuredProducts->take(3) as $index => $product)
+                        @php
+                            $heroImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+                        @endphp
 
-        <div class="relative mx-auto grid max-w-7xl items-center gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-8 lg:py-20">
-            <div class="max-w-xl">
-                <div class="inline-flex items-center gap-2 rounded-full bg-[#dce7c6] px-4 py-2 text-xs font-bold text-[#145943]">
-                    <span>✦</span>
-                    Fresh
-                    <span class="text-[#9a7a2e]">•</span>
-                    Natural
-                    <span class="text-[#9a7a2e]">•</span>
-                    Organic
-                </div>
+                        <article
+                            data-hero-slide
+                            aria-roledescription="slide"
+                            aria-label="{{ $index + 1 }} of {{ min($featuredProducts->count(), 3) }}"
+                            aria-hidden="{{ $index === 0 ? 'false' : 'true' }}"
+                            @if ($index !== 0) inert @endif
+                            class="grid min-h-[380px] w-full shrink-0 items-center gap-8 px-4 py-10 sm:min-h-[420px] sm:px-6 lg:min-h-[480px] lg:grid-cols-2 lg:px-8 lg:py-14"
+                        >
+                            <div class="max-w-xl">
+                                <p class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-[#a48335]">
+                                    <span class="h-2 w-2 rounded-full bg-[#a48335]" aria-hidden="true"></span>
+                                    {{ $product->category?->name ?? 'Fresh picks for you' }}
+                                </p>
 
-                <h1 class="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-[#145943] sm:text-5xl lg:text-6xl">
-                    Good Food<br>
-                    for a <span class="text-[#a48335]">Better You</span>
-                </h1>
+                                @if ($index === 0)
+                                    <h1 class="mt-4 text-4xl font-extrabold leading-[1.05] text-[#145943] sm:text-5xl lg:text-6xl">{{ $product->name }}</h1>
+                                @else
+                                    <h2 class="mt-4 text-4xl font-extrabold leading-[1.05] text-[#145943] sm:text-5xl lg:text-6xl">{{ $product->name }}</h2>
+                                @endif
 
-                <p class="mt-5 max-w-lg text-base leading-7 text-[#56665f] sm:text-lg">
-                    Discover fresh, high-quality products that bring health and happiness to your everyday life.
-                </p>
+                                <p class="mt-5 max-w-lg text-base leading-7 text-[#56665f] sm:text-lg">
+                                    Carefully selected quality products for everyday freshness, taste, and value.
+                                </p>
 
-                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                        <a href="{{ route('shop') }}" class="inline-flex items-center justify-center gap-3 rounded-full bg-[#145943] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#145943]/15 transition hover:-translate-y-0.5 hover:bg-[#0f4d3a]">
-                        Shop Now
-                        <span aria-hidden="true">→</span>
-                    </a>
-                    <a href="{{ route('shop') }}" class="inline-flex items-center justify-center rounded-full border border-[#b99a4b] bg-white/40 px-7 py-3.5 text-sm font-bold text-[#145943] transition hover:bg-white">
-                        Explore Categories
-                    </a>
+                                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                                    <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="inline-flex items-center justify-center gap-3 rounded-full bg-[#145943] px-7 py-3.5 text-sm font-bold text-white transition hover:bg-[#0f4d3a]">
+                                        Shop This Product
+                                        <span aria-hidden="true">→</span>
+                                    </a>
+                                    <a href="{{ $product->category ? route('shop', ['category' => $product->category->slug]) : route('shop') }}" class="inline-flex items-center justify-center rounded-full border border-[#b99a4b] bg-white/40 px-7 py-3.5 text-sm font-bold text-[#145943] transition hover:bg-white">
+                                        Explore Category
+                                    </a>
+                                </div>
+                            </div>
+
+                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="group relative mx-auto flex min-h-[240px] w-full max-w-2xl items-center justify-center overflow-hidden bg-[#e4ead5] sm:min-h-[300px] lg:min-h-[390px]" aria-label="View {{ $product->name }}">
+                                @if ($heroImage)
+                                    <img
+                                        src="/storage/{{ ltrim($heroImage->image_path, '/') }}"
+                                        alt="{{ $heroImage->alt_text ?: $product->name }}"
+                                        width="700"
+                                        height="600"
+                                        fetchpriority="{{ $index === 0 ? 'high' : 'auto' }}"
+                                        loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
+                                        decoding="async"
+                                        class="h-full max-h-[390px] w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                                    >
+                                @else
+                                    <span class="text-8xl sm:text-9xl" aria-hidden="true">🛍️</span>
+                                @endif
+                            </a>
+                        </article>
+                    @empty
+                        <article data-hero-slide aria-roledescription="slide" aria-label="1 of 1" class="grid min-h-[380px] w-full shrink-0 items-center gap-8 px-4 py-10 sm:min-h-[420px] sm:px-6 lg:min-h-[480px] lg:grid-cols-2 lg:px-8 lg:py-14">
+                            <div class="max-w-xl">
+                                <p class="text-xs font-bold uppercase tracking-[0.14em] text-[#a48335]">Fresh · Natural · Organic</p>
+                                <h1 class="mt-4 text-4xl font-extrabold leading-[1.05] text-[#145943] sm:text-5xl lg:text-6xl">Good Food for a Better You</h1>
+                                <p class="mt-5 max-w-lg text-base leading-7 text-[#56665f] sm:text-lg">Discover fresh, high-quality products that bring health and happiness to your everyday life.</p>
+                                <a href="{{ route('shop') }}" class="mt-8 inline-flex items-center justify-center gap-3 rounded-full bg-[#145943] px-7 py-3.5 text-sm font-bold text-white transition hover:bg-[#0f4d3a]">Shop Now <span aria-hidden="true">→</span></a>
+                            </div>
+                            <div class="grid min-h-[240px] place-items-center bg-[#e4ead5] text-8xl sm:min-h-[300px] sm:text-9xl lg:min-h-[390px]" aria-hidden="true">🥬</div>
+                        </article>
+                    @endforelse
                 </div>
             </div>
 
-            <div class="relative min-h-[300px] sm:min-h-[390px] lg:min-h-[460px]">
-                <div class="absolute inset-x-4 bottom-4 h-36 rounded-[50%] bg-[#cbbf92]/30 blur-2xl sm:inset-x-10"></div>
+            @if ($featuredProducts->take(3)->count() > 1)
+                <button type="button" data-hero-prev class="absolute left-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white/95 text-[#145943] shadow-md transition hover:bg-[#145943] hover:text-white sm:left-4" aria-label="Previous hero slide">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                </button>
+                <button type="button" data-hero-next class="absolute right-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white/95 text-[#145943] shadow-md transition hover:bg-[#145943] hover:text-white sm:right-4" aria-label="Next hero slide">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                </button>
+            @endif
+        </div>
 
-                <div class="absolute left-1/2 top-1/2 grid w-[90%] max-w-[520px] -translate-x-1/2 -translate-y-1/2 grid-cols-2 gap-3 sm:gap-4">
-                    <div class="rounded-[30px] bg-[#e8d4a1]/70 p-4 shadow-xl shadow-[#5f633f]/10 backdrop-blur sm:p-6">
-                        <div class="grid aspect-square place-items-center rounded-[24px] bg-[#f7f3dc] text-7xl sm:text-8xl">🥬</div>
-                    </div>
-                    <div class="mt-8 rounded-[30px] bg-white/75 p-4 shadow-xl shadow-[#5f633f]/10 backdrop-blur sm:mt-12 sm:p-6">
-                        <div class="grid aspect-square place-items-center rounded-[24px] bg-[#f6efd7] text-7xl sm:text-8xl">🫙</div>
-                    </div>
-                    <div class="-mt-4 rounded-[30px] bg-white/75 p-4 shadow-xl shadow-[#5f633f]/10 backdrop-blur sm:-mt-6 sm:p-6">
-                        <div class="grid aspect-square place-items-center rounded-[24px] bg-[#edf1d9] text-7xl sm:text-8xl">🥜</div>
-                    </div>
-                    <div class="rounded-[30px] bg-[#dfe9c7]/80 p-4 shadow-xl shadow-[#5f633f]/10 backdrop-blur sm:p-6">
-                        <div class="grid aspect-square place-items-center rounded-[24px] bg-[#f8f5e8] text-7xl sm:text-8xl">🍅</div>
-                    </div>
-                </div>
-
-                <div class="absolute right-0 top-3 grid h-24 w-24 place-items-center rounded-full border-2 border-[#145943] bg-[#145943] text-center text-sm font-bold leading-5 text-white shadow-lg sm:h-28 sm:w-28 sm:text-base">
-                    100%<br>
-                    <span class="font-medium italic">Natural</span>
-                </div>
+        @if ($featuredProducts->take(3)->count() > 1)
+            <div data-hero-pagination class="flex items-center justify-center gap-2 pb-5" role="group" aria-label="Choose hero slide">
+                @foreach ($featuredProducts->take(3) as $index => $product)
+                    <button type="button" data-hero-dot="{{ $index }}" class="h-2.5 {{ $index === 0 ? 'w-8 bg-[#145943]' : 'w-2.5 bg-[#c6c8b9]' }} rounded-full transition-all duration-300 hover:bg-[#a48335] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48335] focus-visible:ring-offset-2" aria-label="Show hero slide {{ $index + 1 }}" aria-current="{{ $index === 0 ? 'true' : 'false' }}"></button>
+                @endforeach
             </div>
-        </div>
-
-        <div class="relative flex justify-center gap-2 pb-5">
-            <span class="h-2 w-8 rounded-full bg-[#145943]"></span>
-            <span class="h-2 w-2 rounded-full bg-[#c6c8b9]"></span>
-            <span class="h-2 w-2 rounded-full bg-[#c6c8b9]"></span>
-        </div>
+        @endif
     </section>
 
     {{-- Categories --}}
-    <section id="categories" class="border-y border-[#e8e6db] bg-white">
-        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="flex items-end justify-between gap-4">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Browse our collection</p>
-                    <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-[#145943] sm:text-3xl">Featured Categories</h2>
-                </div>
-            </div>
+    <section id="categories" class="border-t border-[#e8e6db] bg-[#fbfaf4]">
+        <div class="mx-auto max-w-[1600px] px-4 pt-8 pb-10 sm:px-6 lg:px-8">
+            <h2 class="text-center text-xl font-medium text-[#26352f] sm:text-2xl">Featured Categories</h2>
 
             <div class="relative mt-6">
                 {{-- Previous category --}}
@@ -120,7 +142,7 @@
                             >
                                 @if ($category->image)
                                     <img
-                                        src="{{ asset('storage/' . $category->image) }}"
+                                        src="/storage/{{ ltrim($category->image, '/') }}"
                                         alt="{{ $category->name }}"
                                         width="104"
                                         height="104"
@@ -167,44 +189,111 @@
         </div>
     </section>
 
-    {{-- Benefits --}}
-    <section class="bg-[#f2f4e5]">
-        <div class="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-[#dfe3cf] px-4 sm:px-6 lg:grid-cols-4 lg:divide-y-0 lg:px-8">
-            @foreach ($benefits as $benefit)
-                <div class="flex items-center gap-3 px-3 py-6 sm:gap-4 sm:px-6 lg:py-7">
-                    <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#e0e8c5] text-xl sm:h-14 sm:w-14 sm:text-2xl">{{ $benefit['icon'] }}</span>
-                    <div>
-                        <h2 class="text-xs font-extrabold text-[#145943] sm:text-sm">{{ $benefit['title'] }}</h2>
-                        <p class="mt-1 text-[10px] leading-4 text-[#738078] sm:text-xs">{{ $benefit['text'] }}</p>
-                    </div>
+    {{-- Top selling products --}}
+    @if ($topSellingProducts->isNotEmpty())
+        <section id="top-selling-products" class="bg-[#fbfaf4]">
+            <div class="mx-auto max-w-[1600px] px-4 pt-0 pb-8 sm:px-6 sm:pb-10 lg:px-8">
+                <h2 class="mb-6 text-center text-2xl font-semibold text-[#26352f] sm:text-3xl">Top Selling Products</h2>
+
+                <div class="grid gap-5 md:grid-cols-2">
+                    @foreach ($topSellingProducts as $product)
+                        @php
+                            $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+                        @endphp
+
+                        <article class="group relative grid min-h-[230px] grid-cols-[48%_minmax(0,1fr)] overflow-hidden rounded-sm bg-white sm:min-h-[270px] lg:min-h-[300px]">
+                            <span class="absolute right-2 top-2 z-10 rounded-[3px] bg-[#ef4938] px-2 py-1 text-[10px] font-bold text-white">Best Selling</span>
+
+                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex h-full min-h-0 items-center justify-center overflow-hidden bg-white" aria-label="View {{ $product->name }}">
+                                @if ($primaryImage)
+                                    <img
+                                        src="/storage/{{ ltrim($primaryImage->image_path, '/') }}"
+                                        alt="{{ $primaryImage->alt_text ?: $product->name }}"
+                                        width="500"
+                                        height="500"
+                                        loading="lazy"
+                                        decoding="async"
+                                        class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-110"
+                                    >
+                                @else
+                                    <span class="text-5xl sm:text-7xl" aria-hidden="true">🛍️</span>
+                                @endif
+                            </a>
+
+                            <div class="flex min-w-0 flex-col justify-center py-8 pl-3 pr-3 sm:px-6">
+                                <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="line-clamp-2 text-base font-semibold leading-6 text-[#173b32] hover:text-[#145943] sm:text-lg">
+                                    {{ $product->name }}
+                                </a>
+                                @if ($product->price !== null)
+                                    <p class="mt-2 text-base font-bold text-[#145943] sm:text-lg">৳{{ number_format((float) $product->price, 2) }}</p>
+                                @endif
+
+                                <div class="mt-5 flex flex-wrap gap-2.5">
+                                    <button
+                                        type="button"
+                                        aria-label="Add {{ $product->name }} to cart"
+                                        data-product-id="{{ $product->id }}"
+                                        data-product-name="{{ $product->name }}"
+                                        data-product-price="{{ (float) $product->price }}"
+                                        data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
+                                        data-product-emoji="🛍️"
+                                        class="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-[#145943] px-3 text-sm font-semibold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white sm:px-4"
+                                    >
+                                        <svg data-cart-button-icon class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path d="M3 3h2l2.4 12.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
+                                            <circle cx="9" cy="21" r="1" />
+                                            <circle cx="19" cy="21" r="1" />
+                                        </svg>
+                                        <svg data-cart-button-spinner class="hidden h-4 w-4 shrink-0 motion-safe:animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+                                            <path class="opacity-90" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
+                                        </svg>
+                                        <svg data-cart-button-success class="hidden h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                            <path d="m5 12 4 4L19 6" />
+                                        </svg>
+                                        <span data-cart-button-label>Add to Cart</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-label="Buy {{ $product->name }} now"
+                                        data-buy-now
+                                        data-product-id="{{ $product->id }}"
+                                        data-product-name="{{ $product->name }}"
+                                        data-product-price="{{ (float) $product->price }}"
+                                        data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
+                                        data-product-emoji="🛍️"
+                                        class="inline-flex h-9 items-center justify-center rounded-sm border border-[#a48335] bg-[#a48335] px-3 text-xs font-semibold text-white transition-colors hover:border-[#145943] hover:bg-[#145943] sm:h-10 sm:px-4 sm:text-sm"
+                                    >
+                                        Buy now
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    @endforeach
                 </div>
-            @endforeach
-        </div>
-    </section>
+            </div>
+        </section>
+    @endif
 
     {{-- Featured products --}}
     <section id="featured-products" class="bg-[#fbfaf4]">
-        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Handpicked for you</p>
-                    <h2 class="mt-1 text-3xl font-extrabold tracking-tight text-[#145943] sm:text-4xl">Featured Products</h2>
-                    <p class="mt-2 text-sm text-[#738078]">Quality products selected for your everyday needs.</p>
-                </div>
-
+        <div class="mx-auto max-w-[1600px] px-4 pt-12 pb-4 sm:px-6 sm:pt-16 sm:pb-4 lg:px-8">
+            <div class="flex items-center justify-between gap-3 border-b border-[#e7e2d4] pb-2">
+                <h2 class="text-xl font-extrabold tracking-tight text-[#26352f]">Featured Products</h2>
                 <a href="{{ route('shop') }}" class="inline-flex items-center gap-2 text-sm font-bold text-[#145943] transition hover:text-[#a48335]">
                     View All Products
                     <span>→</span>
                 </a>
             </div>
 
-            <div class="relative mt-8">
+            <div class="relative mt-4">
                 <div class="overflow-hidden">
                     <div data-product-track class="flex gap-3 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4" aria-label="Featured products">
                     @forelse ($featuredProducts as $product)
 
                         @php
-                            $primaryImage = $product->images->firstWhere('is_primary', true)
+                            $primaryImage = $product->primaryImage
+                                ?? $product->images->firstWhere('is_primary', true)
                                 ?? $product->images->first();
                         @endphp
 
@@ -214,27 +303,25 @@
                             data-product-name="{{ $product->name }}"
                             data-product-price="{{ (float) $product->price }}"
                             data-product-emoji="🛍️"
-                            class="group relative shrink-0 overflow-hidden rounded-xl border border-[#e3e2d9] bg-white shadow-sm"
+                            class="group relative shrink-0 overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
                         >
 
                             <a
                                 href="{{ route('products.show', ['product' => $product->slug]) }}"
-                                class="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#145943]"
+                                class="block overflow-hidden bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#145943]"
                                 aria-label="View {{ $product->name }}"
-                            ></a>
-
-                            <div class="relative z-10 overflow-hidden bg-[#f4f5e9]">
+                            >
 
                                 @if ($primaryImage)
                                     <div class="aspect-square overflow-hidden">
                                         <img
-                                            src="{{ asset('storage/' . $primaryImage->image_path) }}"
+                                            src="/storage/{{ ltrim($primaryImage->image_path, '/') }}"
                                             alt="{{ $primaryImage->alt_text ?: $product->name }}"
                                             width="500"
                                             height="500"
                                             loading="lazy"
                                             decoding="async"
-                                            class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                            class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                                         >
                                     </div>
                                 @else
@@ -246,40 +333,47 @@
                                     </div>
                                 @endif
 
-                            </div>
+                            </a>
 
-                            <div class="relative z-10 px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4">
+                            <div class="px-3 pt-3 sm:px-4 sm:pt-4">
 
-                                <h3 class="truncate text-sm font-bold text-[#173b32]">
+                                <h3 class="line-clamp-2 text-lg font-normal leading-6 text-[#173b32] sm:text-xl">
+                                    <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="transition-colors hover:text-[#145943] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943]">
                                     {{ $product->name }}
+                                    </a>
                                 </h3>
 
-                                @if ($product->short_description)
-                                    <p class="mt-1 line-clamp-2 text-[11px] leading-4 text-[#7a847f]">
-                                        {{ $product->short_description }}
-                                    </p>
+                                @if ($product->price !== null)
+                                    <div class="pt-1 text-base font-extrabold text-[#145943] sm:text-lg">
+                                        ৳{{ number_format((float) $product->price, 2) }}
+                                    </div>
                                 @endif
 
-                                <div class="mt-3 flex items-center justify-between gap-2">
-
-                                    @if ($product->price !== null)
-                                        <span class="text-sm font-extrabold text-[#145943] sm:text-base">
-                                            ৳{{ number_format((float) $product->price, 2) }}
-                                        </span>
-                                    @endif
-
+                                <div class="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
                                     <button
                                         type="button"
                                         aria-label="Add {{ $product->name }} to cart"
                                         data-product-id="{{ $product->id }}"
                                         data-product-name="{{ $product->name }}"
                                         data-product-price="{{ (float) $product->price }}"
+                                        data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                         data-product-emoji="🛍️"
-                                        class="inline-flex items-center justify-center rounded-lg bg-[#145943] px-3 py-2 text-[10px] font-bold text-white transition hover:bg-[#a48335] sm:px-3.5 sm:text-xs"
+                                        class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-[#145943] bg-white px-3 text-sm font-bold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white"
                                     >
-                                        Add to Cart
+                                        <svg data-cart-button-icon class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path d="M3 3h2l2.4 12.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
+                                            <circle cx="9" cy="21" r="1" />
+                                            <circle cx="19" cy="21" r="1" />
+                                        </svg>
+                                        <svg data-cart-button-spinner class="hidden h-4 w-4 shrink-0 motion-safe:animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+                                            <path class="opacity-90" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
+                                        </svg>
+                                        <svg data-cart-button-success class="hidden h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                            <path d="m5 12 4 4L19 6" />
+                                        </svg>
+                                        <span data-cart-button-label>Add to Cart</span>
                                     </button>
-
                                 </div>
                             </div>
 
@@ -299,16 +393,117 @@
         </div>
     </section>
 
+    {{-- Additional category product rows --}}
+    <section class="bg-[#fbfaf4]">
+        <div class="mx-auto max-w-[1600px] px-4 pt-4 pb-12 sm:px-6 lg:px-8">
+            @foreach ($categories->take(4) as $category)
+                @php
+                    $categoryProducts = $category->products->take(10);
+                @endphp
+
+                @if ($categoryProducts->isNotEmpty())
+                    <div class="mb-8">
+                        <div class="flex items-center justify-between gap-3 border-b border-[#e7e2d4] pb-2">
+                            <h3 class="text-xl font-extrabold tracking-tight text-[#26352f]">{{ $category->name }}</h3>
+                            <a href="{{ route('shop', ['category' => $category->slug]) }}" class="inline-flex items-center gap-2 text-sm font-bold text-[#145943] transition hover:text-[#a48335]">
+                                View All
+                                <span>→</span>
+                            </a>
+                        </div>
+
+                        <div class="relative mt-4">
+                            <div class="overflow-hidden">
+                                <div data-category-product-track="{{ $category->slug }}" class="flex gap-3 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4" aria-label="{{ $category->name }} products">
+                                    @foreach ($categoryProducts as $product)
+                                        @php
+                                            $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+                                        @endphp
+
+                                        <article
+                                            data-carousel-item
+                                            class="group relative shrink-0 overflow-hidden rounded-[4px] border border-[#e9e5db] bg-white shadow-none"
+                                        >
+                                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex h-full flex-col">
+                                                <div class="overflow-hidden bg-white">
+                                                    @if ($primaryImage)
+                                                        <div class="aspect-square overflow-hidden">
+                                                            <img
+                                                                src="/storage/{{ ltrim($primaryImage->image_path, '/') }}"
+                                                                alt="{{ $primaryImage->alt_text ?: $product->name }}"
+                                                                width="500"
+                                                                height="500"
+                                                                loading="lazy"
+                                                                decoding="async"
+                                                                class="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                                            >
+                                                        </div>
+                                                    @else
+                                                        <div class="grid aspect-square place-items-center text-[3.5rem] leading-none" aria-hidden="true">🛍️</div>
+                                                    @endif
+                                                </div>
+
+                                                <div class="flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-4">
+                                                    <h4 class="line-clamp-2 text-sm font-normal leading-5 text-[#173b32] sm:text-base">
+                                                        {{ $product->name }}
+                                                    </h4>
+
+                                                    @if ($product->price !== null)
+                                                        <div class="pt-2 text-sm font-extrabold text-[#145943] sm:text-base">
+                                                            ৳{{ number_format((float) $product->price, 2) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                <div class="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Add {{ $product->name }} to cart"
+                                                        data-product-id="{{ $product->id }}"
+                                                        data-product-name="{{ $product->name }}"
+                                                        data-product-price="{{ (float) $product->price }}"
+                                                        data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
+                                                        data-product-emoji="🛍️"
+                                                        class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-[#145943] bg-white px-3 text-sm font-bold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white"
+                                                    >
+                                                        <svg data-cart-button-icon class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                            <path d="M3 3h2l2.4 12.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
+                                                            <circle cx="9" cy="21" r="1" />
+                                                            <circle cx="19" cy="21" r="1" />
+                                                        </svg>
+                                                        <svg data-cart-button-spinner class="hidden h-4 w-4 shrink-0 motion-safe:animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                            <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+                                                            <path class="opacity-90" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
+                                                        </svg>
+                                                        <svg data-cart-button-success class="hidden h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                                            <path d="m5 12 4 4L19 6" />
+                                                        </svg>
+                                                        <span data-cart-button-label>Add to Cart</span>
+                                                    </button>
+                                                </div>
+                                            </a>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div data-category-product-pagination="{{ $category->slug }}" class="flex items-center justify-center gap-2.5 pt-5" role="group" aria-label="{{ $category->name }} product pages"></div>
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+    </section>
+
     {{-- CTA --}}
-    <section class="px-4 pb-12 sm:px-6 lg:px-8">
-        <div class="mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-[#145943] px-6 py-10 text-white sm:px-10 lg:px-14 lg:py-12">
+    <section class="border-t border-[#e3e2d9] px-4 py-10 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-[1600px]">
             <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
                 <div>
-                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#e2c775]">Shop smarter</p>
-                    <h2 class="mt-2 text-2xl font-extrabold sm:text-3xl">Fresh choices, delivered to your door.</h2>
-                    <p class="mt-2 max-w-2xl text-sm leading-6 text-white/70">Explore our complete collection and find everything you need in one place.</p>
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Shop smarter</p>
+                    <h2 class="mt-2 text-2xl font-extrabold text-[#145943] sm:text-3xl">Fresh choices, delivered to your door.</h2>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-[#56665f]">Explore our complete collection and find everything you need in one place.</p>
                 </div>
-                <a href="{{ route('shop') }}" class="shrink-0 rounded-full bg-[#d7b45a] px-6 py-3.5 text-sm font-bold text-[#173b32] transition hover:bg-[#e4c779]">Start Shopping →</a>
+                <a href="{{ route('shop') }}" class="shrink-0 rounded-full border border-[#145943] bg-[#145943] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[#a48335] hover:border-[#a48335]">Start Shopping →</a>
             </div>
         </div>
     </section>

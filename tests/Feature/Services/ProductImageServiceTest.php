@@ -337,4 +337,191 @@ class ProductImageServiceTest extends TestCase
             $updatedImage->is_primary
         );
     }
+
+    public function test_multiple_images_can_be_created_with_first_as_primary(): void
+    {
+        Storage::fake('public');
+
+        $product = Product::create([
+            'name' => 'Multi Image Product',
+            'slug' => 'multi-image-product',
+            'type' => 'simple',
+            'price' => 150,
+            'stock' => 5,
+            'is_active' => true,
+        ]);
+
+        $service = app(ProductImageService::class);
+
+        $images = [
+            UploadedFile::fake()->image('img1.jpg'),
+            UploadedFile::fake()->image('img2.jpg'),
+            UploadedFile::fake()->image('img3.jpg'),
+        ];
+
+        $created = $service->createMultipleImages(
+            $product,
+            $images,
+            null,
+            ['Image 1', 'Image 2', 'Image 3']
+        );
+
+        $this->assertCount(3, $created);
+        $this->assertTrue($created[0]->is_primary);
+        $this->assertFalse($created[1]->is_primary);
+        $this->assertFalse($created[2]->is_primary);
+        $this->assertEquals(0, $created[0]->sort_order);
+        $this->assertEquals(1, $created[1]->sort_order);
+        $this->assertEquals(2, $created[2]->sort_order);
+
+        foreach ($created as $img) {
+            Storage::disk('public')->assertExists($img->image_path);
+            $this->assertDatabaseHas('product_images', [
+                'id' => $img->id,
+                'product_id' => $product->id,
+            ]);
+        }
+    }
+
+    public function test_multiple_images_can_be_created_with_specified_primary_index(): void
+    {
+        Storage::fake('public');
+
+        $product = Product::create([
+            'name' => 'Multi Image Product 2',
+            'slug' => 'multi-image-product-2',
+            'type' => 'simple',
+            'price' => 150,
+            'stock' => 5,
+            'is_active' => true,
+        ]);
+
+        $service = app(ProductImageService::class);
+
+        $images = [
+            UploadedFile::fake()->image('img1.jpg'),
+            UploadedFile::fake()->image('img2.jpg'),
+        ];
+
+        $created = $service->createMultipleImages(
+            $product,
+            $images,
+            1
+        );
+
+        $this->assertFalse($created[0]->is_primary);
+        $this->assertTrue($created[1]->is_primary);
+    }
+
+    public function test_deleting_primary_image_promotes_next_image_to_primary(): void
+    {
+        Storage::fake('public');
+
+        $product = Product::create([
+            'name' => 'Auto Promote Product',
+            'slug' => 'auto-promote-product',
+            'type' => 'simple',
+            'price' => 100,
+            'stock' => 10,
+            'is_active' => true,
+        ]);
+
+        $service = app(ProductImageService::class);
+
+        $firstImage = $service->createImage($product, [
+            'image' => UploadedFile::fake()->image('first.jpg'),
+            'sort_order' => 0,
+            'is_primary' => true,
+        ]);
+
+        $secondImage = $service->createImage($product, [
+            'image' => UploadedFile::fake()->image('second.jpg'),
+            'sort_order' => 1,
+            'is_primary' => false,
+        ]);
+
+        $service->deleteImage($firstImage);
+
+        $this->assertDatabaseMissing('product_images', ['id' => $firstImage->id]);
+        $this->assertDatabaseHas('product_images', [
+            'id' => $secondImage->id,
+            'is_primary' => true,
+        ]);
+    }
+
+    public function test_set_primary_image_promotes_selected_image(): void
+    {
+        Storage::fake('public');
+
+        $product = Product::create([
+            'name' => 'Set Primary Product',
+            'slug' => 'set-primary-product',
+            'type' => 'simple',
+            'price' => 100,
+            'stock' => 10,
+            'is_active' => true,
+        ]);
+
+        $service = app(ProductImageService::class);
+
+        $img1 = $service->createImage($product, [
+            'image' => UploadedFile::fake()->image('img1.jpg'),
+            'is_primary' => true,
+        ]);
+
+        $img2 = $service->createImage($product, [
+            'image' => UploadedFile::fake()->image('img2.jpg'),
+            'is_primary' => false,
+        ]);
+
+        $service->setPrimaryImage($img2);
+
+        $this->assertDatabaseHas('product_images', [
+            'id' => $img1->id,
+            'is_primary' => false,
+        ]);
+
+        $this->assertDatabaseHas('product_images', [
+            'id' => $img2->id,
+            'is_primary' => true,
+        ]);
+    }
+
+    public function test_reorder_images_updates_sort_orders(): void
+    {
+        Storage::fake('public');
+
+        $product = Product::create([
+            'name' => 'Reorder Product',
+            'slug' => 'reorder-product',
+            'type' => 'simple',
+            'price' => 100,
+            'stock' => 10,
+            'is_active' => true,
+        ]);
+
+        $service = app(ProductImageService::class);
+
+        $img1 = $service->createImage($product, [
+            'image' => UploadedFile::fake()->image('img1.jpg'),
+            'sort_order' => 0,
+        ]);
+
+        $img2 = $service->createImage($product, [
+            'image' => UploadedFile::fake()->image('img2.jpg'),
+            'sort_order' => 1,
+        ]);
+
+        $service->reorderImages($product, [$img2->id, $img1->id]);
+
+        $this->assertDatabaseHas('product_images', [
+            'id' => $img2->id,
+            'sort_order' => 0,
+        ]);
+
+        $this->assertDatabaseHas('product_images', [
+            'id' => $img1->id,
+            'sort_order' => 1,
+        ]);
+    }
 }

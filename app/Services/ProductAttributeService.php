@@ -89,8 +89,8 @@ class ProductAttributeService
 
         while (
             ProductAttribute::withTrashed()
-            ->where('slug', $slug)
-            ->exists()
+                ->where('slug', $slug)
+                ->exists()
         ) {
             $slug = "{$baseSlug}-{$counter}";
             $counter++;
@@ -120,9 +120,9 @@ class ProductAttributeService
 
         while (
             ProductAttribute::withTrashed()
-            ->where('slug', $slug)
-            ->where('id', '!=', $productAttribute->id)
-            ->exists()
+                ->where('slug', $slug)
+                ->where('id', '!=', $productAttribute->id)
+                ->exists()
         ) {
             $slug = "{$baseSlug}-{$counter}";
             $counter++;

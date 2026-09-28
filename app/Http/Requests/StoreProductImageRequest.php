@@ -32,14 +32,40 @@ class StoreProductImageRequest extends FormRequest
     {
         return [
             'image' => [
-                'required',
+                'required_without:images',
+                'nullable',
                 'file',
                 'image',
-                'mimes:jpeg,jpg,png,webp',
+                'mimes:jpeg,jpg,png,webp,avif',
+                'max:5120',
+            ],
+
+            'images' => [
+                'required_without:image',
+                'nullable',
+                'array',
+                'min:1',
+            ],
+
+            'images.*' => [
+                'file',
+                'image',
+                'mimes:jpeg,jpg,png,webp,avif',
                 'max:5120',
             ],
 
             'alt_text' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'alt_texts' => [
+                'nullable',
+                'array',
+            ],
+
+            'alt_texts.*' => [
                 'nullable',
                 'string',
                 'max:255',
@@ -54,6 +80,12 @@ class StoreProductImageRequest extends FormRequest
             'is_primary' => [
                 'sometimes',
                 'boolean',
+            ],
+
+            'primary_index' => [
+                'nullable',
+                'integer',
+                'min:0',
             ],
         ];
     }

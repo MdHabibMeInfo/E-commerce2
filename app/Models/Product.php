@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -41,15 +42,49 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class)
-            ->orderBy('sort_order');
+            ->orderByDesc('is_primary')
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
+
+    public function productImages(): HasMany
+    {
+        return $this->images();
+    }
+
+    public function primaryImage(): HasOne
+    {
+        return $this->hasOne(ProductImage::class)
+            ->where('is_primary', true);
+    }
+
+    public function getPrimaryImageUrlAttribute(): ?string
+    {
+        $primary = $this->relationLoaded('primaryImage')
+            ? $this->primaryImage
+            : ($this->relationLoaded('images') ? ($this->images->firstWhere('is_primary', true) ?? $this->images->first()) : null);
+
+        if (! $primary && ! $this->relationLoaded('images')) {
+            $primary = $this->images()->first();
+        }
+
+        return $primary ? '/storage/' . ltrim($primary->image_path, '/') : null;
+    }
+
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
     }
+
     public function productAttributes(): BelongsToMany
     {
         return $this->belongsToMany(ProductAttribute::class);

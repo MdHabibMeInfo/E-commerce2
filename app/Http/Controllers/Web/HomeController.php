@@ -11,9 +11,39 @@ class HomeController extends Controller
 {
     public function index(): View
     {
+        $topSellingProducts = Product::query()
+            ->where('is_active', true)
+            ->select([
+                'products.id',
+                'products.category_id',
+                'products.name',
+                'products.slug',
+                'products.price',
+            ])
+            ->withSum('orderItems as units_sold', 'quantity')
+            ->with([
+                'primaryImage',
+                'images:id,product_id,image_path,alt_text,is_primary,sort_order',
+            ])
+            ->orderByDesc('units_sold')
+            ->orderByDesc('products.id')
+            ->limit(4)
+            ->get();
+
         $categories = Category::query()
             ->whereNull('parent_id')
             ->where('is_active', true)
+            ->with(['products' => function ($query) {
+                $query
+                    ->where('is_active', true)
+                    ->with([
+                        'category:id,name,slug',
+                        'primaryImage',
+                        'images:id,product_id,image_path,alt_text,is_primary,sort_order',
+                    ])
+                    ->orderByDesc('id')
+                    ->limit(10);
+            }])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->limit(12)
@@ -28,6 +58,7 @@ class HomeController extends Controller
             ->where('is_active', true)
             ->with([
                 'category:id,name,slug',
+                'primaryImage',
                 'images:id,product_id,image_path,alt_text,is_primary,sort_order',
             ])
             ->latest('id')
@@ -45,6 +76,7 @@ class HomeController extends Controller
         $benefits = config('storefront.home_benefits', []);
 
         return view('storefront.home', [
+            'topSellingProducts' => $topSellingProducts,
             'categories' => $categories,
             'featuredProducts' => $featuredProducts,
             'benefits' => $benefits,

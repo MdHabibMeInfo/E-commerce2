@@ -8,12 +8,12 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Services\ProductImageService;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 
 class ProductController extends Controller
 {
-
     public function index(
         ProductIndexRequest $request
     ): JsonResponse {
@@ -22,7 +22,7 @@ class ProductController extends Controller
         $validated = $request->validated();
 
         $query = Product::query()
-            ->with('category');
+            ->with(['category', 'primaryImage', 'images']);
 
         if (isset($validated['search'])) {
             $search = $validated['search'];
@@ -112,7 +112,7 @@ class ProductController extends Controller
     {
         $this->authorize('view', $product);
 
-        $product->load('category');
+        $product->load(['category', 'primaryImage', 'images']);
 
         return response()->json([
             'message' => 'Product retrieved successfully.',
@@ -123,7 +123,8 @@ class ProductController extends Controller
 
     public function store(
         StoreProductRequest $request,
-        ProductService $productService
+        ProductService $productService,
+        ProductImageService $productImageService
     ): JsonResponse {
         $this->authorize('create', Product::class);
 
@@ -131,7 +132,21 @@ class ProductController extends Controller
             $request->validated()
         );
 
-        $product->load('category');
+        if ($request->hasFile('images')) {
+            $productImageService->createMultipleImages(
+                $product,
+                $request->file('images'),
+                (int) $request->input('primary_index', 0)
+            );
+        } elseif ($request->hasFile('image')) {
+            $productImageService->createImage($product, [
+                'image' => $request->file('image'),
+                'alt_text' => $product->name,
+                'is_primary' => true,
+            ]);
+        }
+
+        $product->load(['category', 'primaryImage', 'images']);
 
         return response()->json([
             'message' => 'Product created successfully.',
@@ -142,7 +157,8 @@ class ProductController extends Controller
     public function update(
         UpdateProductRequest $request,
         Product $product,
-        ProductService $productService
+        ProductService $productService,
+        ProductImageService $productImageService
     ): JsonResponse {
         $this->authorize('update', $product);
 
@@ -151,7 +167,31 @@ class ProductController extends Controller
             $request->validated()
         );
 
-        $product->load('category');
+        if ($request->has('deleted_image_ids')) {
+            $deletedIds = $request->input('deleted_image_ids');
+            if (is_array($deletedIds)) {
+                $imagesToDelete = $product->images()->whereIn('id', $deletedIds)->get();
+                foreach ($imagesToDelete as $image) {
+                    $productImageService->deleteImage($image);
+                }
+            }
+        }
+
+        if ($request->hasFile('images')) {
+            $productImageService->createMultipleImages(
+                $product,
+                $request->file('images'),
+                $request->filled('primary_index') ? (int) $request->input('primary_index') : null
+            );
+        } elseif ($request->hasFile('image')) {
+            $productImageService->createImage($product, [
+                'image' => $request->file('image'),
+                'alt_text' => $product->name,
+                'is_primary' => true,
+            ]);
+        }
+
+        $product->load(['category', 'primaryImage', 'images']);
 
         return response()->json([
             'message' => 'Product updated successfully.',
@@ -181,7 +221,7 @@ class ProductController extends Controller
 
         $product = $productService->restore($product);
 
-        $product->load('category');
+        $product->load(['category', 'primaryImage', 'images']);
 
         return response()->json([
             'message' => 'Product restored successfully.',

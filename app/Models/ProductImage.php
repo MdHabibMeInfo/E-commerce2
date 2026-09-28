@@ -18,12 +18,21 @@ class ProductImage extends Model
         'is_primary',
     ];
 
+    protected $appends = [
+        'url',
+    ];
+
     protected function casts(): array
     {
         return [
             'sort_order' => 'integer',
             'is_primary' => 'boolean',
         ];
+    }
+
+    public function getUrlAttribute(): string
+    {
+        return '/storage/'.ltrim($this->image_path, '/');
     }
 
     public function product(): BelongsTo

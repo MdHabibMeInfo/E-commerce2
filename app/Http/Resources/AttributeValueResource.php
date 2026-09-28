@@ -29,7 +29,7 @@ class AttributeValueResource extends JsonResource
 
             'product_attribute' => $this->whenLoaded(
                 'productAttribute',
-                fn() => new ProductAttributeResource(
+                fn () => new ProductAttributeResource(
                     $this->productAttribute
                 )
             ),

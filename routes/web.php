@@ -56,6 +56,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::put('/products/{product}', [AdminController::class, 'updateProduct'])->name('products.update');
     Route::delete('/products/{product}', [AdminController::class, 'destroyProduct'])->name('products.destroy');
     Route::post('/products/{product}/restore', [AdminController::class, 'restoreProduct'])->name('products.restore');
+
+    Route::post('/products/{product}/images', [AdminController::class, 'uploadProductImages'])->name('products.images.store');
+    Route::patch('/products/{product}/images/{image}/primary', [AdminController::class, 'setPrimaryProductImage'])->name('products.images.primary');
+    Route::delete('/products/{product}/images/{image}', [AdminController::class, 'destroyProductImage'])->name('products.images.destroy');
 });
 
 Route::prefix('products')->name('products.')->controller(ProductController::class)->group(function () {

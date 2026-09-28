@@ -35,7 +35,19 @@ class ProductResource extends JsonResource
 
             'category' => $this->whenLoaded(
                 'category',
-                fn() => new CategoryResource($this->category)
+                fn () => new CategoryResource($this->category)
+            ),
+
+            'primary_image' => $this->whenLoaded(
+                'primaryImage',
+                fn () => new ProductImageResource($this->primaryImage),
+                fn () => $this->relationLoaded('images') && $this->images->isNotEmpty()
+                    ? new ProductImageResource($this->images->firstWhere('is_primary', true) ?? $this->images->first())
+                    : null
+            ),
+
+            'images' => ProductImageResource::collection(
+                $this->whenLoaded('images')
             ),
 
             'created_at' => $this->created_at,

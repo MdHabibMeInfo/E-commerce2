@@ -1,7 +1,7 @@
 <header class="relative z-50">
     {{-- Announcement bar --}}
     <div class="bg-[#145943] text-white">
-        <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 text-[11px] font-medium sm:px-6 sm:text-xs lg:px-8">
+        <div class="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2 text-[11px] font-medium sm:px-6 sm:text-xs lg:px-8">
             <p class="flex items-center gap-2">
                 <span class="text-[#d7b45a]">✦</span>
                 Fresh &amp; Healthy Products
@@ -21,7 +21,7 @@
 
     {{-- Main navigation --}}
     <div class="border-b border-[#e7e4d8] bg-[#fffef9]/95 backdrop-blur">
-        <div class="mx-auto flex h-[78px] max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto flex h-[78px] max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
 
             <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="{{ config('app.name') }} home">
                 <img
@@ -33,19 +33,22 @@
 
             {{-- Search --}}
             <div class="hidden min-w-0 flex-1 lg:block lg:max-w-[430px] lg:mx-auto">
-                <form action="#" method="GET" class="relative">
+                <form action="{{ route('shop') }}" method="GET" class="relative">
                     <label for="header-search" class="sr-only">Search products</label>
                     <input
                         id="header-search"
                         type="search"
                         name="q"
+                        value="{{ request('q') }}"
                         placeholder="Search for products..."
-                        class="h-11 w-full rounded-full border border-[#e5e2d8] bg-white px-12 text-sm text-[#173b32] outline-none transition placeholder:text-[#9aa19c] focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
+                        class="h-11 w-full rounded-full border border-[#e5e2d8] bg-white pl-4 pr-12 text-sm text-[#173b32] outline-none transition placeholder:text-[#9aa19c] focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
                     >
-                    <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7c8580]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <circle cx="11" cy="11" r="6.5"></circle>
-                        <path d="m16 16 4.2 4.2"></path>
-                    </svg>
+                    <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[#7c8580] transition hover:bg-[#eef4e8] hover:text-[#145943]">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <circle cx="11" cy="11" r="6.5"></circle>
+                            <path d="m16 16 4.2 4.2"></path>
+                        </svg>
+                    </button>
                 </form>
             </div>
 
@@ -97,20 +100,23 @@
 
         {{-- Mobile navigation --}}
         <div id="mobile-navigation" data-mobile-menu class="hidden border-t border-[#e7e4d8] bg-[#fffef9] xl:hidden">
-            <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6">
-                <form action="#" method="GET" class="relative mb-4">
+            <div class="mx-auto max-w-[1600px] px-4 py-4 sm:px-6">
+                <form action="{{ route('shop') }}" method="GET" class="relative mb-4">
                     <label for="mobile-search" class="sr-only">Search products</label>
                     <input
                         id="mobile-search"
                         type="search"
                         name="q"
+                        value="{{ request('q') }}"
                         placeholder="Search for products..."
-                        class="h-11 w-full rounded-full border border-[#e5e2d8] bg-white px-12 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
+                        class="h-11 w-full rounded-full border border-[#e5e2d8] bg-white pl-4 pr-12 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
                     >
-                    <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7c8580]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <circle cx="11" cy="11" r="6.5"></circle>
-                        <path d="m16 16 4.2 4.2"></path>
-                    </svg>
+                    <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[#7c8580] transition hover:bg-[#eef4e8] hover:text-[#145943]">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <circle cx="11" cy="11" r="6.5"></circle>
+                            <path d="m16 16 4.2 4.2"></path>
+                        </svg>
+                    </button>
                 </form>
 
                 <nav class="grid gap-1" aria-label="Mobile navigation">

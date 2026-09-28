@@ -252,12 +252,12 @@ class AttributeValueService
 
         while (
             AttributeValue::withTrashed()
-            ->where(
-                'product_attribute_id',
-                $productAttributeId
-            )
-            ->where('slug', $slug)
-            ->exists()
+                ->where(
+                    'product_attribute_id',
+                    $productAttributeId
+                )
+                ->where('slug', $slug)
+                ->exists()
         ) {
             $slug = "{$baseSlug}-{$counter}";
             $counter++;
@@ -346,13 +346,13 @@ class AttributeValueService
 
         while (
             AttributeValue::withTrashed()
-            ->where(
-                'product_attribute_id',
-                $productAttributeId
-            )
-            ->where('slug', $slug)
-            ->where('id', '!=', $attributeValue->id)
-            ->exists()
+                ->where(
+                    'product_attribute_id',
+                    $productAttributeId
+                )
+                ->where('slug', $slug)
+                ->where('id', '!=', $attributeValue->id)
+                ->exists()
         ) {
             $slug = "{$baseSlug}-{$counter}";
             $counter++;

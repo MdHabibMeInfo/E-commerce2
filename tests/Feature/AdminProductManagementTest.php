@@ -2,6 +2,9 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductImage;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 it('auto-generates a slug when the submitted product slug is whitespace', function () {
     $category = Category::create([
@@ -128,4 +131,141 @@ it('loads the product detail, create, edit, and deleted pages in the admin dashb
     $this->get(route('admin.products.trashed'))
         ->assertOk()
         ->assertSee('Deleted Products');
+});
+
+it('creates a product with multiple images and designates the selected primary image', function () {
+    Storage::fake('public');
+
+    $category = Category::create([
+        'name' => 'Snacks',
+        'slug' => 'snacks',
+        'is_active' => true,
+        'sort_order' => 5,
+    ]);
+
+    $file1 = UploadedFile::fake()->image('cookie-1.jpg', 600, 600);
+    $file2 = UploadedFile::fake()->image('cookie-2.jpg', 600, 600);
+    $file3 = UploadedFile::fake()->image('cookie-3.jpg', 600, 600);
+
+    $response = $this->post(route('admin.products.store'), [
+        'category_id' => $category->id,
+        'name' => 'Chocolate Cookies',
+        'slug' => 'chocolate-cookies',
+        'sku' => 'SNK-100',
+        'type' => 'simple',
+        'price' => 150,
+        'stock' => 50,
+        'is_active' => true,
+        'images' => [$file1, $file2, $file3],
+        'primary_index' => 1,
+    ]);
+
+    $response->assertRedirect(route('admin.products.index'));
+
+    $product = Product::query()->where('slug', 'chocolate-cookies')->firstOrFail();
+    expect($product->images)->toHaveCount(3);
+
+    $primaryImages = $product->images->where('is_primary', true);
+    expect($primaryImages)->toHaveCount(1);
+
+    $primaryImage = $primaryImages->first();
+    expect($primaryImage->is_primary)->toBeTrue();
+    expect($product->images->first()->id)->toBe($primaryImage->id);
+    Storage::disk('public')->assertExists($primaryImage->image_path);
+});
+
+it('allows admin to set a different primary image and delete an image', function () {
+    Storage::fake('public');
+
+    $category = Category::create([
+        'name' => 'Dairy',
+        'slug' => 'dairy',
+        'is_active' => true,
+    ]);
+
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => 'Pure Milk',
+        'slug' => 'pure-milk',
+        'sku' => 'MLK-01',
+        'type' => 'simple',
+        'price' => 85,
+        'stock' => 30,
+        'is_active' => true,
+    ]);
+
+    $img1 = ProductImage::create([
+        'product_id' => $product->id,
+        'image_path' => 'products/milk-1.jpg',
+        'is_primary' => true,
+        'sort_order' => 0,
+    ]);
+
+    $img2 = ProductImage::create([
+        'product_id' => $product->id,
+        'image_path' => 'products/milk-2.jpg',
+        'is_primary' => false,
+        'sort_order' => 1,
+    ]);
+
+    // Set img2 as primary
+    $response = $this->patch(route('admin.products.images.primary', [$product, $img2]));
+    $response->assertRedirect();
+
+    expect($img1->fresh()->is_primary)->toBeFalse()
+        ->and($img2->fresh()->is_primary)->toBeTrue();
+
+    // Delete img2 (which is primary), img1 should become primary automatically
+    $deleteResponse = $this->delete(route('admin.products.images.destroy', [$product, $img2]));
+    $deleteResponse->assertRedirect();
+
+    expect(ProductImage::find($img2->id))->toBeNull()
+        ->and($img1->fresh()->is_primary)->toBeTrue();
+});
+
+it('allows admin to update product and add additional images with primary_index', function () {
+    Storage::fake('public');
+
+    $category = Category::create([
+        'name' => 'Spices',
+        'slug' => 'spices',
+        'is_active' => true,
+    ]);
+
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => 'Chili Powder',
+        'slug' => 'chili-powder',
+        'sku' => 'CHL-001',
+        'type' => 'simple',
+        'price' => 60,
+        'stock' => 100,
+        'is_active' => true,
+    ]);
+
+    $file1 = UploadedFile::fake()->image('chili-1.jpg', 600, 600);
+    $file2 = UploadedFile::fake()->image('chili-2.jpg', 600, 600);
+
+    $response = $this->put(route('admin.products.update', $product), [
+        'category_id' => $category->id,
+        'name' => 'Premium Chili Powder',
+        'slug' => 'premium-chili-powder',
+        'sku' => 'CHL-001',
+        'type' => 'simple',
+        'price' => 70,
+        'stock' => 90,
+        'is_active' => true,
+        'images' => [$file1, $file2],
+        'primary_index' => 1,
+    ]);
+
+    $response->assertRedirect(route('admin.products.index'));
+
+    $product->refresh();
+    expect($product->name)->toBe('Premium Chili Powder')
+        ->and($product->images)->toHaveCount(2);
+
+    $primaryImage = $product->images->firstWhere('is_primary', true);
+    expect($primaryImage)->not->toBeNull();
+    Storage::disk('public')->assertExists($primaryImage->image_path);
 });

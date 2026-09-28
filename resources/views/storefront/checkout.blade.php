@@ -150,15 +150,31 @@
                     @else
                         <div class="mt-5 space-y-3">
                             @foreach ($items as $item)
-                                <div class="flex items-center justify-between rounded-2xl bg-[#f7f6f1] p-3">
-                                    <div class="flex items-center gap-3">
-                                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-[#edf1d8] text-xl">🛍️</span>
-                                        <div>
-                                            <p class="text-sm font-bold text-[#173b32]">{{ $item->name }}</p>
-                                            <p class="text-xs text-[#738078]">Qty: {{ $item->quantity }}</p>
+                                @php
+                                    $itemProduct = $item->product;
+                                    $itemImage = $itemProduct?->primaryImage ?? $itemProduct?->images?->firstWhere('is_primary', true) ?? $itemProduct?->images?->first();
+                                @endphp
+                                <div class="flex items-center justify-between gap-4 rounded-2xl bg-[#f7f6f1] p-3 sm:p-4">
+                                    <div class="flex items-center gap-3.5 min-w-0">
+                                        @if ($itemImage)
+                                            <div class="h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-2xl border border-[#dfe3cf] bg-white p-1.5 flex items-center justify-center overflow-hidden">
+                                                <img
+                                                    src="/storage/{{ ltrim($itemImage->image_path, '/') }}"
+                                                    alt="{{ $item->name }}"
+                                                    class="h-full w-full object-contain"
+                                                >
+                                            </div>
+                                        @else
+                                            <div class="h-20 w-20 sm:h-24 sm:w-24 shrink-0 rounded-2xl border border-[#dfe3cf] bg-[#edf1d8] flex items-center justify-center text-3xl">
+                                                🛍️
+                                            </div>
+                                        @endif
+                                        <div class="min-w-0">
+                                            <p class="text-sm sm:text-base font-bold text-[#173b32] line-clamp-2">{{ $item->name }}</p>
+                                            <p class="mt-1 text-xs sm:text-sm text-[#738078]">Qty: <span class="font-semibold text-[#173b32]">{{ $item->quantity }}</span> × ৳{{ number_format((float) $item->price, 2) }}</p>
                                         </div>
                                     </div>
-                                    <p class="font-bold text-[#145943]">৳{{ number_format((float) ($item->price * $item->quantity), 2) }}</p>
+                                    <p class="shrink-0 text-right font-extrabold text-[#145943] text-sm sm:text-base">৳{{ number_format((float) ($item->price * $item->quantity), 2) }}</p>
                                 </div>
                             @endforeach
                         </div>

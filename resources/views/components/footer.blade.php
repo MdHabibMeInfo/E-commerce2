@@ -1,5 +1,5 @@
 <footer class="bg-[#0f4d3a] text-white">
-    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8">
         <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
             <div class="lg:col-span-1">
                 <a href="{{ route('home') }}" class="inline-flex items-center">

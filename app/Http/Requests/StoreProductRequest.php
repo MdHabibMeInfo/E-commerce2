@@ -94,6 +94,32 @@ class StoreProductRequest extends FormRequest
                 'sometimes',
                 'boolean',
             ],
+
+            'image' => [
+                'nullable',
+                'file',
+                'image',
+                'mimes:jpeg,jpg,png,webp,avif',
+                'max:5120',
+            ],
+
+            'images' => [
+                'nullable',
+                'array',
+            ],
+
+            'images.*' => [
+                'file',
+                'image',
+                'mimes:jpeg,jpg,png,webp,avif',
+                'max:5120',
+            ],
+
+            'primary_index' => [
+                'nullable',
+                'integer',
+                'min:0',
+            ],
         ];
     }
 }

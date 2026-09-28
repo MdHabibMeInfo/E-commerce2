@@ -102,7 +102,10 @@ class CartController extends Controller
 
     protected function payload(?Cart $cart): array
     {
-        $items = $cart?->items()->get()->map(function (CartItem $item) {
+        $items = $cart?->items()->with(['product.primaryImage', 'product.images'])->get()->map(function (CartItem $item) {
+            $product = $item->product;
+            $primaryImage = $product?->primaryImage ?? $product?->images?->firstWhere('is_primary', true) ?? $product?->images?->first();
+
             return [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
@@ -111,6 +114,7 @@ class CartController extends Controller
                 'quantity' => (int) $item->quantity,
                 'qty' => (int) $item->quantity,
                 'subtotal' => (float) $item->price * (int) $item->quantity,
+                'image_url' => $primaryImage ? '/storage/'.ltrim($primaryImage->image_path, '/') : null,
             ];
         })->values()->all() ?? [];
 

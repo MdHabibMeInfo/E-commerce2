@@ -32,6 +32,7 @@ class ProductAttribute extends Model
         return $this->hasMany(AttributeValue::class)
             ->orderBy('sort_order');
     }
+
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class);

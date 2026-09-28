@@ -104,6 +104,16 @@ Route::middleware('auth:sanctum')->group(function () {
             '/products/{product}/images/{productImage}',
             [ProductImageController::class, 'destroy']
         );
+
+        Route::patch(
+            '/products/{product}/images/{productImage}/primary',
+            [ProductImageController::class, 'setPrimary']
+        );
+
+        Route::post(
+            '/products/{product}/images/reorder',
+            [ProductImageController::class, 'reorder']
+        );
     });
 
     /*

@@ -33,10 +33,22 @@
                     @forelse ($products as $product)
                         <tr class="border-t border-[#e5e2d9] align-top">
                             <td class="px-4 py-4">
+                                @php
+                                    $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+                                @endphp
                                 <div class="flex items-center gap-3">
-                                    <div class="grid h-11 w-11 place-items-center rounded-xl bg-[#edf2e4] text-xs font-extrabold text-[#145943]">
-                                        {{ strtoupper(substr($product->name, 0, 1)) }}
-                                    </div>
+                                    @if ($primaryImage)
+                                        <img
+                                            src="/storage/{{ ltrim($primaryImage->image_path, '/') }}"
+                                            alt="{{ $primaryImage->alt_text ?: $product->name }}"
+                                            class="h-11 w-11 shrink-0 rounded-xl object-cover border border-[#dfe3cf] bg-[#f4f5e9]"
+                                            loading="lazy"
+                                        >
+                                    @else
+                                        <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#edf2e4] text-xs font-extrabold text-[#145943]">
+                                            {{ strtoupper(substr($product->name, 0, 1)) }}
+                                        </div>
+                                    @endif
                                     <div>
                                         <p class="font-bold text-[#173b32]">{{ $product->name }}</p>
                                         <p class="text-xs text-[#738078]">{{ $product->sku ?? 'No SKU' }}</p>

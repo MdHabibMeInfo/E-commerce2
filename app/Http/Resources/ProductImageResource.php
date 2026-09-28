@@ -20,7 +20,7 @@ class ProductImageResource extends JsonResource
             'product_id' => $this->product_id,
 
             'image_url' => asset(
-                'storage/' . $this->image_path
+                'storage/'.$this->image_path
             ),
 
             'alt_text' => $this->alt_text,

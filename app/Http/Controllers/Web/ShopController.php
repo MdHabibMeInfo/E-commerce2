@@ -22,7 +22,7 @@ class ShopController extends Controller
                 ->firstOrFail();
         }
 
-        $sort = $request->query('sort', 'latest');
+        $sort = $request->query('sort', 'default');
         $priceRange = $request->query('price_range', 'all');
         $minPrice = (float) $request->query('min_price', 0);
         $maxPrice = (float) $request->query('max_price', 0);
@@ -53,6 +53,7 @@ class ShopController extends Controller
             ->where('is_active', true)
             ->with([
                 'category:id,name,slug',
+                'primaryImage',
                 'images' => function ($query) {
                     $query
                         ->orderByDesc('is_primary')
@@ -139,10 +140,12 @@ class ShopController extends Controller
         }
 
         match ($sort) {
+            'oldest' => $productsQuery->orderBy('id'),
             'price_asc' => $productsQuery->orderBy('price', 'asc'),
             'price_desc' => $productsQuery->orderBy('price', 'desc'),
             'name_asc' => $productsQuery->orderBy('name', 'asc'),
             'name_desc' => $productsQuery->orderBy('name', 'desc'),
+            'default', 'latest' => $productsQuery->orderByDesc('id'),
             default => $productsQuery->orderByDesc('id'),
         };
 

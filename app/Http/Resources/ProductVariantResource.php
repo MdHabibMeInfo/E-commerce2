@@ -33,8 +33,8 @@ class ProductVariantResource extends JsonResource
 
             'attributes' => $this->whenLoaded(
                 'attributeValues',
-                fn() => $this->attributeValues->map(
-                    fn($attributeValue) => [
+                fn () => $this->attributeValues->map(
+                    fn ($attributeValue) => [
                         'attribute' => $attributeValue->productAttribute->name,
                         'attribute_slug' => $attributeValue->productAttribute->slug,
                         'value' => $attributeValue->value,

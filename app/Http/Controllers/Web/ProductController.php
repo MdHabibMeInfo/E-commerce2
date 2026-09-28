@@ -15,6 +15,7 @@ class ProductController extends Controller
             ->where('is_active', true)
             ->with([
                 'category:id,name,slug',
+                'primaryImage',
                 'images' => function ($query) {
                     $query
                         ->orderByDesc('is_primary')

@@ -12,7 +12,7 @@ class ProductImagePolicy
         return $user->can('product-images.view');
     }
 
-    public function view(User $user, ProductImage $productImage): bool
+    public function view(User $user, ?ProductImage $productImage = null): bool
     {
         return $user->can('product-images.view');
     }
@@ -22,12 +22,12 @@ class ProductImagePolicy
         return $user->can('product-images.create');
     }
 
-    public function update(User $user, ProductImage $productImage): bool
+    public function update(User $user, ?ProductImage $productImage = null): bool
     {
         return $user->can('product-images.update');
     }
 
-    public function delete(User $user, ProductImage $productImage): bool
+    public function delete(User $user, ?ProductImage $productImage = null): bool
     {
         return $user->can('product-images.delete');
     }

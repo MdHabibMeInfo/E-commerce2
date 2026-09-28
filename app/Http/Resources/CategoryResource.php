@@ -33,7 +33,7 @@ class CategoryResource extends JsonResource
 
             'parent' => $this->whenLoaded(
                 'parent',
-                fn() => new CategoryResource($this->parent)
+                fn () => new CategoryResource($this->parent)
             ),
         ];
     }
