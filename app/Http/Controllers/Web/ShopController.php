@@ -23,6 +23,12 @@ class ShopController extends Controller
         }
 
         $sort = $request->query('sort', 'default');
+        $requestedPerPage = $request->query('per_page', 'default');
+        $perPageSelection = is_string($requestedPerPage)
+            && in_array($requestedPerPage, ['default', '16', '20', '24', '36'], true)
+                ? $requestedPerPage
+                : 'default';
+        $perPage = $perPageSelection === 'default' ? 16 : (int) $perPageSelection;
         $priceRange = $request->query('price_range', 'all');
         $minPrice = (float) $request->query('min_price', 0);
         $maxPrice = (float) $request->query('max_price', 0);
@@ -149,7 +155,7 @@ class ShopController extends Controller
             default => $productsQuery->orderByDesc('id'),
         };
 
-        $products = $productsQuery->get();
+        $products = $productsQuery->paginate($perPage)->withQueryString();
 
         $categories = Category::query()
             ->where('is_active', true)
@@ -163,6 +169,7 @@ class ShopController extends Controller
             'activeCategory' => $activeCategory,
             'searchQuery' => $request->query('q', ''),
             'sort' => $sort,
+            'perPageSelection' => $perPageSelection,
             'priceRange' => $priceRange,
             'minPrice' => $minPrice,
             'maxPrice' => $maxPrice,

@@ -12,10 +12,16 @@
     </x-slot:canonicalUrl>
 
     <section class="bg-[#fbfaf4]">
-        <div class="mx-auto max-w-[1440px] px-3 py-8 sm:px-4 lg:px-5">
-            <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
-                <aside class="rounded-[12px] border border-[#e5e2d9] bg-white p-4 shadow-none lg:sticky lg:top-6">
-                    <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="space-y-6" id="shop-filter-form">
+        <div class="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+            <div class="grid gap-4 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start">
+                <div data-shop-filter-overlay class="fixed inset-0 z-[91] hidden bg-[#102a22]/45 opacity-0 transition-opacity duration-200 lg:hidden" aria-hidden="true"></div>
+
+                <aside id="shop-filter-sidebar" aria-label="Product filters" aria-hidden="true" inert class="fixed inset-y-0 left-0 z-[92] flex w-[min(88vw,420px)] -translate-x-full flex-col overflow-hidden bg-white p-4 shadow-2xl transition-transform duration-300 ease-out lg:sticky lg:top-6 lg:z-auto lg:block lg:w-auto lg:translate-x-0 lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none">
+                    <div class="mb-4 flex shrink-0 items-center justify-between border-b border-[#dedede] pb-3 lg:hidden">
+                        <h2 class="text-base font-bold text-[#145943]">Filters</h2>
+                        <button type="button" data-shop-filter-close class="text-sm font-semibold text-[#4d5c56]" aria-label="Close filters">Close <span aria-hidden="true">×</span></button>
+                    </div>
+                    <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="min-h-0 flex-1 space-y-1 overflow-y-auto lg:flex-none lg:overflow-visible" id="shop-filter-form">
                         @if ($searchQuery)
                             <input type="hidden" name="q" value="{{ $searchQuery }}">
                         @endif
@@ -24,7 +30,7 @@
                             <input type="hidden" name="category" value="{{ $activeCategory->slug }}">
                         @endif
 
-                        <div>
+                        <div class="rounded-[4px] border border-[#dedede] bg-white p-2.5">
                             <h2 class="text-lg font-extrabold text-[#145943]">Category</h2>
                             <div class="mt-4 space-y-2">
                                 <a
@@ -45,7 +51,7 @@
                             </div>
                         </div>
 
-                        <div>
+                        <div class="rounded-[4px] border border-[#dedede] bg-white p-2.5">
                             <h2 class="text-lg font-extrabold text-[#145943]">Price Range</h2>
                             @php
                                 $rangeMinValue = $minPrice > 0 ? $minPrice : 0;
@@ -109,7 +115,7 @@
                             </div>
                         </div>
 
-                        <div>
+                        <div class="rounded-[4px] border border-[#dedede] bg-white p-2.5">
                             <h2 class="text-lg font-extrabold text-[#145943]">Product Variants</h2>
                             <div class="mt-4 space-y-2">
                                 @foreach ($variantOptions as $variantOption)
@@ -131,50 +137,50 @@
                 </aside>
 
                 <div class="space-y-5">
-                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[#e5e2d9] bg-white px-3 py-2 shadow-none lg:pl-4">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-sm font-semibold text-[#145943]">Sort by :</span>
-                            <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="flex flex-wrap items-center gap-2">
-                                @if ($searchQuery)
-                                    <input type="hidden" name="q" value="{{ $searchQuery }}">
-                                @endif
-                                @foreach ($selectedVariants as $selectedVariant)
-                                    <input type="hidden" name="variants[]" value="{{ $selectedVariant }}">
-                                @endforeach
-                                @if ($minPrice > 0)
-                                    <input type="hidden" name="min_price" value="{{ $minPrice }}">
-                                @endif
-                                @if ($maxPrice > 0)
-                                    <input type="hidden" name="max_price" value="{{ $maxPrice }}">
-                                @endif
-                                @if ($flag !== '')
-                                    <input type="hidden" name="flag" value="{{ $flag }}">
-                                @endif
-                                <div class="relative inline-flex">
-                                    <select name="sort" class="h-9 appearance-none rounded-none border border-[#e5e2d9] bg-white pl-3 pr-8 text-sm font-semibold text-[#173b32] shadow-none outline-none transition hover:border-[#d7d2c8] focus:border-[#e5e2d9] focus:ring-0" onchange="this.form.submit()" style="background-color: #ffffff; border-color: #e5e2d9; color: #173b32;">
-                                        <option value="default" {{ $sort === 'default' ? 'selected' : '' }} style="background-color: #ffffff; color: #173b32;">Default Sorting</option>
-                                        <option value="latest" {{ $sort === 'latest' ? 'selected' : '' }} style="background-color: #ffffff; color: #173b32;">Sort by Latest</option>
-                                        <option value="oldest" {{ $sort === 'oldest' ? 'selected' : '' }} style="background-color: #ffffff; color: #173b32;">Sort by Oldest</option>
-                                        <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }} style="background-color: #ffffff; color: #173b32;">Price Low to High</option>
-                                        <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }} style="background-color: #ffffff; color: #173b32;">Price High to Low</option>
-                                    </select>
-                                    <svg class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#145943]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M5.22 7.47a.75.75 0 0 1 1.06 0L10 11.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
-                                    </svg>
-                                </div>
-                            </form>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2">
-                            @foreach ($categories as $category)
-                                <a
-                                    href="{{ route('shop', ['category' => $category->slug, 'sort' => $sort, 'variants' => $selectedVariants ?: null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null, 'flag' => $flag !== '' ? $flag : null]) }}"
-                                    class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $activeCategory && $activeCategory->id === $category->id ? 'border-[#145943] bg-[#145943] text-white' : 'border-[#dfe2d6] bg-white text-[#4d5c56] hover:border-[#145943] hover:text-[#145943]' }}"
-                                >
-                                    {{ $category->name }}
-                                </a>
+                    <div class="flex min-h-11 flex-wrap items-center justify-between gap-3 rounded-[4px] border border-[#dedede] bg-white px-3 py-2.5 shadow-none">
+                        <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="flex w-full flex-wrap items-center justify-between gap-3">
+                            @if ($searchQuery)
+                                <input type="hidden" name="q" value="{{ $searchQuery }}">
+                            @endif
+                            @foreach ($selectedVariants as $selectedVariant)
+                                <input type="hidden" name="variants[]" value="{{ $selectedVariant }}">
                             @endforeach
-                        </div>
+                            @if ($minPrice > 0)
+                                <input type="hidden" name="min_price" value="{{ $minPrice }}">
+                            @endif
+                            @if ($maxPrice > 0)
+                                <input type="hidden" name="max_price" value="{{ $maxPrice }}">
+                            @endif
+                            @if ($flag !== '')
+                                <input type="hidden" name="flag" value="{{ $flag }}">
+                            @endif
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="rounded-[3px] border border-[#dedede] bg-white px-3 py-1.5 text-xs font-semibold text-[#333] lg:hidden"
+                                    data-shop-filter-toggle
+                                    aria-controls="shop-filter-sidebar"
+                                    aria-expanded="false"
+                                >
+                                    Filters
+                                </button>
+                                <label for="shop-sort" class="text-base font-semibold text-[#333]">Sort By :</label>
+                                <select id="shop-sort" name="sort" class="h-7 rounded-[3px] border border-[#dedede] bg-white px-2 text-xs text-[#333] outline-none focus:border-[#dedede] focus:ring-0" onchange="this.form.submit()">
+                                    <option value="default" {{ $sort === 'default' ? 'selected' : '' }}>Default Sorting</option>
+                                    <option value="latest" {{ $sort === 'latest' ? 'selected' : '' }}>Sort by Latest</option>
+                                    <option value="oldest" {{ $sort === 'oldest' ? 'selected' : '' }}>Sort by Oldest</option>
+                                    <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>Price Low to High</option>
+                                    <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>Price High to Low</option>
+                                </select>
+                            </div>
+                            <select name="per_page" aria-label="Products per page" class="h-7 rounded-[3px] border border-[#dedede] bg-white px-2 text-xs text-[#333] outline-none focus:border-[#dedede] focus:ring-0" onchange="this.form.submit()">
+                                <option value="default" {{ $perPageSelection === 'default' ? 'selected' : '' }}>Default</option>
+                                <option value="16" {{ $perPageSelection === '16' ? 'selected' : '' }}>Show 16</option>
+                                <option value="20" {{ $perPageSelection === '20' ? 'selected' : '' }}>Show 20</option>
+                                <option value="24" {{ $perPageSelection === '24' ? 'selected' : '' }}>Show 24</option>
+                                <option value="36" {{ $perPageSelection === '36' ? 'selected' : '' }}>Show 36</option>
+                            </select>
+                        </form>
                     </div>
 
                     @if ($products->isEmpty())
@@ -184,7 +190,7 @@
                             <p class="mt-2 text-sm text-[#738078]">Try another keyword or select different filters to browse more items.</p>
                         </div>
                     @else
-                        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
                             @foreach ($products as $product)
                                 @php
                                     $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
@@ -221,11 +227,16 @@
                                                     {{ $product->name }}
                                                 </h2>
 
-                                                <div class="pt-1">
-                                                    <p class="text-base font-extrabold text-[#145943] sm:text-lg">
-                                                        ৳{{ number_format((float) $product->price, 2) }}
-                                                    </p>
-                                                </div>
+                                                @if ($product->price !== null || $product->compare_at_price !== null)
+                                                    <div class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-1">
+                                                        @if ($product->price !== null)
+                                                            <span class="text-base font-extrabold text-[#145943] sm:text-lg">৳{{ number_format((float) $product->price, 2) }}</span>
+                                                        @endif
+                                                        @if ($product->compare_at_price !== null)
+                                                            <span class="text-xs text-[#9aa19c] line-through sm:text-sm">৳{{ number_format((float) $product->compare_at_price, 2) }}</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
 
@@ -238,27 +249,20 @@
                                                 data-product-price="{{ (float) $product->price }}"
                                                 data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                                 data-product-emoji="🛍️"
-                                                class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-[#145943] bg-white px-3 text-sm font-bold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white"
+                                                class="inline-flex h-10 w-full items-center justify-center rounded-[4px] border border-[#145943] bg-white px-3 text-xs font-bold text-[#145943] transition-colors hover:bg-[#145943] hover:text-white"
                                             >
-                                                <svg data-cart-button-icon class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                                    <path d="M3 3h2l2.4 12.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
-                                                    <circle cx="9" cy="21" r="1" />
-                                                    <circle cx="19" cy="21" r="1" />
-                                                </svg>
-                                                <svg data-cart-button-spinner class="hidden h-4 w-4 shrink-0 motion-safe:animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
-                                                    <path class="opacity-90" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-3a6 6 0 0 0-6-6V3Z" />
-                                                </svg>
-                                                <svg data-cart-button-success class="hidden h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                                                    <path d="m5 12 4 4L19 6" />
-                                                </svg>
-                                                <span data-cart-button-label>Add to Cart</span>
+                                                Add to Cart
                                             </button>
                                         </div>
                                     </a>
                                 </article>
                             @endforeach
                         </div>
+                        @if ($products->hasPages())
+                            <div class="pt-4">
+                                {{ $products->links() }}
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>

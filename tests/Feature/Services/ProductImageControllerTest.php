@@ -363,7 +363,7 @@ class ProductImageControllerTest extends TestCase
     {
         Storage::fake('public');
 
-        $user = User::factory()->create();
+        $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
 
         $product = Product::create([
             'name' => 'Admin Product Images',

@@ -33,6 +33,19 @@ document.addEventListener('DOMContentLoaded', () => {
             <span data-cart-total class="w-full px-1 py-1.5 text-[11px] font-bold text-[#a48335]">৳0.00</span>
         </button>
 
+        <button type="button" data-scroll-to-top aria-label="Back to top" aria-hidden="true" tabindex="-1" inert
+            class="fixed bottom-6 right-6 z-[79] grid h-12 w-12 translate-y-2 place-items-center rounded-full opacity-0 transition-all duration-300 ease-out pointer-events-none motion-reduce:transition-none">
+            <svg class="pointer-events-none absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <circle cx="24" cy="24" r="22" stroke="#d1d5ce" stroke-width="2" />
+                <circle data-scroll-progress cx="24" cy="24" r="22" stroke="#145943" stroke-width="2" stroke-linecap="round" stroke-dasharray="138.23" stroke-dashoffset="138.23" />
+            </svg>
+            <span class="grid h-9 w-9 place-items-center rounded-full bg-[#145943] text-white shadow-sm transition-transform duration-200 hover:scale-105" aria-hidden="true">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="m5 14 7-7 7 7" />
+                </svg>
+            </span>
+        </button>
+
         <div data-cart-overlay class="fixed inset-0 z-[89] hidden bg-[#102a22]/45 opacity-0 transition-opacity duration-200" aria-hidden="true"></div>
 
         <aside data-cart-drawer aria-label="Shopping cart" aria-modal="true" role="dialog"
@@ -71,17 +84,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <div data-cart-toast role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" inert
-            class="pointer-events-none fixed right-0 top-0 z-[95] flex w-[min(92vw,380px)] translate-x-full items-start gap-3 rounded-lg border border-[#c8e2c3] bg-[#e8f5e9] p-4 text-[#145943] opacity-0 shadow-xl shadow-[#145943]/10 transition-all duration-300 ease-out">
-            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#c8e2c3] text-[#145943]">
+            class="pointer-events-none fixed right-3 top-4 z-[95] flex w-[min(92vw,380px)] translate-x-[calc(100%_+_100px)] items-start gap-3 rounded-xl border border-emerald-100/70 bg-emerald-500/55 p-4 text-white opacity-0 shadow-xl shadow-emerald-950/10 backdrop-blur-2xl transition-all duration-300 ease-out sm:right-[88px]">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/20 bg-white/20">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="m5 12 4 4L19 6"></path>
                 </svg>
             </span>
             <span class="min-w-0 flex-1 pt-0.5">
                 <span class="block text-sm font-bold">Added to your cart</span>
-                <span data-cart-toast-message class="mt-0.5 block truncate text-xs text-[#52745b]"></span>
+                <span data-cart-toast-message class="mt-0.5 block truncate text-xs text-emerald-50"></span>
             </span>
-            <button type="button" data-dismiss-cart-toast aria-label="Dismiss notification" class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#567763] transition hover:bg-[#d6ecd8] hover:text-[#145943]">
+            <button type="button" data-dismiss-cart-toast aria-label="Dismiss notification" class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-white/80 transition hover:bg-white/20 hover:text-white">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="m6 6 12 12M18 6 6 18"></path>
                 </svg>
@@ -92,6 +105,40 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(cartUi);
 
     const floatingCart = cartUi.querySelector('[data-floating-cart]');
+    if (document.body.dataset.adminArea === 'true') {
+        floatingCart.classList.add('hidden');
+    }
+
+    const adminNotificationsLink = document.querySelector('[data-admin-notifications]');
+    const adminNotificationCount = document.querySelector('[data-admin-notification-count]');
+
+    if (adminNotificationsLink && adminNotificationCount) {
+        const refreshAdminNotificationCount = async () => {
+            try {
+                const response = await fetch(adminNotificationsLink.dataset.countUrl, {
+                    headers: { Accept: 'application/json' },
+                    cache: 'no-store',
+                });
+                if (!response.ok) return;
+
+                const result = await response.json();
+                const count = Math.max(0, Number(result.count) || 0);
+                adminNotificationCount.textContent = count > 99 ? '99+' : String(count);
+                adminNotificationCount.classList.toggle('hidden', count === 0);
+                adminNotificationCount.classList.toggle('grid', count > 0);
+                adminNotificationsLink.classList.toggle('admin-notification-has-unread', count > 0);
+                adminNotificationsLink.setAttribute('aria-label', count > 0 ? `Admin notifications, ${count} new` : 'Admin notifications');
+            } catch {
+                return;
+            }
+        };
+
+        refreshAdminNotificationCount();
+        window.setInterval(refreshAdminNotificationCount, 30000);
+    }
+
+    const scrollToTopButton = cartUi.querySelector('[data-scroll-to-top]');
+    const scrollProgressCircle = cartUi.querySelector('[data-scroll-progress]');
     const overlay = cartUi.querySelector('[data-cart-overlay]');
     const drawer = cartUi.querySelector('[data-cart-drawer]');
     const itemsContainer = cartUi.querySelector('[data-cart-items]');
@@ -99,6 +146,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartToast = cartUi.querySelector('[data-cart-toast]');
     let cartToastTimer = null;
     let cartToastVisible = false;
+
+    const updateScrollToTopButton = () => {
+        const maximumScroll = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = maximumScroll > 0 ? Math.min(window.scrollY / maximumScroll, 1) : 0;
+        const isVisible = window.scrollY > 180;
+
+        scrollProgressCircle.style.strokeDashoffset = String(138.23 * (1 - progress));
+        scrollToTopButton.classList.toggle('translate-y-2', !isVisible);
+        scrollToTopButton.classList.toggle('opacity-0', !isVisible);
+        scrollToTopButton.classList.toggle('pointer-events-none', !isVisible);
+        scrollToTopButton.setAttribute('aria-hidden', String(!isVisible));
+        scrollToTopButton.toggleAttribute('inert', !isVisible);
+        scrollToTopButton.tabIndex = isVisible ? 0 : -1;
+    };
+
+    let scrollUpdateFrame = null;
+    const scheduleScrollToTopUpdate = () => {
+        if (scrollUpdateFrame !== null) return;
+
+        scrollUpdateFrame = window.requestAnimationFrame(() => {
+            updateScrollToTopButton();
+            scrollUpdateFrame = null;
+        });
+    };
+
+    window.addEventListener('scroll', scheduleScrollToTopUpdate, { passive: true });
+    window.addEventListener('resize', scheduleScrollToTopUpdate);
+    scrollToTopButton.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        });
+    });
+    updateScrollToTopButton();
 
     const showCartLoading = () => {
         cartLoadingOverlay.inert = false;
@@ -112,37 +193,24 @@ document.addEventListener('DOMContentLoaded', () => {
         cartLoadingOverlay.inert = true;
     };
 
-    const positionCartToast = () => {
-        const cartRect = floatingCart.getBoundingClientRect();
-        const toastHeight = cartToast.offsetHeight;
-        const top = Math.max(12, cartRect.top - toastHeight - 96);
-        cartToast.style.top = `${top}px`;
-    };
-
     const hideCartToast = () => {
         cartToastVisible = false;
-        cartToast.classList.add('pointer-events-none', 'translate-x-full', 'opacity-0');
+        cartToast.classList.add('pointer-events-none', 'translate-x-[calc(100%_+_100px)]', 'opacity-0');
         cartToast.setAttribute('aria-hidden', 'true');
         cartToast.inert = true;
     };
 
     const showCartToast = (productName) => {
         cartToast.querySelector('[data-cart-toast-message]').textContent = `${productName} added successfully.`;
-        positionCartToast();
         cartToastVisible = true;
         cartToast.inert = false;
         cartToast.setAttribute('aria-hidden', 'false');
-        cartToast.classList.remove('pointer-events-none', 'translate-x-full', 'opacity-0');
+        cartToast.classList.remove('pointer-events-none', 'translate-x-[calc(100%_+_100px)]', 'opacity-0');
         window.clearTimeout(cartToastTimer);
-        cartToastTimer = window.setTimeout(hideCartToast, 3200);
+        cartToastTimer = window.setTimeout(hideCartToast, 2500);
     };
 
-    cartUi.querySelector('[data-dismiss-cart-toast]').addEventListener('click', hideCartToast);
-    window.addEventListener('resize', () => {
-        if (cartToastVisible) {
-            positionCartToast();
-        }
-    }, { passive: true });
+    cartToast.querySelector('[data-dismiss-cart-toast]').addEventListener('click', hideCartToast);
 
     const setCartDrawerState = (open) => {
         if (open) {
@@ -351,23 +419,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const buttonLabel = button.querySelector('[data-cart-button-label]') || button;
-        const buttonIcon = button.querySelector('[data-cart-button-icon]');
+        const buttonLabel = button.querySelector('[data-cart-button-label]');
         const buttonSpinner = button.querySelector('[data-cart-button-spinner]');
         const buttonSuccess = button.querySelector('[data-cart-button-success]');
-        const originalLabel = buttonLabel.textContent.trim();
+        const originalLabel = buttonLabel?.textContent ?? button.textContent;
         button.disabled = true;
         button.setAttribute('aria-busy', 'true');
-        buttonLabel.textContent = 'Adding...';
-        buttonIcon?.classList.add('hidden');
-        buttonSuccess?.classList.add('hidden');
+        if (buttonLabel) {
+            buttonLabel.textContent = 'Adding...';
+        } else {
+            button.textContent = 'Adding...';
+        }
         buttonSpinner?.classList.remove('hidden');
-        button.classList.add('cart-button-loading');
-        button.classList.add('scale-95');
-        window.requestAnimationFrame(() => button.classList.remove('scale-95'));
+        buttonSuccess?.classList.add('hidden');
         showCartLoading();
-        const requestController = new AbortController();
-        const requestTimeout = window.setTimeout(() => requestController.abort(), 8000);
 
         try {
             const response = await fetch('/api/cart/items', {
@@ -375,7 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 credentials: 'same-origin',
                 headers: { ...apiHeaders, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_id: productId, quantity: 1 }),
-                signal: requestController.signal,
             });
 
             if (!response.ok) throw new Error('Failed to add cart item');
@@ -384,38 +448,37 @@ document.addEventListener('DOMContentLoaded', () => {
             cart = (data.items || []).map(normalizeCartItem);
             renderCart();
             hideCartLoading();
-
             if (shouldCheckout) {
                 window.location.href = '/checkout';
                 return;
             }
-
             showCartToast(name);
-            buttonLabel.textContent = 'Added!';
-            buttonSpinner?.classList.add('hidden');
-            buttonSuccess?.classList.remove('hidden');
-            button.classList.remove('cart-button-loading');
-            button.classList.add('cart-button-success');
-            button.classList.add('border-[#145943]', 'bg-[#145943]', 'scale-105', 'text-white');
-            window.requestAnimationFrame(() => button.classList.remove('scale-105'));
+            if (buttonLabel) {
+                buttonLabel.textContent = 'Added!';
+                buttonSpinner?.classList.add('hidden');
+                buttonSuccess?.classList.remove('hidden');
+            } else {
+                button.textContent = 'Added ✓';
+            }
         } catch (error) {
-            hideCartLoading();
-            buttonLabel.textContent = 'Error';
-            buttonSpinner?.classList.add('hidden');
-            buttonIcon?.classList.remove('hidden');
-            button.classList.remove('cart-button-loading');
+            if (buttonLabel) {
+                buttonLabel.textContent = 'Error';
+            } else {
+                button.textContent = 'Error';
+            }
         } finally {
-            window.clearTimeout(requestTimeout);
             hideCartLoading();
             window.setTimeout(() => {
-                buttonLabel.textContent = originalLabel;
-                buttonIcon?.classList.remove('hidden');
-                buttonSpinner?.classList.add('hidden');
-                buttonSuccess?.classList.add('hidden');
-                button.classList.remove('cart-button-loading', 'cart-button-success', 'border-[#145943]', 'bg-[#145943]', 'scale-95', 'scale-105', 'text-white');
+                if (buttonLabel) {
+                    buttonLabel.textContent = originalLabel;
+                    buttonSpinner?.classList.add('hidden');
+                    buttonSuccess?.classList.add('hidden');
+                } else {
+                    button.textContent = originalLabel;
+                }
                 button.disabled = false;
                 button.setAttribute('aria-busy', 'false');
-            }, 1300);
+            }, 1000);
         }
     };
 
@@ -527,37 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateValues();
     };
 
-    syncPriceRangeInputs();
-
-    const toggle = document.querySelector('[data-mobile-menu-toggle]');
-    const menu = document.querySelector('[data-mobile-menu]');
-    const openIcon = document.querySelector('[data-menu-open-icon]');
-    const closeIcon = document.querySelector('[data-menu-close-icon]');
-
-    if (toggle && menu) {
-        const setMenuState = (open) => {
-            menu.classList.toggle('hidden', !open);
-            openIcon?.classList.toggle('hidden', open);
-            closeIcon?.classList.toggle('hidden', !open);
-            toggle.setAttribute('aria-expanded', String(open));
-            toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-        };
-
-        toggle.addEventListener('click', () => {
-            setMenuState(toggle.getAttribute('aria-expanded') !== 'true');
-        });
-
-        menu.querySelectorAll('a').forEach((link) => {
-            link.addEventListener('click', () => setMenuState(false));
-        });
-
-        window.addEventListener('resize', () => {
-            if (window.innerWidth >= 768) {
-                setMenuState(false);
-            }
-        });
-    }
-
     const heroCarousel = document.querySelector('[data-hero-carousel]');
     const heroTrack = heroCarousel?.querySelector('[data-hero-track]');
     const heroSlides = heroTrack ? Array.from(heroTrack.querySelectorAll('[data-hero-slide]')) : [];
@@ -667,13 +699,102 @@ document.addEventListener('DOMContentLoaded', () => {
         startAutoplay();
     }
 
+    syncPriceRangeInputs();
+
+    const shopFilterToggle = document.querySelector('[data-shop-filter-toggle]');
+    const shopFilterSidebar = document.getElementById('shop-filter-sidebar');
+    const shopFilterOverlay = document.querySelector('[data-shop-filter-overlay]');
+    const shopFilterClose = document.querySelector('[data-shop-filter-close]');
+
+    if (shopFilterToggle && shopFilterSidebar && shopFilterOverlay) {
+        let shopFilterDrawerOpen = false;
+        let shopFilterOverlayTimer = null;
+
+        const setShopFilterDrawerState = (open) => {
+            const isMobile = !window.matchMedia('(min-width: 1024px)').matches;
+            const wasOpen = shopFilterDrawerOpen;
+            window.clearTimeout(shopFilterOverlayTimer);
+            shopFilterDrawerOpen = isMobile && open;
+            shopFilterSidebar.classList.toggle('-translate-x-full', isMobile && !open);
+            shopFilterSidebar.toggleAttribute('inert', isMobile && !open);
+            shopFilterOverlay.classList.toggle('hidden', !shopFilterDrawerOpen);
+            shopFilterSidebar.setAttribute('aria-hidden', String(isMobile && !open));
+            shopFilterToggle.setAttribute('aria-expanded', String(shopFilterDrawerOpen));
+
+            if (shopFilterDrawerOpen) {
+                shopFilterOverlay.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('overflow-hidden');
+                requestAnimationFrame(() => shopFilterOverlay.classList.remove('opacity-0'));
+                shopFilterClose?.focus();
+                return;
+            }
+
+            shopFilterOverlay.classList.add('opacity-0');
+            shopFilterOverlay.setAttribute('aria-hidden', 'true');
+            if (!document.querySelector('[data-cart-drawer][aria-hidden="false"]')) {
+                document.body.classList.remove('overflow-hidden');
+            }
+            shopFilterOverlayTimer = window.setTimeout(() => shopFilterOverlay.classList.add('hidden'), 220);
+
+            if (isMobile && wasOpen) {
+                shopFilterToggle.focus();
+            }
+        };
+
+        setShopFilterDrawerState(false);
+        shopFilterToggle.addEventListener('click', () => setShopFilterDrawerState(!shopFilterDrawerOpen));
+        shopFilterClose?.addEventListener('click', () => setShopFilterDrawerState(false));
+        shopFilterOverlay.addEventListener('click', () => setShopFilterDrawerState(false));
+        window.addEventListener('resize', () => {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+                setShopFilterDrawerState(false);
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && shopFilterDrawerOpen) {
+                setShopFilterDrawerState(false);
+            }
+        });
+    }
+
+    const toggle = document.querySelector('[data-mobile-menu-toggle]');
+    const menu = document.querySelector('[data-mobile-menu]');
+    const openIcon = document.querySelector('[data-menu-open-icon]');
+    const closeIcon = document.querySelector('[data-menu-close-icon]');
+
+    if (toggle && menu) {
+        const setMenuState = (open) => {
+            menu.classList.toggle('hidden', !open);
+            openIcon?.classList.toggle('hidden', open);
+            closeIcon?.classList.toggle('hidden', !open);
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        };
+
+        toggle.addEventListener('click', () => {
+            setMenuState(toggle.getAttribute('aria-expanded') !== 'true');
+        });
+
+        menu.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', () => setMenuState(false));
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                setMenuState(false);
+            }
+        });
+    }
+
     const setupCarousel = ({
         trackSelector,
         prevSelector = null,
-        nextSelector = null,
+        nextSelector,
         paginationSelector = null,
         minCardWidth,
         maxVisible,
+        mobileMinCardWidth = null,
+        mobileMaxVisible = null,
         centerWhenFits = false,
         initialDirection = 1,
         reversePauseMs = 2300,
@@ -757,8 +878,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const width = track.clientWidth;
             if (!width) return;
 
+            const isMobile = window.matchMedia('(max-width: 639px)').matches;
+            const cardMinWidth = isMobile && mobileMinCardWidth ? mobileMinCardWidth : minCardWidth;
+            const cardMaxVisible = isMobile && mobileMaxVisible ? mobileMaxVisible : maxVisible;
             const gap = gapSize();
-            const visible = Math.max(1, Math.min(maxVisible, Math.floor((width + gap) / (minCardWidth + gap))));
+            const visible = Math.max(1, Math.min(cardMaxVisible, Math.floor((width + gap) / (cardMinWidth + gap))));
             const cardWidth = Math.max(1, (width - gap * (visible - 1)) / visible);
 
             items.forEach((item) => {
@@ -872,6 +996,8 @@ document.addEventListener('DOMContentLoaded', () => {
         nextSelector: '[data-category-next]',
         minCardWidth: 96,
         maxVisible: 8,
+        mobileMinCardWidth: 64,
+        mobileMaxVisible: 3,
         centerWhenFits: true,
     });
 
@@ -880,6 +1006,8 @@ document.addEventListener('DOMContentLoaded', () => {
         paginationSelector: '[data-product-pagination]',
         minCardWidth: 220,
         maxVisible: 5,
+        mobileMinCardWidth: 120,
+        mobileMaxVisible: 2,
         initialDirection: 1,
         reversePauseMs: 2300,
     });
@@ -892,6 +1020,8 @@ document.addEventListener('DOMContentLoaded', () => {
             paginationSelector: `[data-category-product-pagination="${slug}"]`,
             minCardWidth: 220,
             maxVisible: 5,
+            mobileMinCardWidth: 120,
+            mobileMaxVisible: 2,
             initialDirection: 1,
             reversePauseMs: 2300,
         });

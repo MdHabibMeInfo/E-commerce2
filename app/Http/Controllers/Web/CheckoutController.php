@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CheckoutController extends Controller
 {
@@ -26,9 +27,16 @@ class CheckoutController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $customer = $request->user();
+        $phoneRules = ['required', 'string', 'max:20'];
+
+        if ($customer?->account_type === 'customer') {
+            $phoneRules[] = Rule::unique('users', 'phone')->ignore($customer->getKey());
+        }
+
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:25'],
+            'phone' => $phoneRules,
             'address' => ['required', 'string', 'max:500'],
             'city' => ['required', 'string', 'max:120'],
             'area' => ['nullable', 'string', 'max:120'],
@@ -53,6 +61,13 @@ class CheckoutController extends Controller
             if ($product->stock < $item->quantity) {
                 return back()->withErrors(['cart' => sprintf('%s is out of stock for the requested quantity.', $product->name)]);
             }
+        }
+
+        if ($customer?->account_type === 'customer') {
+            $customer->fill([
+                'name' => $validated['customer_name'],
+                'phone' => $validated['phone'],
+            ])->save();
         }
 
         $subtotal = $items->sum(fn ($item) => (float) $item->price * (int) $item->quantity);

@@ -30,6 +30,8 @@
                             $isProductsMenuOpen = request()->routeIs('admin.products.*');
                             $isCategoriesMenuOpen = request()->routeIs('admin.categories.*');
                             $isAttributesMenuOpen = request()->routeIs('admin.attributes.*');
+                            $isRolesMenuOpen = request()->routeIs('admin.roles.*');
+                            $isUsersMenuOpen = request()->routeIs('admin.users.*');
                         @endphp
 
                         <a
@@ -40,6 +42,7 @@
                             <span class="text-xs">›</span>
                         </a>
 
+                        @canany(['categories.view', 'categories.create', 'categories.update', 'categories.delete'])
                         <details class="group rounded-xl" {{ $isCategoriesMenuOpen ? 'open' : '' }}>
                             <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]" style="list-style: none;">
                                 <span class="font-semibold text-[#4d5c56]">Categories</span>
@@ -47,18 +50,26 @@
                             </summary>
 
                             <div class="mt-2 space-y-1 border-l border-[#e5e2d9] pl-4">
+                                @can('categories.view')
                                 <a href="{{ route('admin.categories.index') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.categories.index') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     All Categories
                                 </a>
+                                @endcan
+                                @can('categories.create')
                                 <a href="{{ route('admin.categories.create') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.categories.create') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     Create Category
                                 </a>
+                                @endcan
+                                @can('categories.view')
                                 <a href="{{ route('admin.categories.trashed') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.categories.trashed') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     Deleted Categories
                                 </a>
+                                @endcan
                             </div>
                         </details>
+                        @endcanany
 
+                        @canany(['attributes.view', 'attributes.create', 'attributes.update', 'attributes.delete'])
                         <details class="group rounded-xl" {{ $isAttributesMenuOpen ? 'open' : '' }}>
                             <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]" style="list-style: none;">
                                 <span class="font-semibold text-[#4d5c56]">Attributes</span>
@@ -66,18 +77,26 @@
                             </summary>
 
                             <div class="mt-2 space-y-1 border-l border-[#e5e2d9] pl-4">
+                                @can('attributes.view')
                                 <a href="{{ route('admin.attributes.index') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.attributes.index') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     All Attributes
                                 </a>
+                                @endcan
+                                @can('attributes.create')
                                 <a href="{{ route('admin.attributes.create') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.attributes.create') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     Create Attribute
                                 </a>
+                                @endcan
+                                @can('attributes.view')
                                 <a href="{{ route('admin.attributes.trashed') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.attributes.trashed') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     Deleted Attributes
                                 </a>
+                                @endcan
                             </div>
                         </details>
+                        @endcanany
 
+                        @canany(['products.view', 'products.create', 'products.update', 'products.delete'])
                         <details class="group rounded-xl" {{ $isProductsMenuOpen ? 'open' : '' }}>
                             <summary class="flex cursor-pointer list-none items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]" style="list-style: none;">
                                 <span class="font-semibold text-[#4d5c56]">Products</span>
@@ -85,18 +104,26 @@
                             </summary>
 
                             <div class="mt-2 space-y-1 border-l border-[#e5e2d9] pl-4">
+                                @can('products.view')
                                 <a href="{{ route('admin.products.index') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.products.index') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     All Products
                                 </a>
+                                @endcan
+                                @can('products.create')
                                 <a href="{{ route('admin.products.create') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.products.create') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     Create Product
                                 </a>
+                                @endcan
+                                @can('products.view')
                                 <a href="{{ route('admin.products.trashed') }}" class="block rounded-lg px-2 py-2 text-[#4d5c56] hover:bg-[#f5f4ec] {{ request()->routeIs('admin.products.trashed') ? 'bg-[#edf2e4] font-bold text-[#145943]' : '' }}">
                                     Deleted Products
                                 </a>
+                                @endcan
                             </div>
                         </details>
+                        @endcanany
 
+                        @can('orders.view')
                         <a
                             href="{{ route('admin.orders') }}"
                             class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ request()->routeIs('admin.orders') ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}"
@@ -104,12 +131,31 @@
                             <span>Orders</span>
                             <span class="text-xs">›</span>
                         </a>
+                        @endcan
                         <a href="#" class="flex items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]">
                             <span>Customers</span>
                             <span class="text-xs">›</span>
                         </a>
-                        <a href="#" class="flex items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]">
-                            <span>Users & Roles</span>
+                        @canany(['roles.view', 'roles.create', 'roles.update'])
+                        <a href="{{ route('admin.roles.index') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ $isRolesMenuOpen ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
+                            <span>Roles & Permissions</span>
+                            <span class="text-xs">›</span>
+                        </a>
+                        @endcanany
+                        @canany(['users.view', 'users.create', 'users.update'])
+                        <a href="{{ route('admin.users.index') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ $isUsersMenuOpen ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
+                            <span>Staff Accounts</span>
+                            <span class="text-xs">›</span>
+                        </a>
+                        @endcanany
+                        @can('audit-logs.view')
+                        <a href="{{ route('admin.security.events') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ request()->routeIs('admin.security.events') ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
+                            <span>Security Audit Log</span>
+                            <span class="text-xs">›</span>
+                        </a>
+                        @endcan
+                        <a href="{{ route('account.security') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ request()->routeIs('account.security*') ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
+                            <span>Account Security</span>
                             <span class="text-xs">›</span>
                         </a>
                         <a href="#" class="flex items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]">

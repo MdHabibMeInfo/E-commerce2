@@ -18,7 +18,7 @@ Route::middleware('web')->group(function () {
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'management.verified', 'management.2fa'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });

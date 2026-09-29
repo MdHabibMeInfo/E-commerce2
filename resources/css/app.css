@@ -28,6 +28,19 @@ img {
     max-width: 100%;
 }
 
+a[href]:not([aria-disabled="true"]),
+button:not(:disabled):not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+a[aria-disabled="true"],
+[role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+}
+
 button,
 a,
 input {
@@ -110,6 +123,28 @@ input {
     animation: cart-button-success-pop 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+@keyframes admin-notification-bell {
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+
+    15%,
+    45% {
+        transform: rotate(12deg);
+    }
+
+    30%,
+    60% {
+        transform: rotate(-12deg);
+    }
+}
+
+.admin-notification-has-unread [data-admin-notification-bell] {
+    animation: admin-notification-bell 1.2s ease-in-out infinite;
+    transform-origin: top center;
+}
+
 .price-range-slider {
     position: absolute;
     inset: 0;
@@ -167,7 +202,8 @@ input {
     }
 
     .cart-button-loading,
-    .cart-button-success [data-cart-button-success] {
+    .cart-button-success [data-cart-button-success],
+    .admin-notification-has-unread [data-admin-notification-bell] {
         animation: none;
     }
 }

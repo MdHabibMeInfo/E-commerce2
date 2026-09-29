@@ -1,6 +1,10 @@
 <?php
 
+use App\Models\User;
+use App\Services\TotpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /*
@@ -47,4 +51,38 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function createSystemOwnerUser(array $attributes = []): User
+{
+    $user = User::factory()->create($attributes);
+    $user->forceFill([
+        'account_type' => 'admin',
+        'is_system_owner' => true,
+        'status' => 'active',
+    ])->save();
+    $ownerRole = Role::query()
+        ->where('name', 'System Owner')
+        ->where('guard_name', 'web')
+        ->first();
+
+    if ($ownerRole !== null) {
+        $user->assignRole($ownerRole);
+    }
+
+    return $user;
+}
+
+function completeManagementTwoFactorForTest(User $user): User
+{
+    $user->forceFill([
+        'two_factor_secret' => app(TotpService::class)->generateSecret(),
+        'two_factor_recovery_codes' => [Hash::make(bin2hex(random_bytes(12)))],
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+
+    session()->put('security.two_factor_verified_user', $user->getKey());
+    session()->put('security.two_factor_verified_at', now()->timestamp);
+
+    return $user;
 }

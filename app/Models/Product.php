@@ -48,6 +48,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class)
@@ -77,7 +82,7 @@ class Product extends Model
             $primary = $this->images()->first();
         }
 
-        return $primary ? '/storage/' . ltrim($primary->image_path, '/') : null;
+        return $primary ? '/storage/'.ltrim($primary->image_path, '/') : null;
     }
 
     public function variants(): HasMany

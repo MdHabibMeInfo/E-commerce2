@@ -1,3 +1,36 @@
+@if (request()->routeIs('admin*'))
+    <header class="relative z-50 border-b border-[#e7e4d8] bg-[#fffef9]/95 backdrop-blur">
+        <div class="mx-auto flex h-[78px] max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
+            <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="{{ config('app.name') }} home">
+                <img
+                    src="{{ asset('images/brand/ziyanmart-logo.png') }}"
+                    alt="{{ config('app.name') }}"
+                    class="h-12 w-auto object-contain sm:h-14"
+                >
+            </a>
+
+            <nav class="ml-auto flex items-center gap-2 sm:gap-3" aria-label="Admin account">
+                @can('orders.view')
+                    <a href="{{ route('admin.notifications') }}" data-admin-notifications data-count-url="{{ route('admin.notifications.unread') }}" class="relative grid h-10 w-10 place-items-center rounded-full text-[#145943] transition hover:bg-[#eef4e8]" aria-label="Admin notifications">
+                    <svg data-admin-notification-bell class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                        <path d="M10 21h4"></path>
+                    </svg>
+                    <span data-admin-notification-count class="absolute -right-0.5 -top-0.5 hidden h-5 min-w-5 place-items-center rounded-full bg-[#a48335] px-1 text-[10px] font-bold text-white" aria-live="polite"></span>
+                    </a>
+                @endcan
+
+                <a href="{{ route('admin.profile') }}" class="grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-[#dce6ce] bg-[#edf2e4] text-sm font-bold text-[#145943] transition hover:bg-[#dfead4]" aria-label="Profile: {{ auth()->user()?->name ?? 'System Owner' }}">
+                    @if (auth()->user()?->profile_photo_path)
+                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url(auth()->user()->profile_photo_path) }}" alt="" class="h-full w-full object-cover">
+                    @else
+                        {{ strtoupper(substr(auth()->user()?->name ?? 'SO', 0, 1)) }}
+                    @endif
+                </a>
+            </nav>
+        </div>
+    </header>
+@else
 <header class="relative z-50">
     {{-- Announcement bar --}}
     <div class="bg-[#145943] text-white">
@@ -14,7 +47,17 @@
                 <span class="text-white/30">|</span>
                 <a href="#" class="transition hover:text-[#e5cf8b]">Help</a>
                 <span class="text-white/30">|</span>
-                <a href="#" class="transition hover:text-[#e5cf8b]">Login / Register</a>
+                @auth
+                    <span class="max-w-40 truncate">{{ auth()->user()->name }}</span>
+                    <a href="{{ route('account.security') }}" class="transition hover:text-[#e5cf8b]">Security</a>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="transition hover:text-[#e5cf8b]">Sign out</button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="transition hover:text-[#e5cf8b]">Login</a>
+                    <a href="{{ route('register') }}" class="transition hover:text-[#e5cf8b]">Register</a>
+                @endauth
             </div>
         </div>
     </div>
@@ -32,7 +75,7 @@
             </a>
 
             {{-- Search --}}
-            <div class="hidden min-w-0 flex-1 lg:block lg:max-w-[430px] lg:mx-auto">
+            <div class="hidden min-w-0 flex-1 lg:block lg:max-w-[480px] lg:mx-auto">
                 <form action="{{ route('shop') }}" method="GET" class="relative">
                     <label for="header-search" class="sr-only">Search products</label>
                     <input
@@ -40,10 +83,10 @@
                         type="search"
                         name="q"
                         value="{{ request('q') }}"
-                        placeholder="Search for products..."
-                        class="h-11 w-full rounded-full border border-[#e5e2d8] bg-white pl-4 pr-12 text-sm text-[#173b32] outline-none transition placeholder:text-[#9aa19c] focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
+                        placeholder="Search in..."
+                        class="h-11 w-full rounded-[5px] border border-transparent bg-[#f1f1f1] pl-4 pr-12 text-base text-[#173b32] outline-none transition placeholder:text-[#7c8580] focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10"
                     >
-                    <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[#7c8580] transition hover:bg-[#eef4e8] hover:text-[#145943]">
+                    <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[4px] text-[#4d5c56] transition hover:bg-[#e7ebdf] hover:text-[#145943]">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                             <circle cx="11" cy="11" r="6.5"></circle>
                             <path d="m16 16 4.2 4.2"></path>
@@ -108,10 +151,10 @@
                         type="search"
                         name="q"
                         value="{{ request('q') }}"
-                        placeholder="Search for products..."
-                        class="h-11 w-full rounded-full border border-[#e5e2d8] bg-white pl-4 pr-12 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
+                        placeholder="Search in..."
+                        class="h-11 w-full rounded-[5px] border border-transparent bg-[#f1f1f1] pl-4 pr-12 text-base text-[#173b32] outline-none transition placeholder:text-[#7c8580] focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10"
                     >
-                    <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[#7c8580] transition hover:bg-[#eef4e8] hover:text-[#145943]">
+                    <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[4px] text-[#4d5c56] transition hover:bg-[#e7ebdf] hover:text-[#145943]">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                             <circle cx="11" cy="11" r="6.5"></circle>
                             <path d="m16 16 4.2 4.2"></path>
@@ -127,10 +170,20 @@
                     <a href="#" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">Contact</a>
                     <div class="mt-2 flex gap-2 border-t border-[#e7e4d8] pt-3">
                         <a href="#" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Track Order</a>
-                        <a href="{{ route('checkout') }}" class="flex-1 rounded-xl bg-[#145943] px-4 py-3 text-center text-sm font-semibold text-white">Login / Register</a>
+                        @auth
+                            <a href="{{ route('account.security') }}" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Security</a>
+                            <form method="POST" action="{{ route('logout') }}" class="flex-1">
+                                @csrf
+                                <button type="submit" class="w-full rounded-xl bg-[#145943] px-4 py-3 text-center text-sm font-semibold text-white">Sign out</button>
+                            </form>
+                        @else
+                            <a href="{{ route('login') }}" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Login</a>
+                            <a href="{{ route('register') }}" class="flex-1 rounded-xl bg-[#145943] px-4 py-3 text-center text-sm font-semibold text-white">Register</a>
+                        @endauth
                     </div>
                 </nav>
             </div>
         </div>
     </div>
 </header>
+@endif

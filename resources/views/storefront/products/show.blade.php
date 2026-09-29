@@ -13,7 +13,7 @@
     </x-slot:canonicalUrl>
 
     <section class="bg-[#fbfaf4]">
-        <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+        <div class="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
 
             {{-- Breadcrumb --}}
             <nav
@@ -46,7 +46,7 @@
             <div class="grid gap-8 rounded-2xl border border-[#e3e2d9] bg-white p-5 shadow-sm md:grid-cols-2 md:p-7">
 
                 {{-- Product image carousel --}}
-                <div class="flex flex-col gap-3">
+                <div data-product-gallery class="flex flex-col gap-3">
                     <div class="relative overflow-hidden rounded-2xl border border-[#e3e2d9] bg-[#f1f4e5]">
                         @if ($product->images->isNotEmpty())
                             {{-- Carousel Track --}}
@@ -144,22 +144,9 @@
 
                 {{-- Product information --}}
                 <div class="flex flex-col justify-center">
-
-                    @if ($product->category)
-                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">
-                            {{ $product->category->name }}
-                        </p>
-                    @endif
-
-                    <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-[#145943] sm:text-4xl">
+                    <h1 class="text-3xl font-extrabold tracking-tight text-[#145943] sm:text-4xl">
                         {{ $product->name }}
                     </h1>
-
-                    @if ($product->short_description)
-                        <p class="mt-4 leading-7 text-[#66736d]">
-                            {{ $product->short_description }}
-                        </p>
-                    @endif
 
                     {{-- Price --}}
                     @if ($product->price !== null || $product->compare_at_price !== null)
@@ -219,37 +206,233 @@
 
             </div>
 
-            <div class="mt-8 rounded-2xl border border-[#e3e2d9] bg-white p-5 shadow-sm sm:p-7">
-                <div class="flex items-center justify-between gap-4">
+            <section id="product-details" class="mt-10 border-y border-[#e3e2d9] py-8 sm:py-10">
+                <div class="max-w-4xl">
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Product information</p>
+                    <h2 class="mt-2 text-2xl font-extrabold text-[#145943]">Product Details</h2>
+
+                    @if ($product->short_description)
+                        <p class="mt-4 text-base font-medium leading-7 text-[#44564d]">{{ $product->short_description }}</p>
+                    @endif
+
+                    @if ($product->description)
+                        <div class="mt-4 whitespace-pre-line text-sm leading-7 text-[#66736d]">{{ $product->description }}</div>
+                    @elseif (! $product->short_description)
+                        <p class="mt-4 text-sm leading-7 text-[#66736d]">Detailed product information will be added soon.</p>
+                    @endif
+                </div>
+            </section>
+
+            <section id="customer-reviews" class="mt-10 scroll-mt-8">
+                @php
+                    $reviewAverage = (float) ($product->reviews_avg_rating ?? 0);
+                @endphp
+
+                <div class="flex flex-col justify-between gap-5 border-b border-[#e3e2d9] pb-5 sm:flex-row sm:items-end">
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Customer Reviews</p>
-                        <h2 class="mt-2 text-2xl font-extrabold text-[#145943]">What buyers are saying</h2>
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Customer feedback</p>
+                        <h2 class="mt-2 text-2xl font-extrabold text-[#145943]">Customer Reviews</h2>
                     </div>
-                    <span class="rounded-full bg-[#edf1d8] px-3 py-1.5 text-xs font-bold text-[#145943]">4.8/5 average</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl font-extrabold text-[#145943]">{{ number_format($reviewAverage, 1) }}</span>
+                        <span>
+                            <span class="flex text-lg leading-none" aria-label="{{ number_format($reviewAverage, 1) }} out of 5 stars">
+                                @for ($star = 1; $star <= 5; $star++)
+                                    <span class="{{ $star <= round($reviewAverage) ? 'text-[#f5b700]' : 'text-[#d7d9d0]' }}" aria-hidden="true">★</span>
+                                @endfor
+                            </span>
+                            <span class="mt-1 block text-xs text-[#66736d]">{{ $product->reviews_count }} {{ $product->reviews_count === 1 ? 'review' : 'reviews' }}</span>
+                        </span>
+                    </div>
                 </div>
 
-                <div class="mt-6 grid gap-4 md:grid-cols-3">
-                    @foreach([
-                        ['name' => 'Nabila', 'text' => 'Fresh, clean, and exactly as described. Delivery was fast and packaging was neat.', 'rating' => '★★★★★'],
-                        ['name' => 'Sami', 'text' => 'Very good quality products with a reliable service. I will order again.', 'rating' => '★★★★★'],
-                        ['name' => 'Rafi', 'text' => 'The fruit quality is excellent and the site is easy to shop from. COD option is great.', 'rating' => '★★★★☆'],
-                    ] as $review)
-                        <div class="rounded-2xl border border-[#e7e5da] bg-[#fafaf5] p-4">
-                            <div class="flex items-center justify-between">
-                                <p class="font-bold text-[#173b32]">{{ $review['name'] }}</p>
-                                <span class="text-sm text-[#f5b700]">{{ $review['rating'] }}</span>
+                <div class="grid gap-10 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)] lg:gap-14">
+                    <div>
+                        @forelse ($product->reviews as $review)
+                            <article class="border-b border-[#e8e6db] py-5 first:pt-0">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <h3 class="font-bold text-[#173b32]">{{ $review->name }}</h3>
+                                        <time class="mt-1 block text-xs text-[#77837c]" datetime="{{ $review->created_at->toDateString() }}">{{ $review->created_at->diffForHumans() }}</time>
+                                    </div>
+                                    <div class="flex text-lg leading-none" aria-label="{{ $review->rating }} out of 5 stars">
+                                        @for ($star = 1; $star <= 5; $star++)
+                                            <span class="{{ $star <= $review->rating ? 'text-[#f5b700]' : 'text-[#d7d9d0]' }}" aria-hidden="true">★</span>
+                                        @endfor
+                                    </div>
+                                </div>
+                                <p class="mt-3 whitespace-pre-line text-sm leading-6 text-[#59675f]">{{ $review->body }}</p>
+
+                                @if ($review->images)
+                                    <div class="mt-4 flex flex-wrap gap-3">
+                                        @foreach ($review->images as $reviewImage)
+                                            <a href="{{ asset('storage/' . ltrim($reviewImage, '/')) }}" target="_blank" rel="noopener noreferrer" class="block h-20 w-20 overflow-hidden rounded-md border border-[#e3e2d9] bg-white">
+                                                <img src="{{ asset('storage/' . ltrim($reviewImage, '/')) }}" alt="Photo shared by {{ $review->name }}" loading="lazy" class="h-full w-full object-cover">
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </article>
+                        @empty
+                            <p class="py-4 text-sm text-[#66736d]">No reviews yet. Share your experience with this product.</p>
+                        @endforelse
+                    </div>
+
+                    <div id="review-form" class="border-t border-[#e3e2d9] pt-7 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+                        <h3 class="text-lg font-bold text-[#173b32]">Write a review</h3>
+                        <p class="mt-1 text-sm text-[#66736d]">Your email address will not be published.</p>
+
+                        @if (session('status'))
+                            <p role="status" class="mt-4 border-l-4 border-[#145943] bg-[#edf5eb] px-4 py-3 text-sm text-[#145943]">{{ session('status') }}</p>
+                        @endif
+
+                        @if ($errors->any())
+                            <div role="alert" class="mt-4 grid gap-1 border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-800">
+                                @foreach ($errors->all() as $error)
+                                    <p>{{ $error }}</p>
+                                @endforeach
                             </div>
-                            <p class="mt-3 text-sm leading-6 text-[#66736d]">{{ $review['text'] }}</p>
-                        </div>
-                    @endforeach
+                        @endif
+
+                        <form method="POST" action="{{ route('products.reviews.store', ['product' => $product->slug]) }}" enctype="multipart/form-data" class="mt-5 grid gap-4">
+                            @csrf
+
+                            <fieldset>
+                                <legend class="text-sm font-semibold text-[#26352f]">Your rating <span class="text-red-600" aria-hidden="true">*</span></legend>
+                                <div class="mt-2 flex gap-1" role="radiogroup" aria-label="Your rating">
+                                    @for ($rating = 1; $rating <= 5; $rating++)
+                                        <label class="grid h-10 w-10 cursor-pointer place-items-center rounded-md focus-within:ring-2 focus-within:ring-[#145943]">
+                                            <input type="radio" name="rating" value="{{ $rating }}" data-review-rating-input class="sr-only" aria-label="{{ $rating }} {{ $rating === 1 ? 'star' : 'stars' }}" @checked((int) old('rating', 5) === $rating) required>
+                                            <span data-review-rating-star="{{ $rating }}" class="text-3xl leading-none {{ $rating <= (int) old('rating', 5) ? 'text-[#f5b700]' : 'text-[#c8ccc2]' }}" aria-hidden="true">★</span>
+                                        </label>
+                                    @endfor
+                                </div>
+                                @error('rating')
+                                    <p class="mt-1 text-xs text-red-700">{{ $message }}</p>
+                                @enderror
+                            </fieldset>
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <label class="grid gap-1.5 text-sm font-semibold text-[#26352f]">
+                                    Name <span class="text-red-600" aria-hidden="true">*</span>
+                                    <input type="text" name="name" value="{{ old('name') }}" autocomplete="name" required maxlength="120" class="h-11 rounded-md border border-[#d9ddd4] bg-white px-3 font-normal outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/15">
+                                    @error('name')
+                                        <span class="text-xs font-normal text-red-700">{{ $message }}</span>
+                                    @enderror
+                                </label>
+                                <label class="grid gap-1.5 text-sm font-semibold text-[#26352f]">
+                                    Email <span class="text-red-600" aria-hidden="true">*</span>
+                                    <input type="email" name="email" value="{{ old('email') }}" autocomplete="email" required maxlength="255" class="h-11 rounded-md border border-[#d9ddd4] bg-white px-3 font-normal outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/15">
+                                    @error('email')
+                                        <span class="text-xs font-normal text-red-700">{{ $message }}</span>
+                                    @enderror
+                                </label>
+                            </div>
+
+                            <label class="grid gap-1.5 text-sm font-semibold text-[#26352f]">
+                                Your review <span class="text-red-600" aria-hidden="true">*</span>
+                                <textarea name="body" rows="5" required maxlength="3000" class="resize-y rounded-md border border-[#d9ddd4] bg-white px-3 py-2.5 font-normal leading-6 outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/15">{{ old('body') }}</textarea>
+                                @error('body')
+                                    <span class="text-xs font-normal text-red-700">{{ $message }}</span>
+                                @enderror
+                            </label>
+
+                            <div>
+                                <p class="text-sm font-semibold text-[#26352f]">Photos <span class="font-normal text-[#77837c]">(optional, up to 3)</span></p>
+                                <label for="review-images" data-review-dropzone class="mt-2 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[#aebbb0] bg-[#f7faf5] px-4 py-5 text-center transition-colors hover:border-[#145943] hover:bg-[#f0f6ed] focus-within:ring-2 focus-within:ring-[#145943]">
+                                    <input id="review-images" type="file" name="images[]" accept="image/jpeg,image/png,image/webp" multiple data-review-image-input class="sr-only">
+                                    <svg class="h-7 w-7 text-[#145943]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+                                        <path d="M4 7h3l1.5-2h7L17 7h3v12H4z" />
+                                        <circle cx="12" cy="13" r="3.5" />
+                                    </svg>
+                                    <span class="text-sm font-semibold text-[#173b32]">Drop photos here or browse files</span>
+                                    <span data-review-image-message class="text-xs font-normal text-[#77837c]">Up to 3 images, 5 MB each</span>
+                                </label>
+                                <div data-review-image-preview class="mt-3 flex flex-wrap gap-2"></div>
+                                @error('images')
+                                    <p class="mt-1 text-xs text-red-700">{{ $message }}</p>
+                                @enderror
+                                @error('images.0')
+                                    <p class="mt-1 text-xs text-red-700">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <button type="submit" class="mt-1 inline-flex h-11 items-center justify-center rounded-md bg-[#145943] px-5 text-sm font-bold text-white transition hover:bg-[#0f4d3a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943] focus-visible:ring-offset-2 sm:w-fit">Submit Review</button>
+                        </form>
+                    </div>
                 </div>
-            </div>
+            </section>
 
         </div>
     </section>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const ratingInputs = Array.from(document.querySelectorAll('[data-review-rating-input]'));
+            const ratingStars = Array.from(document.querySelectorAll('[data-review-rating-star]'));
+            const updateRatingStars = () => {
+                const selectedRating = Number(ratingInputs.find((input) => input.checked)?.value || 0);
+
+                ratingStars.forEach((star) => {
+                    const isSelected = Number(star.dataset.reviewRatingStar) <= selectedRating;
+                    star.classList.toggle('text-[#f5b700]', isSelected);
+                    star.classList.toggle('text-[#c8ccc2]', !isSelected);
+                });
+            };
+
+            ratingInputs.forEach((input) => input.addEventListener('change', updateRatingStars));
+            updateRatingStars();
+
+            const reviewImageInput = document.querySelector('[data-review-image-input]');
+            const reviewDropzone = document.querySelector('[data-review-dropzone]');
+            const reviewImagePreview = document.querySelector('[data-review-image-preview]');
+            const reviewImageMessage = document.querySelector('[data-review-image-message]');
+
+            if (reviewImageInput && reviewDropzone && reviewImagePreview && reviewImageMessage) {
+                const renderReviewImages = () => {
+                    reviewImagePreview.querySelectorAll('img').forEach((image) => URL.revokeObjectURL(image.src));
+                    reviewImagePreview.replaceChildren();
+
+                    const selectedImages = Array.from(reviewImageInput.files || []);
+                    const hasTooManyImages = selectedImages.length > 3;
+                    reviewImageInput.setCustomValidity(hasTooManyImages ? 'Choose up to 3 images.' : '');
+                    reviewImageMessage.textContent = hasTooManyImages
+                        ? 'Choose no more than 3 images.'
+                        : selectedImages.length
+                            ? `${selectedImages.length} ${selectedImages.length === 1 ? 'image' : 'images'} selected`
+                            : 'Up to 3 images, 5 MB each';
+                    reviewImageMessage.classList.toggle('text-red-700', hasTooManyImages);
+
+                    selectedImages.slice(0, 3).forEach((image) => {
+                        if (!image.type.startsWith('image/')) return;
+
+                        const preview = document.createElement('img');
+                        preview.src = URL.createObjectURL(image);
+                        preview.alt = image.name;
+                        preview.className = 'h-20 w-20 rounded-md border border-[#d9ddd4] object-cover';
+                        reviewImagePreview.appendChild(preview);
+                    });
+                };
+
+                reviewImageInput.addEventListener('change', renderReviewImages);
+                reviewDropzone.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                    reviewDropzone.classList.add('border-[#145943]', 'bg-[#f0f6ed]');
+                });
+                reviewDropzone.addEventListener('dragleave', () => {
+                    reviewDropzone.classList.remove('border-[#145943]', 'bg-[#f0f6ed]');
+                });
+                reviewDropzone.addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    reviewDropzone.classList.remove('border-[#145943]', 'bg-[#f0f6ed]');
+
+                    if (event.dataTransfer?.files) {
+                        reviewImageInput.files = event.dataTransfer.files;
+                        renderReviewImages();
+                    }
+                });
+            }
+
             const track = document.getElementById('product-carousel-track');
             if (!track) return;
 
@@ -260,10 +443,17 @@
             const nextBtn = document.getElementById('carousel-next-btn');
             const counter = document.getElementById('carousel-counter');
             const thumbButtons = Array.from(document.querySelectorAll('.carousel-thumb-btn'));
+            const gallery = track.closest('[data-product-gallery]');
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
             let currentIndex = 0;
             let isProgrammatic = false;
             let scrollEndTimer = null;
+            let autoSlideTimer = null;
+            let autoDirection = 1;
+            let isHovered = false;
+            let isFocused = false;
+            let touchResumeTimer = null;
 
             function setActiveSlideIndex(newIndex) {
                 if (newIndex < 0 || newIndex >= slides.length) return;
@@ -292,7 +482,7 @@
 
                 track.scrollTo({
                     left: slides[index].offsetLeft,
-                    behavior: smooth ? 'smooth' : 'auto'
+                    behavior: smooth && !prefersReducedMotion ? 'smooth' : 'auto'
                 });
 
                 setActiveSlideIndex(index);
@@ -300,6 +490,27 @@
                 scrollEndTimer = setTimeout(() => {
                     isProgrammatic = false;
                 }, 450);
+            }
+
+            function stopAutoSlide() {
+                window.clearInterval(autoSlideTimer);
+                autoSlideTimer = null;
+            }
+
+            function startAutoSlide() {
+                stopAutoSlide();
+                if (prefersReducedMotion || slides.length < 2 || isHovered || isFocused) return;
+
+                autoSlideTimer = window.setInterval(() => {
+                    let nextIndex = currentIndex + autoDirection;
+
+                    if (nextIndex < 0 || nextIndex >= slides.length) {
+                        autoDirection *= -1;
+                        nextIndex = currentIndex + autoDirection;
+                    }
+
+                    scrollToSlide(nextIndex);
+                }, 3000);
             }
 
             if ('IntersectionObserver' in window) {
@@ -331,15 +542,19 @@
 
             if (prevBtn) {
                 prevBtn.addEventListener('click', () => {
+                    autoDirection = -1;
                     const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
                     scrollToSlide(prevIndex);
+                    startAutoSlide();
                 });
             }
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => {
+                    autoDirection = 1;
                     const nextIndex = (currentIndex + 1) % slides.length;
                     scrollToSlide(nextIndex);
+                    startAutoSlide();
                 });
             }
 
@@ -347,16 +562,53 @@
                 const targetIdx = parseInt(btn.getAttribute('data-target-slide'), 10);
                 btn.addEventListener('click', () => {
                     if (!isNaN(targetIdx)) {
+                        autoDirection = targetIdx >= currentIndex ? 1 : -1;
                         scrollToSlide(targetIdx);
+                        startAutoSlide();
                     }
                 });
             });
+
+            if (gallery) {
+                gallery.addEventListener('mouseenter', () => {
+                    isHovered = true;
+                    stopAutoSlide();
+                });
+
+                gallery.addEventListener('mouseleave', () => {
+                    isHovered = false;
+                    startAutoSlide();
+                });
+
+                gallery.addEventListener('focusin', () => {
+                    isFocused = true;
+                    stopAutoSlide();
+                });
+
+                gallery.addEventListener('focusout', (event) => {
+                    if (!gallery.contains(event.relatedTarget)) {
+                        isFocused = false;
+                        startAutoSlide();
+                    }
+                });
+
+                gallery.addEventListener('touchstart', () => {
+                    stopAutoSlide();
+                    window.clearTimeout(touchResumeTimer);
+                }, { passive: true });
+
+                gallery.addEventListener('touchend', () => {
+                    touchResumeTimer = window.setTimeout(startAutoSlide, 1500);
+                }, { passive: true });
+            }
 
             window.addEventListener('resize', () => {
                 if (slides[currentIndex]) {
                     track.scrollTo({ left: slides[currentIndex].offsetLeft, behavior: 'auto' });
                 }
             }, { passive: true });
+
+            startAutoSlide();
         });
     </script>
 </x-layouts.app>

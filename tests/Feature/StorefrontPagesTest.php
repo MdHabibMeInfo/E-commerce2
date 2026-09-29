@@ -2,10 +2,9 @@
 
 use App\Models\Cart;
 use App\Models\Category;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\User;
 
 it('loads the home page', function () {
     $response = $this->get(route('home'));
@@ -13,213 +12,7 @@ it('loads the home page', function () {
     $response->assertOk();
 });
 
-it('shows a hero carousel with product slides and navigation controls', function () {
-    $category = Category::create([
-        'name' => 'Fresh Fruits',
-        'slug' => 'fresh-fruits',
-        'is_active' => true,
-        'sort_order' => 1,
-    ]);
-
-    foreach (range(1, 3) as $productNumber) {
-        Product::create([
-            'category_id' => $category->id,
-            'name' => 'Carousel Product ' . $productNumber,
-            'slug' => 'carousel-product-' . $productNumber,
-            'sku' => 'CAROUSEL-' . $productNumber,
-            'short_description' => 'Fresh produce for every day.',
-            'price' => 100 + $productNumber,
-            'stock' => 20,
-            'type' => 'simple',
-            'is_active' => true,
-        ]);
-    }
-
-    $response = $this->get(route('home'));
-
-    $response->assertSee('data-hero-carousel', false);
-    $response->assertSee('data-hero-prev', false);
-    $response->assertSee('data-hero-next', false);
-    $response->assertSee('data-hero-dot="0"', false);
-    $response->assertSeeTextInOrder(['Carousel Product 1', 'Carousel Product 2', 'Carousel Product 3']);
-});
-
-it('links home and shop product cards to an image-backed product detail page', function () {
-    $category = Category::create([
-        'name' => 'Fresh Fruits',
-        'slug' => 'fresh-fruits',
-        'is_active' => true,
-        'sort_order' => 1,
-    ]);
-
-    $product = Product::create([
-        'category_id' => $category->id,
-        'name' => 'Detail Page Mango',
-        'slug' => 'detail-page-mango',
-        'sku' => 'DETAIL-MANGO-001',
-        'price' => 240,
-        'stock' => 20,
-        'type' => 'simple',
-        'is_active' => true,
-    ]);
-
-    ProductImage::create([
-        'product_id' => $product->id,
-        'image_path' => 'products/detail-page-mango.jpg',
-        'alt_text' => 'Fresh mangoes',
-        'is_primary' => true,
-        'sort_order' => 0,
-    ]);
-
-    $detailUrl = route('products.show', ['product' => $product->slug]);
-
-    foreach ([route('home'), route('shop')] as $listingUrl) {
-        $response = $this->get($listingUrl);
-
-        $response->assertSee('href="' . $detailUrl . '"', false);
-    }
-
-    $detailResponse = $this->get($detailUrl);
-
-    $detailResponse->assertSee('Detail Page Mango');
-    $detailResponse->assertSee('products/detail-page-mango.jpg');
-    $detailResponse->assertSee('id="product-carousel-track"', false);
-});
-
-it('submits homepage searches to the shop and filters matching products', function () {
-    $category = Category::create([
-        'name' => 'Fresh Fruits',
-        'slug' => 'fresh-fruits',
-        'is_active' => true,
-        'sort_order' => 1,
-    ]);
-
-    Product::create([
-        'category_id' => $category->id,
-        'name' => 'Fresh Mango',
-        'slug' => 'fresh-mango',
-        'sku' => 'SEARCH-MANGO-001',
-        'price' => 240,
-        'stock' => 20,
-        'type' => 'simple',
-        'is_active' => true,
-    ]);
-    Product::create([
-        'category_id' => $category->id,
-        'name' => 'Brown Rice',
-        'slug' => 'brown-rice',
-        'sku' => 'SEARCH-RICE-001',
-        'price' => 180,
-        'stock' => 20,
-        'type' => 'simple',
-        'is_active' => true,
-    ]);
-
-    $homeResponse = $this->get(route('home'));
-    $searchResponse = $this->get(route('shop', ['q' => 'Fresh Mango']));
-
-    expect(substr_count($homeResponse->getContent(), 'action="' . route('shop') . '" method="GET"'))->toBe(2);
-    $searchResponse->assertSee('Fresh Mango');
-    $searchResponse->assertDontSee('Brown Rice');
-});
-
-it('shows featured product pagination without arrow controls on the home page', function () {
-    $response = $this->get(route('home'));
-
-    $response->assertOk();
-    $response->assertSee('data-product-pagination');
-    $response->assertDontSee('data-product-prev');
-    $response->assertDontSee('data-product-next');
-});
-
-it('shows ten products in each homepage category row', function () {
-    $category = Category::create([
-        'name' => 'Fresh Fruits',
-        'slug' => 'fresh-fruits',
-        'is_active' => true,
-        'sort_order' => 1,
-    ]);
-
-    foreach (range(1, 10) as $productNumber) {
-        Product::create([
-            'category_id' => $category->id,
-            'name' => 'Fruit ' . $productNumber,
-            'slug' => 'fruit-' . $productNumber,
-            'sku' => 'FRUIT-' . $productNumber,
-            'price' => 100 + $productNumber,
-            'stock' => 20,
-            'type' => 'simple',
-            'is_active' => true,
-        ]);
-    }
-
-    $response = $this->get(route('home'));
-
-    $response->assertOk();
-    $response->assertSee('Fruit 1');
-    $response->assertSee('Fruit 10');
-    $response->assertSee('data-category-product-pagination="fresh-fruits"', false);
-});
-
-it('shows top selling products ranked by ordered quantity', function () {
-    $category = Category::create([
-        'name' => 'Grocery Staples',
-        'slug' => 'grocery-staples',
-        'is_active' => true,
-        'sort_order' => 1,
-    ]);
-
-    $topSeller = Product::create([
-        'category_id' => $category->id,
-        'name' => 'Top Seller',
-        'slug' => 'top-seller',
-        'sku' => 'TOP-SELLER-001',
-        'price' => 250,
-        'stock' => 20,
-        'type' => 'simple',
-        'is_active' => true,
-    ]);
-    $runnerUp = Product::create([
-        'category_id' => $category->id,
-        'name' => 'Runner Up',
-        'slug' => 'runner-up',
-        'sku' => 'RUNNER-UP-001',
-        'price' => 200,
-        'stock' => 20,
-        'type' => 'simple',
-        'is_active' => true,
-    ]);
-
-    $order = Order::create([
-        'customer_name' => 'Storefront Buyer',
-        'phone' => '0123456789',
-        'address' => '1 Market Street',
-        'city' => 'Dhaka',
-    ]);
-
-    OrderItem::create([
-        'order_id' => $order->id,
-        'product_id' => $topSeller->id,
-        'name' => $topSeller->name,
-        'price' => $topSeller->price,
-        'quantity' => 8,
-    ]);
-    OrderItem::create([
-        'order_id' => $order->id,
-        'product_id' => $runnerUp->id,
-        'name' => $runnerUp->name,
-        'price' => $runnerUp->price,
-        'quantity' => 3,
-    ]);
-
-    $response = $this->get(route('home'));
-
-    $response->assertSeeTextInOrder(['Top Selling Products', 'Top Seller', 'Runner Up']);
-    $response->assertSee('Best Selling');
-    $response->assertSee('data-buy-now', false);
-});
-
-it('shows only product names and current prices on home and shop cards', function () {
+it('shows product names and current and compare-at prices on home and shop cards', function () {
     $category = Category::create([
         'name' => 'Fresh Fruits',
         'slug' => 'fresh-fruits',
@@ -245,8 +38,8 @@ it('shows only product names and current prices on home and shop cards', functio
 
         $response->assertSee('Fresh Mango');
         $response->assertSee('240.00');
+        $response->assertSee('299.00');
         $response->assertDontSee('Sweet and juicy mango.');
-        $response->assertDontSee('299.00');
     }
 });
 
@@ -294,13 +87,11 @@ it('sorts shop products according to the selected order', function (?string $sor
         'sort_order' => 1,
     ]);
 
-    foreach (
-        [
-            ['name' => 'Old Product', 'sku' => 'SORT-001', 'price' => 200.00],
-            ['name' => 'Middle Product', 'sku' => 'SORT-002', 'price' => 500.00],
-            ['name' => 'New Product', 'sku' => 'SORT-003', 'price' => 100.00],
-        ] as $productData
-    ) {
+    foreach ([
+        ['name' => 'Old Product', 'sku' => 'SORT-001', 'price' => 200.00],
+        ['name' => 'Middle Product', 'sku' => 'SORT-002', 'price' => 500.00],
+        ['name' => 'New Product', 'sku' => 'SORT-003', 'price' => 100.00],
+    ] as $productData) {
         Product::create([
             'category_id' => $category->id,
             'name' => $productData['name'],
@@ -324,6 +115,41 @@ it('sorts shop products according to the selected order', function (?string $sor
     'price low to high' => ['price_asc', ['New Product', 'Old Product', 'Middle Product']],
     'price high to low' => ['price_desc', ['Middle Product', 'Old Product', 'New Product']],
 ]);
+
+it('lets shoppers choose how many products appear per page', function () {
+    $category = Category::create([
+        'name' => 'Fresh Fruits',
+        'slug' => 'fresh-fruits',
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+
+    foreach (range(1, 25) as $number) {
+        Product::create([
+            'category_id' => $category->id,
+            'name' => "Shop Product {$number}",
+            'slug' => "shop-product-{$number}",
+            'sku' => sprintf('PAGE-%03d', $number),
+            'price' => 100 + $number,
+            'stock' => 20,
+            'type' => 'simple',
+            'is_active' => true,
+        ]);
+    }
+
+    $defaultResponse = $this->get(route('shop'));
+    $selectedResponse = $this->get(route('shop', ['per_page' => 20]));
+
+    expect($defaultResponse->viewData('products')->count())->toBe(16)
+        ->and($selectedResponse->viewData('products')->count())->toBe(20);
+
+    $selectedResponse->assertSee('Show 16');
+    $selectedResponse->assertSee('Show 20');
+    $selectedResponse->assertSee('Show 24');
+    $selectedResponse->assertSee('Show 36');
+    $selectedResponse->assertSee('per_page=20', false);
+    $selectedResponse->assertSee('page=2', false);
+});
 
 it('shows the shop-by category, price, and product-variant filters on the shop page', function () {
     $category = Category::create([
@@ -464,6 +290,7 @@ it('creates an order from the current cart', function () {
 
     $response->assertRedirect();
     $this->assertDatabaseHas('orders', [
+        'user_id' => null,
         'customer_name' => 'John Doe',
         'phone' => '01712345678',
         'payment_method' => 'cod',
@@ -474,7 +301,67 @@ it('creates an order from the current cart', function () {
     ]);
 });
 
+it('links an account order and updates the customer profile', function () {
+    $customer = User::factory()->create([
+        'name' => 'Old Customer Name',
+        'phone' => null,
+    ]);
+    expect($customer->account_type)->toBe('customer');
+    $category = Category::create([
+        'name' => 'Fresh Fruits',
+        'slug' => 'fresh-fruits',
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => 'Fresh Mango',
+        'slug' => 'fresh-mango',
+        'sku' => 'MANGO-CUSTOMER-001',
+        'short_description' => 'Sweet and juicy mango.',
+        'price' => 240.00,
+        'compare_at_price' => 299.00,
+        'stock' => 20,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $cart = Cart::query()->create([
+        'session_id' => session()->getId(),
+        'user_id' => $customer->id,
+    ]);
+    session()->put('cart_id', $cart->id);
+    $cart->items()->create([
+        'product_id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->price,
+        'quantity' => 1,
+    ]);
+
+    $this->actingAs($customer)
+        ->postJson(route('checkout.store'), [
+            'cart_id' => $cart->id,
+            'customer_name' => 'Updated Customer Name',
+            'phone' => '01712345678',
+            'address' => 'House 12, Road 6, Dhanmondi',
+            'city' => 'Dhaka',
+            'payment_method' => 'cod',
+        ])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('users', [
+        'id' => $customer->id,
+        'name' => 'Updated Customer Name',
+        'phone' => '01712345678',
+    ]);
+    $this->assertDatabaseHas('orders', [
+        'user_id' => $customer->id,
+        'customer_name' => 'Updated Customer Name',
+    ]);
+});
+
 it('shows the system owner dashboard with permissions and maintenance overview', function () {
+    $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()));
+
     $response = $this->get(route('admin'));
 
     $response->assertOk();

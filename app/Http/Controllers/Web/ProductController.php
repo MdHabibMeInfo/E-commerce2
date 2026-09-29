@@ -24,7 +24,10 @@ class ProductController extends Controller
                 },
                 'variants',
                 'productAttributes',
+                'reviews' => fn ($query) => $query->latest()->limit(8),
             ])
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
             ->firstOrFail();
 
         return view('storefront.products.show', [

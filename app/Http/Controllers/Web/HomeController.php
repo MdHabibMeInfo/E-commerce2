@@ -19,6 +19,7 @@ class HomeController extends Controller
                 'products.name',
                 'products.slug',
                 'products.price',
+                'products.compare_at_price',
             ])
             ->withSum('orderItems as units_sold', 'quantity')
             ->with([

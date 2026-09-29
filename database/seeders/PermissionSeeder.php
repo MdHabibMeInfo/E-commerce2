@@ -104,6 +104,7 @@ class PermissionSeeder extends Seeder
 
             // Audit Logs
             'audit-logs.view',
+            'security.manage',
         ];
 
         foreach ($permissions as $permission) {

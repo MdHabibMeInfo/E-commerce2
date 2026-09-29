@@ -2,6 +2,10 @@
 
 use App\Models\Category;
 
+beforeEach(function () {
+    $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()));
+});
+
 it('loads the admin category management index', function () {
     $response = $this->get(route('admin.categories.index'));
 

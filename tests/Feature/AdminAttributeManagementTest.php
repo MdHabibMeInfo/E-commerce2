@@ -2,6 +2,10 @@
 
 use App\Models\ProductAttribute;
 
+beforeEach(function () {
+    $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()));
+});
+
 it('loads the admin attribute management index', function () {
     $response = $this->get(route('admin.attributes.index'));
 

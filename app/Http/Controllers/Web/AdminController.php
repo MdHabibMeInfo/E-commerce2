@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductAttribute;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
+use App\Models\SecurityEvent;
 use App\Models\User;
 use App\Services\AttributeValueService;
 use App\Services\CategoryService;
@@ -17,10 +18,14 @@ use App\Services\ProductAttributeService;
 use App\Services\ProductImageService;
 use App\Services\ProductService;
 use App\Services\ProductVariantService;
+use App\Services\SecurityEventService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -569,6 +574,102 @@ class AdminController extends Controller
         $productVariantService->restoreVariant($variant);
 
         return redirect()->route('admin')->with('success', 'Variant restored successfully.');
+    }
+
+    public function profile(): View
+    {
+        $profileUser = auth()->user();
+
+        return view('admin.profile', [
+            'profileUser' => $profileUser,
+            'profilePhotoUrl' => $profileUser?->profile_photo_path
+                ? Storage::disk('public')->url($profileUser->profile_photo_path)
+                : null,
+        ]);
+    }
+
+    public function updateProfile(Request $request, SecurityEventService $events): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($user->getKey())],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $oldProfilePhotoPath = $user->profile_photo_path;
+        $newProfilePhotoPath = $request->file('profile_photo')?->store('profile-photos', 'public');
+
+        $user->fill([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'] ?? null,
+        ]);
+
+        if ($newProfilePhotoPath) {
+            $user->profile_photo_path = $newProfilePhotoPath;
+        }
+
+        $user->save();
+
+        if ($newProfilePhotoPath && $oldProfilePhotoPath) {
+            Storage::disk('public')->delete($oldProfilePhotoPath);
+        }
+
+        $events->record($request, $user, 'admin_profile_updated', ['fields' => ['name', 'phone', 'profile_photo']]);
+
+        return redirect()->route('admin.profile')->with('status', 'Profile details updated. Change your email in Account Security.');
+    }
+
+    public function deleteProfilePhoto(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        if ($user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
+            $user->profile_photo_path = null;
+            $user->save();
+        }
+
+        return redirect()->route('admin.profile')->with('status', 'Profile photo removed.');
+    }
+
+    public function notifications(Request $request): View
+    {
+        $notifications = Order::query()
+            ->latest()
+            ->limit(10)
+            ->get(['id', 'order_number', 'customer_name', 'total', 'status', 'created_at']);
+        $request->session()->put('admin_notifications_last_seen_order_id', (int) (Order::query()->max('id') ?? 0));
+
+        return view('admin.notifications', compact('notifications'));
+    }
+
+    public function securityEvents(): View
+    {
+        $securityEvents = SecurityEvent::query()
+            ->with('user:id,name,email')
+            ->latest()
+            ->limit(200)
+            ->get();
+
+        return view('admin.security.events', compact('securityEvents'));
+    }
+
+    public function unreadNotifications(Request $request): JsonResponse
+    {
+        $query = Order::query();
+        $lastSeenOrderId = $request->session()->get('admin_notifications_last_seen_order_id');
+
+        if ($lastSeenOrderId !== null) {
+            $query->where('id', '>', (int) $lastSeenOrderId);
+        }
+
+        return response()->json([
+            'count' => $query->count(),
+        ]);
     }
 
     public function orders(): View

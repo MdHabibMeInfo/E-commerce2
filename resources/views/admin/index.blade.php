@@ -67,9 +67,16 @@
                 <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
                     Manage Orders
                 </div>
-                <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
-                    Manage Users & Roles
-                </div>
+                @canany(['roles.view', 'roles.create', 'roles.update'])
+                    <a href="{{ route('admin.roles.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">
+                        Manage Roles & Permissions
+                    </a>
+                @endcanany
+                @canany(['users.view', 'users.create', 'users.update'])
+                    <a href="{{ route('admin.users.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">
+                        Manage Staff Accounts
+                    </a>
+                @endcanany
                 <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
                     Site Settings & Security
                 </div>
