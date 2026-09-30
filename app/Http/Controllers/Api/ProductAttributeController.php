@@ -22,6 +22,10 @@ class ProductAttributeController extends Controller
 
         $query = ProductAttribute::query();
 
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
+
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
 

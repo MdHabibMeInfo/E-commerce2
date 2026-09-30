@@ -12,7 +12,7 @@ class StoreCategoryRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('categories.create') ?? false;
     }
 
     /**
@@ -47,10 +47,11 @@ class StoreCategoryRequest extends FormRequest
                 'string',
             ],
 
-            'image' => [
-                'nullable',
-                'string',
-                'max:255',
+            'image' => ['sometimes', 'nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
+
+            'remove_image' => [
+                'sometimes',
+                'boolean',
             ],
 
             'is_active' => [

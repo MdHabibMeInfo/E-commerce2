@@ -54,6 +54,7 @@ class CustomerRegistrationController extends Controller
 
         Auth::login($customer);
         $request->session()->regenerate();
+        // $customer->sendEmailVerificationNotification();
 
         return redirect()->intended(route('home'))->with('status', 'Account created successfully.');
     }

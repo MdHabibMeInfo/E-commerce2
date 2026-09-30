@@ -22,7 +22,9 @@ class ProductController extends Controller
                         ->orderBy('sort_order')
                         ->orderBy('id');
                 },
-                'variants',
+                'variants' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->with('attributeValues.productAttribute'),
                 'productAttributes',
                 'reviews' => fn ($query) => $query->latest()->limit(8),
             ])

@@ -148,15 +148,55 @@
                         {{ $product->name }}
                     </h1>
 
-                    {{-- Price --}}
-                    @if ($product->price !== null || $product->compare_at_price !== null)
-
+                    @if ($product->type === 'variable')
+                        @php
+                            $startingVariant = $product->variants
+                                ->where('stock', '>', 0)
+                                ->sortBy('price')
+                                ->first();
+                        @endphp
                         <div class="mt-6 flex flex-wrap items-center gap-3">
+                            <span data-variant-price-display class="text-2xl font-extrabold text-[#145943]">
+                                @if ($startingVariant)
+                                    From ৳{{ number_format((float) $startingVariant->price, 2) }}
+                                @else
+                                    No variants available
+                                @endif
+                            </span>
+                            <span data-variant-compare-display class="hidden text-sm text-[#9aa19c] line-through"></span>
+                        </div>
 
+                        <label for="product-variant-select" class="mt-5 block text-sm font-bold text-[#173b32]">Choose a variant</label>
+                        <select
+                            id="product-variant-select"
+                            data-product-variant-select
+                            data-product-unavailable="{{ $product->is_out_of_stock ? 'true' : 'false' }}"
+                            class="mt-2 h-12 w-full max-w-md rounded-lg border border-[#d9ddd4] bg-white px-3 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/15"
+                        >
+                            <option value="">Select an available option</option>
+                            @foreach ($product->variants as $variant)
+                                <option
+                                    value="{{ $variant->id }}"
+                                    data-price="{{ $variant->price }}"
+                                    data-compare-at-price="{{ $variant->compare_at_price }}"
+                                    data-stock="{{ $variant->stock }}"
+                                    @disabled($variant->stock < 1 || $product->is_out_of_stock)
+                                >
+                                    {{ $variant->displayName() }} · ৳{{ number_format((float) $variant->price, 2) }}{{ $variant->stock < 1 ? ' · Out of stock' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p data-variant-selection-status class="mt-2 min-h-5 text-sm text-[#738078]">
+                            @if ($product->variants->isEmpty())
+                                No active variants are available.
+                            @else
+                                Select an in-stock option to continue.
+                            @endif
+                        </p>
+                    @elseif ($product->price !== null || $product->compare_at_price !== null)
+                        <div class="mt-6 flex flex-wrap items-center gap-3">
                             @if ($product->price !== null)
-                                <span class="text-2xl font-extrabold text-[#145943]">
-                                    ৳{{ number_format((float) $product->price, 2) }}
-                                </span>
+                                <span class="text-2xl font-extrabold text-[#145943]">৳{{ number_format((float) $product->price, 2) }}</span>
                             @endif
 
                             @if ($product->compare_at_price !== null)
@@ -166,31 +206,47 @@
                             @endif
 
                         </div>
-
                     @endif
 
-                    {{-- Cart placeholder --}}
                     <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+                        @if ($product->is_out_of_stock)
+                            <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl border border-[#dfe3cf] bg-[#f4f1ea] px-6 py-3.5 text-sm font-bold text-[#738078] sm:w-fit">
+                                Out of stock
+                            </button>
+                        @else
+                            <button
+                                type="button"
+                                aria-label="Add {{ $product->name }} to cart"
+                                data-product-id="{{ $product->id }}"
+                                data-product-name="{{ $product->name }}"
+                                data-product-type="{{ $product->type }}"
+                                data-product-url="{{ route('products.show', ['product' => $product->slug]) }}"
+                                data-product-price="{{ (float) ($startingVariant?->price ?? $product->price) }}"
+                                data-product-image="{{ $product->primaryImage ? '/storage/' . ltrim($product->primaryImage->image_path, '/') : ($product->images->first() ? '/storage/' . ltrim($product->images->first()->image_path, '/') : '') }}"
+                                data-product-emoji="🛍️"
+                                @if ($product->type === 'variable') data-product-variant-purchase @disabled(true) @endif
+                                class="inline-flex w-full items-center justify-center rounded-xl bg-[#145943] px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#b28d35] disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+                            >
+                                Add to Cart
+                            </button>
 
-                        <button
-                            type="button"
-                            aria-label="Add {{ $product->name }} to cart"
-                            data-product-id="{{ $product->id }}"
-                            data-product-name="{{ $product->name }}"
-                            data-product-price="{{ (float) $product->price }}"
-                            data-product-image="{{ $product->primaryImage ? '/storage/' . ltrim($product->primaryImage->image_path, '/') : ($product->images->first() ? '/storage/' . ltrim($product->images->first()->image_path, '/') : '') }}"
-                            data-product-emoji="🛍️"
-                            class="inline-flex w-full items-center justify-center rounded-xl bg-[#145943] px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-[#b28d35] sm:w-fit"
-                        >
-                            Add to Cart
-                        </button>
-
-                        <a
-                            href="{{ route('checkout') }}"
-                            class="inline-flex w-full items-center justify-center rounded-xl bg-[#d7b45a] px-6 py-3.5 text-sm font-bold text-[#173b32] transition-colors hover:bg-[#e5c774] sm:w-fit"
-                        >
-                            Buy Now
-                        </a>
+                            <button
+                                type="button"
+                                aria-label="Buy {{ $product->name }} now"
+                                data-buy-now
+                                data-product-id="{{ $product->id }}"
+                                data-product-name="{{ $product->name }}"
+                                data-product-type="{{ $product->type }}"
+                                data-product-url="{{ route('products.show', ['product' => $product->slug]) }}"
+                                data-product-price="{{ (float) ($startingVariant?->price ?? $product->price) }}"
+                                data-product-image="{{ $product->primaryImage ? '/storage/' . ltrim($product->primaryImage->image_path, '/') : ($product->images->first() ? '/storage/' . ltrim($product->images->first()->image_path, '/') : '') }}"
+                                data-product-emoji="🛍️"
+                                @if ($product->type === 'variable') data-product-variant-purchase @disabled(true) @endif
+                                class="inline-flex w-full items-center justify-center rounded-xl bg-[#d7b45a] px-6 py-3.5 text-sm font-bold text-[#173b32] transition-colors hover:bg-[#e5c774] disabled:cursor-not-allowed disabled:opacity-50 sm:w-fit"
+                            >
+                                Buy Now
+                            </button>
+                        @endif
 
                         <button
                             type="button"

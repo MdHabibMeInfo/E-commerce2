@@ -20,6 +20,7 @@ class ProductAttributeAssignmentService
 
         $usedAttributeIds = $product
             ->variants()
+            ->withTrashed()
             ->whereHas(
                 'attributeValues',
                 function ($query) use ($attributeIds) {

@@ -52,7 +52,7 @@ class ProductVariantPolicy
      */
     public function restore(User $user, ProductVariant $productVariant): bool
     {
-        return false;
+        return $user->can('variants.update');
     }
 
     /**

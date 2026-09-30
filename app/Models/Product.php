@@ -23,9 +23,9 @@ class Product extends Model
         'description',
         'price',
         'compare_at_price',
-        'stock',
         'type',
         'is_active',
+        'is_out_of_stock',
     ];
 
     protected function casts(): array
@@ -33,8 +33,8 @@ class Product extends Model
         return [
             'price' => 'decimal:2',
             'compare_at_price' => 'decimal:2',
-            'stock' => 'integer',
             'is_active' => 'boolean',
+            'is_out_of_stock' => 'boolean',
         ];
     }
 

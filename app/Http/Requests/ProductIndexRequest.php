@@ -69,7 +69,6 @@ class ProductIndexRequest extends FormRequest
                     'id',
                     'name',
                     'price',
-                    'stock',
                     'created_at',
                 ]),
             ],

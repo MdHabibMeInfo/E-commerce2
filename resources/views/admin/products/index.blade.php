@@ -22,6 +22,36 @@
         </div>
     @endif
 
+    <form method="GET" action="{{ route('admin.products.index') }}" data-admin-search data-suggestions-url="{{ route('admin.products.suggestions') }}" class="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <label for="product-search" class="sr-only">Search products</label>
+        <div class="relative min-w-0 flex-1 basis-full sm:basis-64">
+            <input id="product-search" data-admin-search-input type="search" name="search" value="{{ request('search') }}" placeholder="Search name, SKU, or slug" maxlength="100" autocomplete="off" aria-autocomplete="list" aria-controls="product-search-suggestions" aria-expanded="false" class="w-full rounded-lg border border-[#dfe3cf] bg-white px-3 py-2.5 text-sm text-[#173b32] focus:border-[#145943] focus:outline-none">
+            <div id="product-search-suggestions" data-admin-search-results role="listbox" aria-label="Product suggestions" class="absolute inset-x-0 top-full z-20 mt-1 hidden max-h-72 overflow-y-auto rounded-lg border border-[#dfe3cf] bg-white py-1 shadow-lg"></div>
+        </div>
+        <label for="product-status" class="sr-only">Filter by product status</label>
+        <div class="relative min-w-0 flex-1 basis-full sm:basis-40">
+            <input id="product-status" data-admin-filter-input data-filter-options="status" type="search" value="{{ request('status') === 'active' ? 'Active' : (request('status') === 'inactive' ? 'Inactive' : '') }}" placeholder="Filter status" autocomplete="off" aria-autocomplete="list" aria-controls="product-status-suggestions" aria-expanded="false" class="w-full rounded-lg border border-[#dfe3cf] bg-white px-3 py-2.5 text-sm text-[#173b32] focus:border-[#145943] focus:outline-none">
+            <input data-filter-value type="hidden" name="status" value="{{ request('status') }}">
+            <div id="product-status-suggestions" data-admin-filter-results role="listbox" aria-label="Product status options" class="absolute inset-x-0 top-full z-20 mt-1 hidden max-h-72 overflow-y-auto rounded-lg border border-[#dfe3cf] bg-white py-1 shadow-lg"></div>
+        </div>
+        <label for="product-category" class="sr-only">Filter by category</label>
+        <div class="relative min-w-0 flex-1 basis-full sm:basis-48">
+            <input id="product-category" data-admin-filter-input data-filter-suggestions-url="{{ route('admin.categories.suggestions') }}" type="search" value="{{ $selectedCategory?->name }}" placeholder="Search category" autocomplete="off" aria-autocomplete="list" aria-controls="product-category-suggestions" aria-expanded="false" class="w-full rounded-lg border border-[#dfe3cf] bg-white px-3 py-2.5 text-sm text-[#173b32] focus:border-[#145943] focus:outline-none">
+            <input data-filter-value type="hidden" name="category_id" value="{{ $selectedCategory?->id }}">
+            <div id="product-category-suggestions" data-admin-filter-results role="listbox" aria-label="Category filter suggestions" class="absolute inset-x-0 top-full z-20 mt-1 hidden max-h-72 overflow-y-auto rounded-lg border border-[#dfe3cf] bg-white py-1 shadow-lg"></div>
+        </div>
+        <label for="product-type" class="sr-only">Filter by product type</label>
+        <div class="relative min-w-0 flex-1 basis-full sm:basis-40">
+            <input id="product-type" data-admin-filter-input data-filter-options="type" type="search" value="{{ request('type') === 'simple' ? 'Simple' : (request('type') === 'variable' ? 'Variable' : '') }}" placeholder="Filter type" autocomplete="off" aria-autocomplete="list" aria-controls="product-type-suggestions" aria-expanded="false" class="w-full rounded-lg border border-[#dfe3cf] bg-white px-3 py-2.5 text-sm text-[#173b32] focus:border-[#145943] focus:outline-none">
+            <input data-filter-value type="hidden" name="type" value="{{ request('type') }}">
+            <div id="product-type-suggestions" data-admin-filter-results role="listbox" aria-label="Product type options" class="absolute inset-x-0 top-full z-20 mt-1 hidden max-h-72 overflow-y-auto rounded-lg border border-[#dfe3cf] bg-white py-1 shadow-lg"></div>
+        </div>
+        <button type="submit" class="rounded-lg bg-[#145943] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#a48335]">Filter</button>
+        @if (request()->hasAny(['search', 'status', 'category_id', 'type']))
+            <a href="{{ route('admin.products.index') }}" class="rounded-lg border border-[#dfe3cf] bg-white px-4 py-2.5 text-center text-sm font-bold text-[#145943] transition hover:bg-[#f7f4ee]">Clear</a>
+        @endif
+    </form>
+
     <div class="overflow-hidden rounded-[20px] border border-[#e5e2d9] bg-white shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full text-left text-sm text-[#4d5c56]">
@@ -30,7 +60,7 @@
                         <th class="px-4 py-3 font-bold">Product</th>
                         <th class="px-4 py-3 font-bold">Category</th>
                         <th class="px-4 py-3 font-bold">Price</th>
-                        <th class="px-4 py-3 font-bold">Stock</th>
+                        <th class="px-4 py-3 font-bold">Availability</th>
                         <th class="px-4 py-3 font-bold">Status</th>
                         <th class="px-4 py-3 font-bold">Actions</th>
                     </tr>
@@ -70,13 +100,19 @@
                                 <span class="font-bold text-[#145943]">৳{{ number_format((float) ($product->price ?? 0), 2) }}</span>
                             </td>
                             <td class="px-4 py-4">
-                                {{ $product->stock ?? 0 }}
+                                @if ($product->is_out_of_stock)
+                                    <span class="rounded-full bg-[#fef0d8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a15b1d]">Out of stock</span>
+                                @else
+                                    <span class="rounded-full bg-[#edf8f1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#145943]">Available</span>
+                                @endif
                             </td>
                             <td class="px-4 py-4">
                                 @if ($product->trashed())
                                     <span class="rounded-full bg-[#fef0d8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a15b1d]">Deleted</span>
-                                @else
+                                @elseif ($product->is_active)
                                     <span class="rounded-full bg-[#edf8f1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#145943]">Active</span>
+                                @else
+                                    <span class="rounded-full bg-[#f4f1ea] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#4d5c56]">Inactive</span>
                                 @endif
                             </td>
                             <td class="px-4 py-4">
@@ -95,6 +131,14 @@
                                             </button>
                                         </form>
                                     @else
+                                        <form method="POST" action="{{ route('admin.products.availability', $product) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="is_out_of_stock" value="{{ $product->is_out_of_stock ? 0 : 1 }}">
+                                            <button type="submit" class="rounded-lg border border-[#dfe3cf] bg-white px-3 py-1.5 text-xs font-bold text-[#145943] transition hover:bg-[#f7f4ee]">
+                                                {{ $product->is_out_of_stock ? 'Mark available' : 'Mark out of stock' }}
+                                            </button>
+                                        </form>
                                         <form method="POST" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Delete this product?')">
                                             @csrf
                                             @method('DELETE')
@@ -116,5 +160,8 @@
                 </tbody>
             </table>
         </div>
+    </div>
+    <div class="mt-5">
+        {{ $products->links() }}
     </div>
 @endsection

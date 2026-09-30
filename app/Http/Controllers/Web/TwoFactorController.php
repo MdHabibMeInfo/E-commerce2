@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\User;
 use App\Notifications\LoginNotification;
 use App\Notifications\SecurityAlertNotification;
@@ -179,6 +180,12 @@ class TwoFactorController extends Controller
 
     private function recordSuccessfulLogin(Request $request, User $user, SecurityEventService $events): void
     {
+        if ($user->can('access-admin') && $user->admin_notifications_last_seen_order_id === null) {
+            $user->forceFill([
+                'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
+            ])->save();
+        }
+
         $newDevice = $events->recordLogin($request, $user);
 
         if ($user->account_type === 'admin' && $newDevice) {

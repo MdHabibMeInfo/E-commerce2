@@ -22,6 +22,16 @@
         </div>
     @endif
 
+    @if ($errors->any())
+        <div role="alert" class="mb-6 rounded-xl border border-[#f1c9c4] bg-[#fff1ef] px-4 py-3 text-sm text-[#9f2720]">
+            <ul class="space-y-1">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div class="rounded-[22px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-4 border-b border-[#efeae0] pb-4">
@@ -48,8 +58,8 @@
                     <p class="mt-2 text-base font-bold text-[#173b32]">৳{{ number_format((float) ($product->price ?? 0), 2) }}</p>
                 </div>
                 <div class="rounded-2xl bg-[#f8f7f2] p-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-[#a48335]">Stock</p>
-                    <p class="mt-2 text-base font-bold text-[#173b32]">{{ $product->stock ?? 0 }}</p>
+                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-[#a48335]">Availability</p>
+                    <p class="mt-2 text-base font-bold text-[#173b32]">{{ $product->is_out_of_stock ? 'Out of stock' : 'Available' }}</p>
                 </div>
             </div>
 
@@ -205,6 +215,189 @@
             </div>
         </div>
     </div>
+
+    @if ($product->type === 'variable')
+        <div class="mt-6 grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+            <section class="rounded-[22px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Configuration</p>
+                <h2 class="mt-1 text-xl font-extrabold text-[#145943]">Product Attributes</h2>
+                <p class="mt-2 text-sm text-[#738078]">Choose the attributes that define this product's variants.</p>
+
+                @can('products.update')
+                    <form method="POST" action="{{ route('admin.products.attributes.update', $product) }}" class="mt-4 space-y-3">
+                            @csrf
+                            @method('PUT')
+                            @forelse ($availableAttributes as $attribute)
+                                <label class="flex items-start gap-3 rounded-lg border border-[#e5e2d9] px-3 py-3">
+                                    <input type="checkbox" name="product_attribute_ids[]" value="{{ $attribute->id }}" {{ $product->productAttributes->contains('id', $attribute->id) ? 'checked' : '' }} class="mt-0.5 h-4 w-4 rounded border-[#dfe3cf] text-[#145943] focus:ring-[#145943]">
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-bold text-[#173b32]">{{ $attribute->name }}</span>
+                                        <span class="block text-xs text-[#738078]">{{ $attribute->values->where('is_active', true)->count() }} active values</span>
+                                    </span>
+                                </label>
+                            @empty
+                                <p class="rounded-lg bg-[#f7f4ee] px-3 py-3 text-sm text-[#738078]">Create active product attributes and values before configuring variants.</p>
+                            @endforelse
+                            @error('product_attribute_ids') <p class="text-xs text-red-700">{{ $message }}</p> @enderror
+                            @error('product_attribute_ids.*') <p class="text-xs text-red-700">{{ $message }}</p> @enderror
+                            <button type="submit" class="w-full rounded-lg bg-[#145943] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#a48335]">Assign Attributes</button>
+                        </form>
+                @endcan
+
+                @can('variants.create')
+                    @if ($canCreateVariants)
+                        <details class="mt-6 border-t border-[#efeae0] pt-4">
+                            <summary class="cursor-pointer text-sm font-bold text-[#145943]">Create Variant</summary>
+                            <form method="POST" action="{{ route('admin.products.variants.store', $product) }}" class="mt-4 space-y-4">
+                                @csrf
+                                <div class="grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label for="variant-name" class="mb-1 block text-xs font-bold text-[#4d5c56]">Variant name</label>
+                                        <input id="variant-name" name="name" value="{{ old('name') }}" maxlength="255" class="w-full rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm focus:border-[#145943] focus:outline-none">
+                                        @error('name') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label for="variant-sku" class="mb-1 block text-xs font-bold text-[#4d5c56]">SKU</label>
+                                        <input id="variant-sku" name="sku" value="{{ old('sku') }}" required maxlength="255" class="w-full rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm focus:border-[#145943] focus:outline-none">
+                                        @error('sku') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label for="variant-price" class="mb-1 block text-xs font-bold text-[#4d5c56]">Price</label>
+                                        <input id="variant-price" type="number" name="price" value="{{ old('price') }}" required min="0" step="0.01" class="w-full rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm focus:border-[#145943] focus:outline-none">
+                                        @error('price') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label for="variant-compare-price" class="mb-1 block text-xs font-bold text-[#4d5c56]">Compare-at price</label>
+                                        <input id="variant-compare-price" type="number" name="compare_at_price" value="{{ old('compare_at_price') }}" min="0" step="0.01" class="w-full rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm focus:border-[#145943] focus:outline-none">
+                                        @error('compare_at_price') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label for="variant-stock" class="mb-1 block text-xs font-bold text-[#4d5c56]">Variant stock</label>
+                                        <input id="variant-stock" type="number" name="stock" value="{{ old('stock', 0) }}" required min="0" class="w-full rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm focus:border-[#145943] focus:outline-none">
+                                        @error('stock') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+                                    </div>
+                                </div>
+
+                                <fieldset class="space-y-3">
+                                    <legend class="text-xs font-bold text-[#4d5c56]">Attribute values</legend>
+                                    @foreach ($product->productAttributes as $attribute)
+                                        <div>
+                                            <p class="mb-2 text-xs font-semibold text-[#738078]">{{ $attribute->name }}</p>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach ($attribute->values->whereNull('deleted_at')->where('is_active', true) as $value)
+                                                    <label class="flex items-center gap-2 rounded-md border border-[#e5e2d9] px-2.5 py-1.5 text-xs text-[#4d5c56]">
+                                                        <input type="checkbox" name="attribute_value_ids[]" value="{{ $value->id }}" {{ in_array($value->id, old('attribute_value_ids', [])) ? 'checked' : '' }} class="h-3.5 w-3.5 rounded border-[#dfe3cf] text-[#145943] focus:ring-[#145943]">
+                                                        {{ $value->value }}
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                    @error('attribute_value_ids') <p class="text-xs text-red-700">{{ $message }}</p> @enderror
+                                    @error('attribute_value_ids.*') <p class="text-xs text-red-700">{{ $message }}</p> @enderror
+                                </fieldset>
+
+                                <div class="flex items-center gap-2">
+                                    <input type="hidden" name="is_active" value="0">
+                                    <input id="variant-active" type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} class="h-4 w-4 rounded border-[#dfe3cf] text-[#145943] focus:ring-[#145943]">
+                                    <label for="variant-active" class="text-xs font-semibold text-[#4d5c56]">Active variant</label>
+                                </div>
+                                <button type="submit" class="w-full rounded-lg bg-[#145943] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#a48335]">Save Variant</button>
+                            </form>
+                        </details>
+                    @else
+                        <p class="mt-5 border-t border-[#efeae0] pt-4 text-sm text-[#738078]">Assign at least one active attribute with an active value before creating variants.</p>
+                    @endif
+                @endcan
+            </section>
+
+            <section class="rounded-[22px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+                <div class="flex items-center justify-between gap-3 border-b border-[#efeae0] pb-4">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Catalog</p>
+                        <h2 class="mt-1 text-xl font-extrabold text-[#145943]">Product Variants</h2>
+                    </div>
+                    <span class="text-sm text-[#738078]">{{ $variants->total() }} total</span>
+                </div>
+
+                <div class="divide-y divide-[#efeae0]">
+                    @forelse ($variants as $variant)
+                        <article class="py-4">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="font-bold text-[#173b32]">{{ $variant->name ?: $variant->attributeValues->pluck('value')->implode(' / ') }}</h3>
+                                    <p class="mt-1 text-xs text-[#738078]">{{ $variant->sku }} · ৳{{ number_format((float) $variant->price, 2) }} · Variant stock {{ $variant->stock }}</p>
+                                    <p class="mt-1 text-xs {{ $variant->trashed() ? 'text-[#a15b1d]' : ($variant->is_active ? 'text-[#145943]' : 'text-[#738078]') }}">
+                                        {{ $variant->trashed() ? 'Deleted' : ($variant->is_active ? 'Active' : 'Inactive') }}
+                                        @if ($variant->attributeValues->isNotEmpty())
+                                            · {{ $variant->attributeValues->map(fn ($value) => $value->productAttribute->name.': '.$value->value)->implode(' / ') }}
+                                        @endif
+                                    </p>
+                                </div>
+                                @if ($variant->trashed())
+                                    @can('variants.update')
+                                        <form method="POST" action="{{ route('admin.products.variants.restore', [$product, $variant]) }}">
+                                            @csrf
+                                            <button type="submit" class="rounded-lg bg-[#145943] px-3 py-2 text-xs font-bold text-white">Restore</button>
+                                        </form>
+                                    @endcan
+                                @else
+                                    <details>
+                                        <summary class="cursor-pointer rounded-lg border border-[#dfe3cf] px-3 py-2 text-xs font-bold text-[#145943]">Edit variant</summary>
+                                        @can('variants.update')
+                                            <form method="POST" action="{{ route('admin.products.variants.update', [$product, $variant]) }}" class="mt-3 space-y-3 rounded-lg border border-[#e5e2d9] p-3">
+                                                @csrf
+                                                @method('PUT')
+                                                <div class="grid gap-2 sm:grid-cols-2">
+                                                    <input name="name" value="{{ $variant->name }}" placeholder="Variant name" maxlength="255" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
+                                                    <input name="sku" value="{{ $variant->sku }}" required maxlength="255" aria-label="Variant SKU" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
+                                                    <input type="number" name="price" value="{{ $variant->price }}" required min="0" step="0.01" aria-label="Variant price" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
+                                                    <input type="number" name="compare_at_price" value="{{ $variant->compare_at_price }}" min="0" step="0.01" aria-label="Variant compare-at price" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
+                                                    <input type="number" name="stock" value="{{ $variant->stock }}" required min="0" aria-label="Variant stock" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
+                                                </div>
+                                                @foreach ($product->productAttributes as $attribute)
+                                                    <fieldset>
+                                                        <legend class="mb-1 text-xs font-bold text-[#4d5c56]">{{ $attribute->name }}</legend>
+                                                        <div class="flex flex-wrap gap-2">
+                                                            @foreach ($attribute->values->whereNull('deleted_at')->where('is_active', true) as $value)
+                                                                <label class="flex items-center gap-2 rounded-md border border-[#e5e2d9] px-2 py-1 text-xs text-[#4d5c56]">
+                                                                    <input type="checkbox" name="attribute_value_ids[]" value="{{ $value->id }}" {{ $variant->attributeValues->contains('id', $value->id) ? 'checked' : '' }} class="h-3.5 w-3.5 rounded border-[#dfe3cf] text-[#145943]">
+                                                                    {{ $value->value }}
+                                                                </label>
+                                                            @endforeach
+                                                        </div>
+                                                    </fieldset>
+                                                @endforeach
+                                                <div class="flex items-center gap-2">
+                                                    <input type="hidden" name="is_active" value="0">
+                                                    <input id="variant-{{ $variant->id }}-active" type="checkbox" name="is_active" value="1" {{ $variant->is_active ? 'checked' : '' }} class="h-4 w-4 rounded border-[#dfe3cf] text-[#145943]">
+                                                    <label for="variant-{{ $variant->id }}-active" class="text-xs font-semibold text-[#4d5c56]">Active</label>
+                                                    <button type="submit" class="ml-auto rounded-lg bg-[#145943] px-3 py-2 text-xs font-bold text-white">Save</button>
+                                                </div>
+                                            </form>
+                                        @endcan
+                                    </details>
+                                @endif
+                            </div>
+
+                            @if (! $variant->trashed())
+                                @can('variants.delete')
+                                    <form method="POST" action="{{ route('admin.products.variants.destroy', [$product, $variant]) }}" onsubmit="return confirm('Delete this variant?')" class="mt-3 text-right">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs font-bold text-[#a15b1d]">Delete variant</button>
+                                    </form>
+                                @endcan
+                            @endif
+                        </article>
+                    @empty
+                        <p class="py-8 text-center text-sm text-[#738078]">No variants have been created for this product.</p>
+                    @endforelse
+                </div>
+                <div class="mt-4">{{ $variants->links() }}</div>
+            </section>
+        </div>
+    @endif
 
     <script>
         document.getElementById('show_upload_images')?.addEventListener('change', function(e) {

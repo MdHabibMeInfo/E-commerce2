@@ -19,6 +19,14 @@
 
     <div class="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
         <div class="rounded-[22px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+            @error('category')
+                <div role="alert" class="mb-5 rounded-xl border border-[#f1c9c4] bg-[#fff1ef] px-4 py-3 text-sm font-medium text-[#9f2720]">
+                    {{ $message }}
+                </div>
+            @enderror
+            @if ($category->image_url)
+                <img src="{{ $category->image_url }}" alt="{{ $category->name }}" class="mb-6 h-40 w-40 rounded-xl border border-[#e5e2d9] object-cover">
+            @endif
             <div class="grid gap-5 md:grid-cols-2">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-[#a48335]">Slug</p>

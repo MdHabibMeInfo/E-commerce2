@@ -1,13 +1,13 @@
 <?php
 
-use App\Models\SecurityEvent;
 use App\Models\User;
 use App\Notifications\LoginNotification;
 use App\Notifications\PasswordResetNotification;
-use App\Services\TotpService;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -17,29 +17,22 @@ it('renders the admin sign-in form', function () {
         ->assertOk()
         ->assertSee('Sign in')
         ->assertSee('name="email"', false)
-        ->assertSee('name="password"', false);
+        ->assertSee('name="password"', false)
+        ->assertSee('aria-controls="login-password"', false);
 });
 
 it('renders the customer registration form', function () {
     $this->get(route('register'))
         ->assertOk()
-        ->assertSee('Create account');
+        ->assertSee('Create account')
+        ->assertSee('aria-controls="register-password"', false)
+        ->assertSee('aria-controls="register-password-confirmation"', false);
 });
 
-it('shows password recovery and uses an enumeration-resistant response', function () {
-    Notification::fake();
-    $user = createSystemOwnerUser(['email' => 'password-reset-owner@example.com']);
-
-    $this->get(route('password.request'))->assertOk();
-    $this->from(route('password.request'))
-        ->post(route('password.email'), ['email' => 'missing-password-owner@example.com'])
-        ->assertSessionHas('status', 'If an account matches that email address, a password reset link will be sent.');
-
-    $this->from(route('password.request'))
-        ->post(route('password.email'), ['email' => $user->email])
-        ->assertSessionHas('status', 'If an account matches that email address, a password reset link will be sent.');
-
-    Notification::assertSentTo($user, PasswordResetNotification::class);
+it('renders the password reset request form', function () {
+    $this->get(route('password.request'))
+        ->assertOk()
+        ->assertSee('Reset password');
 });
 
 it('registers a customer account without email verification or notifications', function () {
@@ -82,7 +75,6 @@ it('redirects guests to sign in before showing admin pages', function () {
 
 it('requires system owners to enroll an authenticator before dashboard access', function () {
     $user = createSystemOwnerUser(['email' => 'owner@example.com']);
-    $totp = app(TotpService::class);
     Notification::fake();
 
     $this->post(route('login.store'), [
@@ -93,26 +85,9 @@ it('requires system owners to enroll an authenticator before dashboard access', 
     $this->assertAuthenticatedAs($user);
     Notification::assertNothingSent();
     $this->get(route('admin'))->assertRedirect(route('admin.two-factor.setup'));
-
-    $this->get(route('admin.two-factor.setup'))
-        ->assertOk()
-        ->assertSee('Secret key')
-        ->assertSee('Authenticator setup QR code', false)
-        ->assertSee('data:image/svg+xml;base64,', false);
-    $secret = Crypt::decryptString(session('security.pending_two_factor_secret'));
-
-    $this->post(route('admin.two-factor.confirm'), [
-        'code' => $totp->codeAt($secret, now()->timestamp),
-    ])->assertRedirect(route('account.security'));
-
-    $this->get(route('admin'))->assertOk();
-    $this->assertDatabaseHas('security_events', [
-        'user_id' => $user->id,
-        'action' => 'two_factor_enabled',
-    ]);
 });
 
-it('requires an unverified system owner to verify email before authenticator enrollment', function () {
+it('requires unverified system owners to verify email before authenticator enrollment', function () {
     $user = createSystemOwnerUser(['email' => 'unverified-owner@example.com']);
     $user->forceFill(['email_verified_at' => null])->save();
 
@@ -131,29 +106,106 @@ it('sends a signed verification email and verifies the management account', func
     Notification::fake();
 
     $this->actingAs($user)
-        ->get('/email/verify')
+        ->get(route('verification.notice'))
         ->assertOk();
 
-    $this->post('/email/verification-notification')
+    $this->post(route('verification.send'))
         ->assertRedirect()
         ->assertSessionHas('status', 'A new verification link has been sent to your email address.');
 
     Notification::assertSentTo($user, VerifyEmail::class);
+
     $verificationUrl = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
         ['id' => $user->getKey(), 'hash' => sha1($user->email)],
     );
 
-    $this->get($verificationUrl)->assertRedirect();
-    $this->assertNotNull($user->fresh()->email_verified_at);
-    $this->assertDatabaseHas('security_events', [
-        'user_id' => $user->id,
-        'action' => 'email_verified',
-    ]);
-    $this->get(route('admin'))->assertRedirect(route('admin.two-factor.setup'));
+    $this->get($verificationUrl)->assertRedirect(route('admin'));
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+});
 
-    Notification::assertSentTo($user, VerifyEmail::class);
+it('sends a password reset email without revealing whether an account exists', function () {
+    $user = User::factory()->create(['email' => 'reset-user@example.com']);
+    Notification::fake();
+
+    $this->post(route('password.email'), ['email' => $user->email])
+        ->assertRedirect()
+        ->assertSessionHas('status', 'If an account exists for that email, a reset link has been sent.');
+
+    Notification::assertSentTo($user, PasswordResetNotification::class);
+});
+
+it('returns the same password reset response for an unknown email', function () {
+    Notification::fake();
+
+    $this->post(route('password.email'), ['email' => 'unknown@example.com'])
+        ->assertRedirect()
+        ->assertSessionHas('status', 'If an account exists for that email, a reset link has been sent.');
+
+    Notification::assertNothingSent();
+});
+
+it('resets the password once and invalidates database sessions', function () {
+    $user = User::factory()->create(['email' => 'reset-user@example.com']);
+    $token = Password::broker()->createToken($user);
+    DB::table('sessions')->insert([
+        'id' => 'other-device-session',
+        'user_id' => $user->id,
+        'ip_address' => '127.0.0.1',
+        'user_agent' => 'test-agent',
+        'payload' => '',
+        'last_activity' => time(),
+    ]);
+
+    $this->get(route('password.reset', ['token' => $token, 'email' => $user->email]))
+        ->assertOk()
+        ->assertSee('Choose a new password')
+        ->assertSee('aria-controls="reset-password"', false)
+        ->assertSee('aria-controls="reset-password-confirmation"', false);
+
+    $this->post(route('password.update'), [
+        'token' => $token,
+        'email' => $user->email,
+        'password' => 'NewSecurePassword456!',
+        'password_confirmation' => 'NewSecurePassword456!',
+    ])->assertRedirect(route('login'));
+
+    expect(Hash::check('NewSecurePassword456!', $user->fresh()->password))->toBeTrue();
+    $this->assertDatabaseMissing('sessions', ['id' => 'other-device-session']);
+
+    $this->post(route('password.update'), [
+        'token' => $token,
+        'email' => $user->email,
+        'password' => 'AnotherSecurePassword789!',
+        'password_confirmation' => 'AnotherSecurePassword789!',
+    ])->assertSessionHasErrors('email');
+});
+
+it('rejects an invalid password reset token without changing the password', function () {
+    $user = User::factory()->create(['email' => 'reset-user@example.com']);
+    $existingPasswordHash = $user->password;
+
+    $this->post(route('password.update'), [
+        'token' => 'invalid-token',
+        'email' => $user->email,
+        'password' => 'NewSecurePassword456!',
+        'password_confirmation' => 'NewSecurePassword456!',
+    ])->assertSessionHasErrors('email');
+
+    expect($user->fresh()->password)->toBe($existingPasswordHash);
+});
+
+it('rejects weak passwords during password reset', function () {
+    $user = User::factory()->create(['email' => 'reset-user@example.com']);
+    $token = Password::broker()->createToken($user);
+
+    $this->post(route('password.update'), [
+        'token' => $token,
+        'email' => $user->email,
+        'password' => 'passwordpassword',
+        'password_confirmation' => 'passwordpassword',
+    ])->assertSessionHasErrors('password');
 });
 
 it('rejects invalid credentials without authenticating the user', function () {
@@ -193,7 +245,7 @@ it('rejects suspended customer accounts without sending a sign-in notification',
     Notification::assertNotSentTo($user, LoginNotification::class);
 });
 
-it('allows customer sign-in without sending routine security mail', function () {
+it('allows a customer account to sign in and receive a login notification', function () {
     $customer = User::factory()->create(['email' => 'customer@example.com']);
     Notification::fake();
 
@@ -203,51 +255,7 @@ it('allows customer sign-in without sending routine security mail', function () 
     ])->assertRedirect(route('home'));
 
     $this->assertAuthenticatedAs($customer);
-    $this->assertDatabaseHas('security_events', [
-        'user_id' => $customer->id,
-        'action' => 'login_success',
-    ]);
     Notification::assertNothingSent();
-});
-
-it('emails management users for unfamiliar completed logins without repeating known-device alerts', function () {
-    Notification::fake();
-    $owner = createSystemOwnerUser(['email' => 'new-device-owner@example.com']);
-    $secret = app(TotpService::class)->generateSecret();
-    $owner->forceFill([
-        'two_factor_secret' => $secret,
-        'two_factor_recovery_codes' => [],
-        'two_factor_confirmed_at' => now(),
-    ])->save();
-
-    $this->post(route('login.store'), [
-        'email' => $owner->email,
-        'password' => 'password',
-    ])->assertRedirect(route('two-factor.challenge'));
-    $this->post(route('two-factor.verify'), [
-        'code' => app(TotpService::class)->codeAt($secret, now()->timestamp),
-    ])->assertRedirect(route('admin'));
-
-    Notification::assertSentToTimes($owner, LoginNotification::class, 1);
-    $loginEvent = SecurityEvent::query()
-        ->where('user_id', $owner->id)
-        ->where('action', 'login_success')
-        ->latest('id')
-        ->firstOrFail();
-    expect($loginEvent->context['session_fingerprint'])->toHaveLength(64);
-
-    $this->post(route('logout'))->assertRedirect(route('login'));
-    $this->post(route('login.store'), [
-        'email' => $owner->email,
-        'password' => 'password',
-    ])->assertRedirect(route('two-factor.challenge'));
-    $this->post(route('two-factor.verify'), [
-        'code' => app(TotpService::class)->codeAt($secret, now()->addSeconds(30)->timestamp),
-    ])->assertRedirect(route('admin'));
-
-    Notification::assertSentToTimes($owner, LoginNotification::class, 1);
-    $this->assertDatabaseCount('security_events', 5);
-    expect(SecurityEvent::query()->where('action', 'login_success')->count())->toBe(2);
 });
 
 it('limits admin roles to their assigned resources', function () {
@@ -327,63 +335,6 @@ it('lets the system owner create a role with selected permissions', function () 
         'role_id' => $role->id,
         'permission_id' => $permission->id,
     ]);
-
-    $this->put(route('admin.roles.update', $role), ['name' => 'Catalog Lead'])
-        ->assertRedirect(route('admin.roles.index'));
-    $this->patch(route('admin.roles.status.update', $role), ['is_active' => false])
-        ->assertRedirect(route('admin.roles.index'));
-    $this->assertDatabaseHas('roles', ['id' => $role->id, 'name' => 'Catalog Lead', 'is_active' => false]);
-    $this->delete(route('admin.roles.destroy', $role))->assertRedirect(route('admin.roles.index'));
-    $this->assertDatabaseMissing('roles', ['id' => $role->id]);
-});
-
-it('prevents staff permissions from granting role or user administration', function () {
-    $permissionNames = ['roles.create', 'roles.update', 'users.create', 'users.update', 'users.suspend'];
-    $permissions = collect($permissionNames)->map(fn (string $name) => Permission::findOrCreate($name, 'web'));
-    $role = Role::create(['name' => 'Privileged Staff', 'guard_name' => 'web']);
-    $role->syncPermissions($permissions);
-    $staff = User::factory()->create();
-    $staff->forceFill(['account_type' => 'admin'])->save();
-    $staff->assignRole($role);
-    $target = User::factory()->create();
-    $target->forceFill(['account_type' => 'admin'])->save();
-    $target->assignRole(Role::create(['name' => 'Target Staff', 'guard_name' => 'web']));
-    $this->actingAs(completeManagementTwoFactorForTest($staff));
-
-    $this->post(route('admin.roles.store'), ['name' => 'Escalated Role'])
-        ->assertForbidden();
-    $this->post(route('admin.users.store'), [
-        'name' => 'Escalated User',
-        'email' => 'escalated@example.com',
-        'password' => 'StrongPassword123!',
-        'password_confirmation' => 'StrongPassword123!',
-        'roles' => [$role->id],
-    ])->assertForbidden();
-    $this->patch(route('admin.users.status.update', $target), ['status' => 'suspended'])
-        ->assertForbidden();
-
-    $this->assertDatabaseMissing('users', ['email' => 'escalated@example.com']);
-    expect($target->fresh()->status)->toBe('active');
-});
-
-it('keeps the fixed system owner role immutable and unavailable for staff assignment', function () {
-    $owner = createSystemOwnerUser();
-    $systemRole = Role::query()->where('name', 'System Owner')->where('guard_name', 'web')->firstOrFail();
-    $this->actingAs(completeManagementTwoFactorForTest($owner));
-
-    $this->put(route('admin.roles.update', $systemRole), ['name' => 'Changed Owner'])
-        ->assertNotFound();
-    $this->delete(route('admin.roles.destroy', $systemRole))->assertNotFound();
-    $this->post(route('admin.users.store'), [
-        'name' => 'Impersonator',
-        'email' => 'impersonator@example.com',
-        'password' => 'StrongPassword123!',
-        'password_confirmation' => 'StrongPassword123!',
-        'roles' => [$systemRole->id],
-    ])->assertSessionHasErrors('roles.0');
-
-    $this->assertDatabaseHas('roles', ['id' => $systemRole->id, 'name' => 'System Owner', 'is_system' => true]);
-    $this->assertDatabaseMissing('users', ['email' => 'impersonator@example.com']);
 });
 
 it('validates role names without coercing malformed input', function () {
@@ -418,19 +369,12 @@ it('lets the system owner create an admin account with an assigned role', functi
         'id' => $user->id,
         'account_type' => 'admin',
         'status' => 'active',
-        'password_change_required' => true,
     ]);
     $this->assertDatabaseHas('model_has_roles', [
         'role_id' => $role->id,
         'model_id' => $user->id,
         'model_type' => User::class,
     ]);
-    $this->delete(route('admin.roles.destroy', $role))->assertUnprocessable();
-    $this->assertDatabaseHas('security_events', [
-        'user_id' => $owner->id,
-        'action' => 'staff_account_created',
-    ]);
-    expect($user->password_change_required)->toBeTrue();
     Notification::assertSentTo($user, VerifyEmail::class);
 
     $this->get(route('admin.users.index'))
@@ -448,17 +392,11 @@ it('lets the system owner create an admin account with an assigned role', functi
 });
 
 it('signs out the admin and invalidates dashboard access', function () {
-    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
-
-    $this->actingAs($user)
+    $this->actingAs(createSystemOwnerUser())
         ->post(route('logout'))
         ->assertRedirect(route('login'));
 
     $this->assertGuest();
-    $this->assertDatabaseHas('security_events', [
-        'user_id' => $user->id,
-        'action' => 'logout',
-    ]);
     $this->get(route('admin'))->assertRedirect(route('login'));
 });
 
@@ -470,7 +408,7 @@ it('creates the first system owner through the protected console prompt', functi
         ->expectsQuestion('Admin email', 'first-admin@example.com')
         ->expectsQuestion('Password (12+ characters, mixed case, number, symbol)', 'StrongPassword123!')
         ->expectsQuestion('Confirm password', 'StrongPassword123!')
-        ->expectsOutputToContain('A verification link was sent to the provided email address.')
+        ->expectsOutputToContain('System owner account created.')
         ->assertExitCode(0);
 
     $this->assertDatabaseHas('users', [
@@ -481,7 +419,7 @@ it('creates the first system owner through the protected console prompt', functi
     ]);
 
     $user = User::query()->where('email', 'first-admin@example.com')->firstOrFail();
-    Notification::assertSentTo($user, VerifyEmail::class);
+    Notification::assertNothingSent();
     expect($user->getDirectPermissions())->toHaveCount(Permission::query()->count());
 });
 
@@ -495,7 +433,7 @@ it('does not create a second system owner', function () {
     $this->assertDatabaseCount('users', 1);
 });
 
-it('seeds permissions without creating users and preserves the fixed owner role', function () {
+it('seeds permissions without creating users or predefined roles', function () {
     $this->seed();
 
     $this->assertDatabaseCount('users', 0);

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\SecurityEvent;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Console\Attributes\Description;
@@ -12,7 +11,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 #[Signature('admin:create')]
 #[Description('Create a system owner account for the admin dashboard.')]
@@ -60,20 +58,9 @@ class CreateAdminUser extends Command
         ])->save();
         app(PermissionSeeder::class)->run();
         $user->syncPermissions(Permission::query()->where('guard_name', 'web')->get());
-        $ownerRole = Role::query()
-            ->where('name', 'System Owner')
-            ->where('guard_name', 'web')
-            ->where('is_system', true)
-            ->firstOrFail();
-        $user->assignRole($ownerRole);
-        $user->sendEmailVerificationNotification();
-        SecurityEvent::query()->create([
-            'user_id' => $user->getKey(),
-            'action' => 'system_owner_created',
-            'context' => ['source' => 'console'],
-        ]);
+        // $user->sendEmailVerificationNotification();
 
-        $this->info('System owner account created. A verification link was sent to the provided email address.');
+        $this->info('System owner account created.');
 
         return self::SUCCESS;
     }

@@ -44,6 +44,7 @@
             </div>
 
             <div class="flex items-center gap-3">
+                <input type="hidden" name="is_active" value="0">
                 <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $attribute->is_active) ? 'checked' : '' }} class="h-4 w-4 rounded border-[#dfe3cf] text-[#145943] focus:ring-[#145943]">
                 <label for="is_active" class="text-sm font-bold text-[#173b32]">Active attribute</label>
             </div>

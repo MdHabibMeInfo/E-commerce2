@@ -2,6 +2,7 @@
 
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\EmailChangeVerificationNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -66,7 +67,11 @@ it('shows recent orders as admin notifications', function () {
 });
 
 it('counts new order notifications until the notification page is opened', function () {
-    $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()));
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $admin->forceFill([
+        'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
+    ])->save();
+    $this->actingAs($admin);
 
     Order::create([
         'order_number' => 'ORD-ADMIN-1002',
@@ -88,6 +93,28 @@ it('counts new order notifications until the notification page is opened', funct
     $this->getJson(route('admin.notifications.unread'))
         ->assertOk()
         ->assertJsonPath('count', 0);
+
+    $this->post(route('logout'))->assertRedirect(route('login'));
+    $this->actingAs(completeManagementTwoFactorForTest($admin));
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertOk()
+        ->assertJsonPath('count', 0);
+
+    Order::create([
+        'order_number' => 'ORD-ADMIN-1003',
+        'customer_name' => 'New Customer After Read',
+        'phone' => '01700000002',
+        'address' => 'Test address',
+        'city' => 'Dhaka',
+        'subtotal' => 900,
+        'total' => 900,
+        'status' => 'pending',
+    ]);
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertOk()
+        ->assertJsonPath('count', 1);
 });
 
 it('requires a signed-in user to update profile details', function () {
@@ -98,7 +125,7 @@ it('requires a signed-in user to update profile details', function () {
     ])->assertRedirect(route('login'));
 });
 
-it('updates profile details without allowing direct email changes', function () {
+it('requires email verification before an admin email change is complete', function () {
     $user = createSystemOwnerUser([
         'name' => 'Original Name',
         'email' => 'original@example.com',
@@ -111,31 +138,39 @@ it('updates profile details without allowing direct email changes', function () 
             'name' => 'Updated Name',
             'email' => 'updated@example.com',
             'phone' => '01700000004',
+            'current_password' => 'password',
         ])
-        ->assertRedirect(route('admin.profile'));
+        ->assertSessionHasErrors('email');
 
-    expect($user->fresh()->name)->toBe('Updated Name');
     expect($user->fresh()->email)->toBe('original@example.com');
-    expect($user->fresh()->phone)->toBe('01700000004');
-    Notification::assertNothingSent();
+
+    $this->put(route('account.security.email.update'), [
+        'email' => 'updated@example.com',
+        'current_password' => 'password',
+    ])->assertRedirect();
+
+    expect($user->fresh()->email)->toBe('original@example.com')
+        ->and($user->fresh()->pending_email)->toBe('updated@example.com');
+    Notification::assertSentOnDemand(EmailChangeVerificationNotification::class);
 });
 
 it('rejects profile details that belong to another user', function () {
     $user = createSystemOwnerUser(['email' => 'owner@example.com']);
-    User::factory()->create(['email' => 'other@example.com', 'phone' => '01700000006']);
+    User::factory()->create(['email' => 'other@example.com']);
 
     $this->actingAs(completeManagementTwoFactorForTest($user))
         ->from(route('admin.profile'))
         ->put(route('admin.profile.update'), [
             'name' => 'Updated Name',
-            'phone' => '01700000006',
+            'email' => 'other@example.com',
+            'phone' => null,
         ])
-        ->assertSessionHasErrors('phone');
+        ->assertSessionHasErrors('email');
 
     expect($user->fresh()->email)->toBe('owner@example.com');
 });
 
-it('requires the current password before changing the email in account security', function () {
+it('requires the current password before changing the profile email', function () {
     $user = createSystemOwnerUser(['email' => 'current-password-owner@example.com']);
 
     $this->actingAs(completeManagementTwoFactorForTest($user))

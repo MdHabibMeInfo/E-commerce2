@@ -19,7 +19,14 @@
 
                 <div>
                     <label for="login-password" class="mb-1 block text-sm font-semibold text-[#4d5c56]">Password</label>
-                    <input id="login-password" type="password" name="password" required autocomplete="current-password" class="h-11 w-full rounded-[4px] border border-[#dfe3cf] px-3 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10">
+                    <div class="relative">
+                        <input id="login-password" type="password" name="password" required autocomplete="current-password" class="h-11 w-full rounded-[4px] border border-[#dfe3cf] px-3 pr-12 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10">
+                        <x-password-toggle input-id="login-password" />
+                    </div>
+                </div>
+
+                <div class="text-right">
+                    <a href="{{ route('password.request') }}" class="text-sm font-semibold text-[#145943] hover:text-[#a48335]">Forgot password?</a>
                 </div>
 
                 <label class="flex items-center gap-2 text-sm text-[#4d5c56]">
@@ -29,10 +36,6 @@
 
                 <button type="submit" class="h-11 w-full rounded-[4px] bg-[#145943] text-sm font-bold text-white transition hover:bg-[#a48335]">Sign in</button>
             </form>
-
-            <p class="mt-4 text-center text-sm text-[#66736d]">
-                <a href="{{ route('password.request') }}" class="font-bold text-[#145943] hover:text-[#a48335]">Forgot your password?</a>
-            </p>
 
             <p class="mt-5 text-center text-sm text-[#66736d]">
                 New customer?

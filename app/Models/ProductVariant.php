@@ -45,4 +45,21 @@ class ProductVariant extends Model
             'product_variant_attribute_values'
         );
     }
+
+    public function displayName(): string
+    {
+        if (filled($this->name)) {
+            return $this->name;
+        }
+
+        $attributeNames = $this->attributeValues
+            ->map(fn (AttributeValue $value): string => trim(
+                ($value->productAttribute?->name ?? '').': '.$value->value
+            ))
+            ->filter(fn (string $name): bool => ! str_starts_with($name, ':'));
+
+        return $attributeNames->isNotEmpty()
+            ? $attributeNames->implode(' / ')
+            : 'Variant '.$this->id;
+    }
 }

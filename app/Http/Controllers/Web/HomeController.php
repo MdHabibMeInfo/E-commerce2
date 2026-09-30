@@ -20,12 +20,14 @@ class HomeController extends Controller
                 'products.slug',
                 'products.price',
                 'products.compare_at_price',
+                'products.is_out_of_stock',
             ])
             ->withSum('orderItems as units_sold', 'quantity')
             ->with([
                 'primaryImage',
                 'images:id,product_id,image_path,alt_text,is_primary,sort_order',
             ])
+            ->orderBy('is_out_of_stock')
             ->orderByDesc('units_sold')
             ->orderByDesc('products.id')
             ->limit(4)
@@ -42,6 +44,7 @@ class HomeController extends Controller
                         'primaryImage',
                         'images:id,product_id,image_path,alt_text,is_primary,sort_order',
                     ])
+                    ->orderBy('is_out_of_stock')
                     ->orderByDesc('id')
                     ->limit(10);
             }])
@@ -62,6 +65,7 @@ class HomeController extends Controller
                 'primaryImage',
                 'images:id,product_id,image_path,alt_text,is_primary,sort_order',
             ])
+            ->orderBy('is_out_of_stock')
             ->latest('id')
             ->limit(12)
             ->get([
@@ -72,6 +76,7 @@ class HomeController extends Controller
                 'short_description',
                 'price',
                 'compare_at_price',
+                'is_out_of_stock',
             ]);
 
         $benefits = config('storefront.home_benefits', []);

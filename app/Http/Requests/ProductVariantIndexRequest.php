@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ProductVariant;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,7 @@ class ProductVariantIndexRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('viewAny', ProductVariant::class) ?? false;
     }
 
     /**
@@ -24,6 +25,11 @@ class ProductVariantIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'trashed' => [
+                'nullable',
+                'boolean',
+            ],
+
             'search' => [
                 'nullable',
                 'string',

@@ -195,16 +195,16 @@
             <div class="mx-auto max-w-[1600px] px-4 pt-0 pb-8 sm:px-6 sm:pb-10 lg:px-8">
                 <h2 class="mb-6 text-center text-2xl font-semibold text-[#26352f] sm:text-3xl">Top Selling Products</h2>
 
-                <div class="grid grid-cols-2 gap-3 sm:gap-5">
+                <div class="grid gap-5 md:grid-cols-2">
                     @foreach ($topSellingProducts as $product)
                         @php
                             $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
                         @endphp
 
-                        <article class="group relative flex min-h-[230px] flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white sm:grid sm:grid-cols-[48%_minmax(0,1fr)] sm:rounded-sm sm:border-0 sm:min-h-[270px] lg:min-h-[300px]">
+                        <article class="group relative grid min-h-[230px] grid-cols-[48%_minmax(0,1fr)] overflow-hidden rounded-sm bg-white sm:min-h-[270px] lg:min-h-[300px]">
                             <span class="absolute right-2 top-2 z-10 rounded-[3px] bg-[#ef4938] px-2 py-1 text-[10px] font-bold text-white">Best Selling</span>
 
-                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex aspect-square w-full min-h-0 items-center justify-center overflow-hidden bg-white sm:aspect-auto sm:h-full" aria-label="View {{ $product->name }}">
+                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex h-full min-h-0 items-center justify-center overflow-hidden bg-white" aria-label="View {{ $product->name }}">
                                 @if ($primaryImage)
                                     <img
                                         src="/storage/{{ ltrim($primaryImage->image_path, '/') }}"
@@ -220,8 +220,8 @@
                                 @endif
                             </a>
 
-                            <div class="flex min-w-0 flex-1 flex-col justify-center px-3 py-3 sm:flex-none sm:px-6 sm:py-8">
-                                <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="line-clamp-2 text-base font-normal leading-5 text-[#173b32] hover:text-[#145943] sm:text-lg sm:font-semibold sm:leading-6">
+                            <div class="flex min-w-0 flex-col justify-center py-8 pl-3 pr-3 sm:px-6">
+                                <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="line-clamp-2 text-base font-semibold leading-6 text-[#173b32] hover:text-[#145943] sm:text-lg">
                                     {{ $product->name }}
                                 </a>
                                 @if ($product->price !== null || $product->compare_at_price !== null)
@@ -235,16 +235,24 @@
                                     </div>
                                 @endif
 
-                                <div class="mt-4 flex flex-col gap-2 sm:mt-5 sm:flex-row sm:flex-wrap sm:gap-2.5">
+                                <div class="mt-5 flex flex-wrap gap-2.5">
+                                    @if ($product->is_out_of_stock)
+                                        <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 cursor-not-allowed items-center justify-center rounded-sm border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-semibold text-[#738078] sm:px-4">
+                                            Out of stock
+                                        </button>
+                                    @else
                                     <button
                                         type="button"
                                         aria-label="Add {{ $product->name }} to cart"
                                         data-product-id="{{ $product->id }}"
                                         data-product-name="{{ $product->name }}"
                                         data-product-price="{{ (float) $product->price }}"
+                                        data-product-type="{{ $product->type }}"
+                                        data-product-url="{{ route('products.show', ['product' => $product->slug]) }}"
+                                        @if ($product->type === 'variable') data-select-variant @endif
                                         data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                         data-product-emoji="🛍️"
-                                        class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-sm border border-[#145943] px-3 text-sm font-semibold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white sm:w-auto sm:px-4"
+                                        class="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-[#145943] px-3 text-sm font-semibold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white sm:px-4"
                                     >
                                         <svg data-cart-button-icon class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                             <path d="M3 3h2l2.4 12.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
@@ -258,7 +266,7 @@
                                         <svg data-cart-button-success class="hidden h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                                             <path d="m5 12 4 4L19 6" />
                                         </svg>
-                                        <span data-cart-button-label>Add to Cart</span>
+                                        <span data-cart-button-label>{{ $product->type === 'variable' ? 'Choose options' : 'Add to Cart' }}</span>
                                     </button>
                                     <button
                                         type="button"
@@ -267,12 +275,16 @@
                                         data-product-id="{{ $product->id }}"
                                         data-product-name="{{ $product->name }}"
                                         data-product-price="{{ (float) $product->price }}"
+                                        data-product-type="{{ $product->type }}"
+                                        data-product-url="{{ route('products.show', ['product' => $product->slug]) }}"
+                                        @if ($product->type === 'variable') data-select-variant @endif
                                         data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                         data-product-emoji="🛍️"
-                                        class="inline-flex h-9 w-full items-center justify-center rounded-sm border border-[#a48335] bg-[#a48335] px-3 text-xs font-semibold text-white transition-colors hover:border-[#145943] hover:bg-[#145943] sm:h-10 sm:w-auto sm:px-4 sm:text-sm"
+                                        class="inline-flex h-9 items-center justify-center rounded-sm border border-[#a48335] bg-[#a48335] px-3 text-xs font-semibold text-white transition-colors hover:border-[#145943] hover:bg-[#145943] sm:h-10 sm:px-4 sm:text-sm"
                                     >
                                         Buy now
                                     </button>
+                                    @endif
                                 </div>
                             </div>
                         </article>
@@ -363,12 +375,20 @@
                             </div>
 
                             <div class="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
+                                @if ($product->is_out_of_stock)
+                                    <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-bold text-[#738078]">
+                                        Out of stock
+                                    </button>
+                                @else
                                     <button
                                         type="button"
                                         aria-label="Add {{ $product->name }} to cart"
                                         data-product-id="{{ $product->id }}"
                                         data-product-name="{{ $product->name }}"
                                         data-product-price="{{ (float) $product->price }}"
+                                        data-product-type="{{ $product->type }}"
+                                        data-product-url="{{ route('products.show', ['product' => $product->slug]) }}"
+                                        @if ($product->type === 'variable') data-select-variant @endif
                                         data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                         data-product-emoji="🛍️"
                                         class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-[#145943] bg-white px-3 text-sm font-bold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white"
@@ -385,8 +405,9 @@
                                         <svg data-cart-button-success class="hidden h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                                             <path d="m5 12 4 4L19 6" />
                                         </svg>
-                                        <span data-cart-button-label>Add to Cart</span>
+                                        <span data-cart-button-label>{{ $product->type === 'variable' ? 'Choose options' : 'Add to Cart' }}</span>
                                     </button>
+                                @endif
                                 </div>
 
                         </article>
@@ -472,12 +493,20 @@
                                                 </div>
 
                                                 <div class="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
+                                                    @if ($product->is_out_of_stock)
+                                                        <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-bold text-[#738078]">
+                                                            Out of stock
+                                                        </button>
+                                                    @else
                                                     <button
                                                         type="button"
                                                         aria-label="Add {{ $product->name }} to cart"
                                                         data-product-id="{{ $product->id }}"
                                                         data-product-name="{{ $product->name }}"
                                                         data-product-price="{{ (float) $product->price }}"
+                                                        data-product-type="{{ $product->type }}"
+                                                        data-product-url="{{ route('products.show', ['product' => $product->slug]) }}"
+                                                        @if ($product->type === 'variable') data-select-variant @endif
                                                         data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                                         data-product-emoji="🛍️"
                                                         class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-[#145943] bg-white px-3 text-sm font-bold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white"
@@ -494,8 +523,9 @@
                                                         <svg data-cart-button-success class="hidden h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                                                             <path d="m5 12 4 4L19 6" />
                                                         </svg>
-                                                        <span data-cart-button-label>Add to Cart</span>
+                                                        <span data-cart-button-label>{{ $product->type === 'variable' ? 'Choose options' : 'Add to Cart' }}</span>
                                                     </button>
+                                                    @endif
                                                 </div>
                                             </a>
                                         </article>

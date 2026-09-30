@@ -5,18 +5,36 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Order;
-use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
     public function index(Request $request): View
     {
         $cart = $this->resolveCart($request);
-        $items = $cart->items()->with(['product.primaryImage', 'product.images'])->get();
+        $items = $cart->items()->with([
+            'product.primaryImage',
+            'product.images',
+            'productVariant.attributeValues.productAttribute',
+        ])->get();
+
+        foreach ($items as $item) {
+            $item->price = $item->productVariant?->price
+                ?? $item->product?->price
+                ?? $item->price;
+
+            if ($item->productVariant) {
+                $item->variant_name = $item->productVariant->displayName();
+            }
+        }
+
         $subtotal = $items->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
         $deliveryFee = $items->isNotEmpty() ? 60.00 : 0.00;
         $discount = 0.00;
@@ -45,67 +63,117 @@ class CheckoutController extends Controller
         ]);
 
         $cart = $this->resolveCart($request);
-        $items = $cart->items()->with('product')->get();
 
-        if ($items->isEmpty()) {
-            return back()->withErrors(['cart' => 'Your cart is empty. Add at least one product before placing an order.']);
-        }
+        $order = DB::transaction(function () use ($cart, $customer, $request, $validated): Order {
+            $lockedCart = Cart::query()->lockForUpdate()->findOrFail($cart->id);
+            $items = $lockedCart->items()->orderBy('id')->get();
 
-        foreach ($items as $item) {
-            $product = $item->product;
-
-            if (! $product || ! $product->is_active) {
-                return back()->withErrors(['cart' => 'One or more products are no longer available.']);
+            if ($items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'cart' => 'Your cart is empty. Add at least one product before placing an order.',
+                ]);
             }
 
-            if ($product->stock < $item->quantity) {
-                return back()->withErrors(['cart' => sprintf('%s is out of stock for the requested quantity.', $product->name)]);
-            }
-        }
+            $orderLines = [];
+            $subtotal = 0.0;
 
-        if ($customer?->account_type === 'customer') {
-            $customer->fill([
-                'name' => $validated['customer_name'],
+            foreach ($items as $item) {
+                $product = Product::query()
+                    ->lockForUpdate()
+                    ->find($item->product_id);
+
+                if (! $product || ! $product->is_active || $product->is_out_of_stock) {
+                    throw ValidationException::withMessages([
+                        'cart' => 'One or more products are no longer available.',
+                    ]);
+                }
+
+                $variantName = null;
+                $variantSku = null;
+                $variant = null;
+
+                if ($product->type === 'variable') {
+                    $variant = $item->product_variant_id
+                        ? ProductVariant::query()
+                            ->where('product_id', $product->id)
+                            ->where('is_active', true)
+                            ->lockForUpdate()
+                            ->find($item->product_variant_id)
+                        : null;
+
+                    if (! $variant || $variant->stock < $item->quantity) {
+                        throw ValidationException::withMessages([
+                            'cart' => 'A selected product variant is no longer available in the requested quantity.',
+                        ]);
+                    }
+
+                    $variant->load('attributeValues.productAttribute');
+                    $variantName = $variant->displayName();
+                    $variantSku = $variant->sku;
+                    $price = (float) $variant->price;
+                    $variant->decrement('stock', $item->quantity);
+                } else {
+                    if ($item->product_variant_id || $product->price === null) {
+                        throw ValidationException::withMessages([
+                            'cart' => 'One or more cart items are no longer purchasable.',
+                        ]);
+                    }
+
+                    $price = (float) $product->price;
+                }
+
+                $item->forceFill([
+                    'name' => $product->name,
+                    'variant_name' => $variantName,
+                    'price' => $price,
+                ]);
+                $subtotal += $price * (int) $item->quantity;
+
+                $orderLines[] = [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $variant?->id,
+                    'variant_name' => $variantName,
+                    'variant_sku' => $variantSku,
+                    'name' => $product->name,
+                    'price' => $price,
+                    'quantity' => $item->quantity,
+                ];
+            }
+
+            if ($customer?->account_type === 'customer') {
+                $customer->fill([
+                    'name' => $validated['customer_name'],
+                    'phone' => $validated['phone'],
+                ])->save();
+            }
+
+            $deliveryFee = 60.00;
+            $discount = 0.00;
+            $order = Order::create([
+                'user_id' => $request->user()?->id,
+                'session_id' => $request->session()->getId(),
+                'customer_name' => $validated['customer_name'],
                 'phone' => $validated['phone'],
-            ])->save();
-        }
-
-        $subtotal = $items->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
-        $deliveryFee = 60.00;
-        $discount = 0.00;
-        $total = $subtotal + $deliveryFee - $discount;
-
-        $order = Order::create([
-            'user_id' => $request->user()?->id,
-            'session_id' => $request->session()->getId(),
-            'customer_name' => $validated['customer_name'],
-            'phone' => $validated['phone'],
-            'address' => $validated['address'],
-            'city' => $validated['city'],
-            'area' => $validated['area'] ?? null,
-            'payment_method' => $validated['payment_method'],
-            'notes' => $validated['notes'] ?? null,
-            'subtotal' => $subtotal,
-            'delivery_fee' => $deliveryFee,
-            'discount' => $discount,
-            'total' => $total,
-        ]);
-
-        foreach ($items as $item) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $item->product_id,
-                'name' => $item->name,
-                'price' => $item->price,
-                'quantity' => $item->quantity,
+                'address' => $validated['address'],
+                'city' => $validated['city'],
+                'area' => $validated['area'] ?? null,
+                'payment_method' => $validated['payment_method'],
+                'notes' => $validated['notes'] ?? null,
+                'subtotal' => $subtotal,
+                'delivery_fee' => $deliveryFee,
+                'discount' => $discount,
+                'total' => $subtotal + $deliveryFee - $discount,
             ]);
 
-            if ($item->product) {
-                $item->product->decrement('stock', $item->quantity);
+            foreach ($orderLines as $orderLine) {
+                $order->items()->create($orderLine);
             }
-        }
 
-        $cart->items()->delete();
+            $lockedCart->items()->delete();
+
+            return $order;
+        });
+
         $request->session()->forget('cart_id');
 
         return redirect()->route('checkout.success', ['order' => $order->id])->with('success', 'Order placed successfully.');
@@ -118,10 +186,21 @@ class CheckoutController extends Controller
 
     protected function resolveCart(Request $request): Cart
     {
-        $cartId = $request->input('cart_id', $request->session()->get('cart_id'));
+        $cartId = $request->session()->get('cart_id');
 
         if ($cartId) {
-            $cart = Cart::query()->find($cartId);
+            $cartQuery = Cart::query()->whereKey($cartId);
+
+            if ($request->user()) {
+                $cartQuery->where(function ($query) use ($request): void {
+                    $query->where('user_id', $request->user()->id)
+                        ->orWhereNull('user_id');
+                });
+            } else {
+                $cartQuery->whereNull('user_id');
+            }
+
+            $cart = $cartQuery->first();
 
             if ($cart) {
                 $request->session()->put('cart_id', $cart->id);

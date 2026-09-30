@@ -21,9 +21,9 @@ it('returns the same forgot-password response for known and unknown addresses', 
         ->post(route('password.email'), ['email' => 'missing@example.com']);
 
     $knownResponse->assertRedirect(route('password.request'))
-        ->assertSessionHas('status', 'If an account matches that email address, a password reset link will be sent.');
+        ->assertSessionHas('status', 'If an account exists for that email, a reset link has been sent.');
     $unknownResponse->assertRedirect(route('password.request'))
-        ->assertSessionHas('status', 'If an account matches that email address, a password reset link will be sent.');
+        ->assertSessionHas('status', 'If an account exists for that email, a reset link has been sent.');
 
     Notification::assertSentTo($user, PasswordResetNotification::class);
     Notification::assertNotSentTo($user, SecurityAlertNotification::class);
@@ -73,7 +73,7 @@ it('resets a password once and revokes previous sessions and api tokens', functi
 
     $this->post(route('password.update'), $payload)
         ->assertRedirect(route('login'))
-        ->assertSessionHas('status', 'Your password has been reset. Sign in with your new password.');
+        ->assertSessionHas('status', 'Your password has been reset.');
 
     expect(Hash::check($payload['password'], $user->fresh()->password))->toBeTrue();
     $this->assertDatabaseMissing('sessions', ['id' => 'reset-session-to-revoke']);

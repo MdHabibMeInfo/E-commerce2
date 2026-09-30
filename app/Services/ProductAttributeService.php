@@ -55,6 +55,14 @@ class ProductAttributeService
 
     public function delete(ProductAttribute $productAttribute): void
     {
+        if ($productAttribute->values()->withTrashed()->exists() || $productAttribute->products()->withTrashed()->exists()) {
+            throw ValidationException::withMessages([
+                'product_attribute' => [
+                    'This product attribute cannot be deleted while it is assigned to products or has values.',
+                ],
+            ]);
+        }
+
         $productAttribute->delete();
     }
 

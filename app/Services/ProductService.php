@@ -84,9 +84,9 @@ class ProductService
                 'description' => $data['description'] ?? null,
                 'price' => $data['price'] ?? null,
                 'compare_at_price' => $data['compare_at_price'] ?? null,
-                'stock' => $data['stock'] ?? null,
                 'type' => $data['type'],
                 'is_active' => $data['is_active'] ?? true,
+                'is_out_of_stock' => $data['is_out_of_stock'] ?? false,
             ]);
         });
     }
@@ -100,14 +100,6 @@ class ProductService
                 throw ValidationException::withMessages([
                     'price' => [
                         'Price is required for a simple product.',
-                    ],
-                ]);
-            }
-
-            if (! array_key_exists('stock', $data) || $data['stock'] === null) {
-                throw ValidationException::withMessages([
-                    'stock' => [
-                        'Stock is required for a simple product.',
                     ],
                 ]);
             }
@@ -134,17 +126,6 @@ class ProductService
                 throw ValidationException::withMessages([
                     'price' => [
                         'Price must be null for a variable product.',
-                    ],
-                ]);
-            }
-
-            if (
-                array_key_exists('stock', $data)
-                && $data['stock'] !== null
-            ) {
-                throw ValidationException::withMessages([
-                    'stock' => [
-                        'Stock must be null for a variable product.',
                     ],
                 ]);
             }
@@ -238,9 +219,9 @@ class ProductService
                 'description' => $data['description'] ?? null,
                 'price' => $data['price'] ?? null,
                 'compare_at_price' => $data['compare_at_price'] ?? null,
-                'stock' => $data['stock'] ?? null,
                 'type' => $data['type'],
                 'is_active' => $data['is_active'] ?? $product->is_active,
+                'is_out_of_stock' => $data['is_out_of_stock'] ?? $product->is_out_of_stock,
             ]);
 
             return $product->refresh();

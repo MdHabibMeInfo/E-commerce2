@@ -12,7 +12,9 @@ class UpdateProductAttributeRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $productAttribute = $this->route('product_attribute');
+
+        return $this->user()?->can('update', $productAttribute) ?? false;
     }
 
     /**

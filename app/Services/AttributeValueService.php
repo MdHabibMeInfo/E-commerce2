@@ -71,7 +71,7 @@ class AttributeValueService
 
         if (
             $parentChanged
-            && $attributeValue->variants()->exists()
+            && $attributeValue->variants()->withTrashed()->exists()
         ) {
             throw ValidationException::withMessages([
                 'product_attribute_id' => [
@@ -123,7 +123,7 @@ class AttributeValueService
         |--------------------------------------------------------------------------
         */
 
-        if ($attributeValue->variants()->exists()) {
+        if ($attributeValue->variants()->withTrashed()->exists()) {
             throw ValidationException::withMessages([
                 'attribute_value' => [
                     'This attribute value cannot be deleted because it is used by one or more product variants.',

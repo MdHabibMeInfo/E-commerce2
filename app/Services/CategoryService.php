@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Models\Category;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class CategoryService
 {
@@ -21,22 +24,30 @@ class CategoryService
             $data['slug'] ?? null,
             $data['name']
         );
+        $imagePath = $this->storeImage($data['image'] ?? null);
 
-        return DB::transaction(function () use (
-            $data,
-            $parentId,
-            $slug
-        ) {
-            return Category::create([
-                'parent_id' => $parentId,
-                'name' => $data['name'],
-                'slug' => $slug,
-                'description' => $data['description'] ?? null,
-                'image' => $data['image'] ?? null,
-                'is_active' => $data['is_active'] ?? true,
-                'sort_order' => $data['sort_order'] ?? 0,
-            ]);
-        });
+        try {
+            return DB::transaction(function () use (
+                $data,
+                $parentId,
+                $slug,
+                $imagePath
+            ) {
+                return Category::create([
+                    'parent_id' => $parentId,
+                    'name' => $data['name'],
+                    'slug' => $slug,
+                    'description' => $data['description'] ?? null,
+                    'image' => $imagePath ?? ($data['image'] ?? null),
+                    'is_active' => $data['is_active'] ?? true,
+                    'sort_order' => $data['sort_order'] ?? 0,
+                ]);
+            });
+        } catch (Throwable $exception) {
+            $this->deleteStoredImage($imagePath);
+
+            throw $exception;
+        }
     }
 
     public function update(
@@ -57,25 +68,48 @@ class CategoryService
             $data['name'],
             $category
         );
+        $oldImagePath = $category->image;
+        $uploadedImagePath = $this->storeImage($data['image'] ?? null);
+        $imagePath = $uploadedImagePath
+            ?? (array_key_exists('image', $data) && $data['image'] !== null
+                ? $data['image']
+                : $oldImagePath);
 
-        return DB::transaction(function () use (
-            $category,
-            $data,
-            $parentId,
-            $slug
-        ) {
-            $category->update([
-                'parent_id' => $parentId,
-                'name' => $data['name'],
-                'slug' => $slug,
-                'description' => $data['description'] ?? null,
-                'image' => $data['image'] ?? null,
-                'is_active' => $data['is_active'] ?? $category->is_active,
-                'sort_order' => $data['sort_order'] ?? $category->sort_order,
-            ]);
+        if (($data['remove_image'] ?? false) && $uploadedImagePath === null) {
+            $imagePath = null;
+        }
 
-            return $category->refresh();
-        });
+        try {
+            $updatedCategory = DB::transaction(function () use (
+                $category,
+                $data,
+                $parentId,
+                $slug,
+                $imagePath
+            ) {
+                $category->update([
+                    'parent_id' => $parentId,
+                    'name' => $data['name'],
+                    'slug' => $slug,
+                    'description' => $data['description'] ?? null,
+                    'image' => $imagePath,
+                    'is_active' => $data['is_active'] ?? $category->is_active,
+                    'sort_order' => $data['sort_order'] ?? $category->sort_order,
+                ]);
+
+                return $category->refresh();
+            });
+        } catch (Throwable $exception) {
+            $this->deleteStoredImage($uploadedImagePath);
+
+            throw $exception;
+        }
+
+        if ($oldImagePath !== $imagePath) {
+            $this->deleteStoredImage($oldImagePath);
+        }
+
+        return $updatedCategory;
     }
 
     public function delete(Category $category): void
@@ -188,6 +222,28 @@ class CategoryService
         }
 
         return $descendantIds;
+    }
+
+    private function storeImage(mixed $image): ?string
+    {
+        if (! $image instanceof UploadedFile) {
+            return null;
+        }
+
+        $path = $image->store('categories', 'public');
+
+        if (! is_string($path)) {
+            throw new \RuntimeException('The category image could not be stored.');
+        }
+
+        return $path;
+    }
+
+    private function deleteStoredImage(?string $imagePath): void
+    {
+        if ($imagePath !== null && Str::startsWith($imagePath, 'categories/')) {
+            Storage::disk('public')->delete($imagePath);
+        }
     }
 
     private function generateUniqueSlug(

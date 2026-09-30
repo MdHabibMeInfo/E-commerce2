@@ -27,6 +27,10 @@ class ProductVariantController extends Controller
                 'attributeValues.productAttribute',
             ]);
 
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
+
         if (isset($validated['search'])) {
             $search = $validated['search'];
 
@@ -169,6 +173,22 @@ class ProductVariantController extends Controller
 
         return response()->json([
             'message' => 'Product variant deleted successfully.',
+        ]);
+    }
+
+    public function restore(
+        Product $product,
+        ProductVariant $variant,
+        ProductVariantService $variantService
+    ): JsonResponse {
+        $this->authorize('restore', $variant);
+
+        $variant = $variantService->restoreVariant($product, $variant);
+        $variant->load('attributeValues.productAttribute');
+
+        return response()->json([
+            'message' => 'Product variant restored successfully.',
+            'variant' => new ProductVariantResource($variant),
         ]);
     }
 }

@@ -66,14 +66,6 @@
                 </div>
 
                 <div>
-                    <label for="stock" class="mb-2 block text-sm font-bold text-[#173b32]">Stock</label>
-                    <input type="number" name="stock" id="stock" value="{{ old('stock') }}" min="0" class="w-full rounded-xl border border-[#dfe3cf] bg-[#fafaf5] px-3 py-2.5 text-sm text-[#173b32] focus:border-[#145943] focus:outline-none">
-                    @error('stock')
-                        <p class="mt-2 text-xs font-medium text-[#b3261e]">{{ $message }}</p>
-                    @enderror
-                </div>
-
-                <div>
                     <label for="price" class="mb-2 block text-sm font-bold text-[#173b32]">Price</label>
                     <input type="number" name="price" id="price" value="{{ old('price') }}" min="0" step="0.01" class="w-full rounded-xl border border-[#dfe3cf] bg-[#fafaf5] px-3 py-2.5 text-sm text-[#173b32] focus:border-[#145943] focus:outline-none">
                     @error('price')
@@ -165,6 +157,7 @@
             </div>
 
             <div class="flex items-center gap-3">
+                <input type="hidden" name="is_active" value="0">
                 <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} class="h-4 w-4 rounded border-[#dfe3cf] text-[#145943] focus:ring-[#145943]">
                 <label for="is_active" class="text-sm font-bold text-[#173b32]">Active product</label>
             </div>

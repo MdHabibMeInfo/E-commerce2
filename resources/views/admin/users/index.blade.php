@@ -23,7 +23,7 @@
     @endif
 
     <div class="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        @if (auth()->user()?->is_system_owner && auth()->user()?->can('users.create'))
+        @can('users.create')
             <section class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-extrabold text-[#145943]">Create Staff Account</h2>
                 <form method="POST" action="{{ route('admin.users.store') }}" class="mt-5 space-y-4">
@@ -56,7 +56,7 @@
                     <button type="submit" class="rounded-lg bg-[#145943] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#a48335]">Create Account</button>
                 </form>
             </section>
-        @endif
+        @endcan
 
         <section class="space-y-4">
             @forelse ($staffUsers as $staffUser)
@@ -71,7 +71,7 @@
                         </span>
                     </div>
 
-                    @if (auth()->user()?->is_system_owner && auth()->user()?->can('users.update'))
+                    @can('users.update')
                         <form method="POST" action="{{ route('admin.users.roles.update', $staffUser) }}" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
                             @csrf
                             @method('PUT')
@@ -85,9 +85,9 @@
                             </label>
                             <button type="submit" class="rounded-lg border border-[#145943] px-4 py-2.5 text-sm font-bold text-[#145943] transition hover:bg-[#edf2e4]">Save Roles</button>
                         </form>
-                    @endif
+                    @endcan
 
-                    @if (auth()->user()?->is_system_owner && auth()->user()?->can('users.suspend'))
+                    @can('users.suspend')
                         <form method="POST" action="{{ route('admin.users.status.update', $staffUser) }}" class="mt-3">
                             @csrf
                             @method('PATCH')
@@ -96,14 +96,7 @@
                                 {{ $staffUser->status === 'active' ? 'Suspend account' : 'Activate account' }}
                             </button>
                         </form>
-                    @endif
-
-                    @if (auth()->user()?->is_system_owner)
-                        <form method="POST" action="{{ route('admin.users.two-factor.reset', $staffUser) }}" class="mt-3" onsubmit="return confirm('Reset this staff member’s authenticator and sign out all sessions?')">
-                            @csrf
-                            <button type="submit" class="text-sm font-bold text-amber-800 hover:text-amber-950">Reset authenticator</button>
-                        </form>
-                    @endif
+                    @endcan
                 </article>
             @empty
                 <div class="rounded-[20px] border border-dashed border-[#cfd8ca] bg-white p-6 text-sm text-[#66736d]">No staff accounts have been created.</div>

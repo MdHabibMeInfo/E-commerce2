@@ -35,7 +35,12 @@
                             </td>
                             <td class="px-5 py-4">
                                 @foreach ($order->items as $item)
-                                    <div class="text-xs text-[#4d5c56]">{{ $item->name }} × {{ $item->quantity }}</div>
+                                    <div class="text-xs text-[#4d5c56]">
+                                        {{ $item->name }} × {{ $item->quantity }}
+                                        @if ($item->variant_name)
+                                            <span class="block text-[#738078]">{{ $item->variant_name }}{{ $item->variant_sku ? ' · '.$item->variant_sku : '' }}</span>
+                                        @endif
+                                    </div>
                                 @endforeach
                             </td>
                             <td class="px-5 py-4 font-bold text-[#145943]">৳{{ number_format((float) $order->total, 2) }}</td>

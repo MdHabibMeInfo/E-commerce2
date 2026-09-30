@@ -84,13 +84,12 @@ class StoreProductRequest extends FormRequest
                 'gt:price',
             ],
 
-            'stock' => [
-                'nullable',
-                'integer',
-                'min:0',
+            'is_active' => [
+                'sometimes',
+                'boolean',
             ],
 
-            'is_active' => [
+            'is_out_of_stock' => [
                 'sometimes',
                 'boolean',
             ],

@@ -171,6 +171,9 @@
                                         @endif
                                         <div class="min-w-0">
                                             <p class="text-sm sm:text-base font-bold text-[#173b32] line-clamp-2">{{ $item->name }}</p>
+                                            @if ($item->variant_name)
+                                                <p class="mt-1 text-xs text-[#738078]">{{ $item->variant_name }}</p>
+                                            @endif
                                             <p class="mt-1 text-xs sm:text-sm text-[#738078]">Qty: <span class="font-semibold text-[#173b32]">{{ $item->quantity }}</span> × ৳{{ number_format((float) $item->price, 2) }}</p>
                                         </div>
                                     </div>

@@ -28,13 +28,19 @@
                 </div>
                 <div>
                     <label for="reset-password" class="mb-1 block text-sm font-semibold text-[#4d5c56]">New password</label>
-                    <input id="reset-password" type="password" name="password" required minlength="12" autocomplete="new-password" class="h-11 w-full rounded-[4px] border border-[#dfe3cf] px-3 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10">
+                    <div class="relative">
+                        <input id="reset-password" type="password" name="password" required minlength="12" autocomplete="new-password" class="h-11 w-full rounded-[4px] border border-[#dfe3cf] px-3 pr-12 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10">
+                        <x-password-toggle input-id="reset-password" />
+                    </div>
                     <p class="mt-1 text-xs text-[#738078]">Use 12+ characters with uppercase, lowercase, a number and a symbol.</p>
                     @error('password') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label for="reset-password-confirmation" class="mb-1 block text-sm font-semibold text-[#4d5c56]">Confirm new password</label>
-                    <input id="reset-password-confirmation" type="password" name="password_confirmation" required minlength="12" autocomplete="new-password" class="h-11 w-full rounded-[4px] border border-[#dfe3cf] px-3 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10">
+                    <div class="relative">
+                        <input id="reset-password-confirmation" type="password" name="password_confirmation" required minlength="12" autocomplete="new-password" class="h-11 w-full rounded-[4px] border border-[#dfe3cf] px-3 pr-12 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10">
+                        <x-password-toggle input-id="reset-password-confirmation" />
+                    </div>
                 </div>
                 <button type="submit" class="h-11 w-full rounded-[4px] bg-[#145943] text-sm font-bold text-white transition hover:bg-[#a48335]">Save new password</button>
             </form>

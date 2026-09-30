@@ -12,16 +12,10 @@
     </x-slot:canonicalUrl>
 
     <section class="bg-[#fbfaf4]">
-        <div class="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
-            <div class="grid gap-4 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start">
-                <div data-shop-filter-overlay class="fixed inset-0 z-[91] hidden bg-[#102a22]/45 opacity-0 transition-opacity duration-200 lg:hidden" aria-hidden="true"></div>
-
-                <aside id="shop-filter-sidebar" aria-label="Product filters" aria-hidden="true" inert class="fixed inset-y-0 left-0 z-[92] flex w-[min(88vw,420px)] -translate-x-full flex-col overflow-hidden bg-white p-4 shadow-2xl transition-transform duration-300 ease-out lg:sticky lg:top-6 lg:z-auto lg:block lg:w-auto lg:translate-x-0 lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none">
-                    <div class="mb-4 flex shrink-0 items-center justify-between border-b border-[#dedede] pb-3 lg:hidden">
-                        <h2 class="text-base font-bold text-[#145943]">Filters</h2>
-                        <button type="button" data-shop-filter-close class="text-sm font-semibold text-[#4d5c56]" aria-label="Close filters">Close <span aria-hidden="true">×</span></button>
-                    </div>
-                    <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="min-h-0 flex-1 space-y-1 overflow-y-auto lg:flex-none lg:overflow-visible" id="shop-filter-form">
+        <div class="mx-auto max-w-[1440px] px-3 py-8 sm:px-4 lg:px-5">
+            <div class="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
+                <aside class="rounded-[12px] border border-[#e5e2d9] bg-white p-4 shadow-none lg:sticky lg:top-6">
+                    <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="space-y-6" id="shop-filter-form">
                         @if ($searchQuery)
                             <input type="hidden" name="q" value="{{ $searchQuery }}">
                         @endif
@@ -30,7 +24,7 @@
                             <input type="hidden" name="category" value="{{ $activeCategory->slug }}">
                         @endif
 
-                        <div class="rounded-[4px] border border-[#dedede] bg-white p-2.5">
+                        <div>
                             <h2 class="text-lg font-extrabold text-[#145943]">Category</h2>
                             <div class="mt-4 space-y-2">
                                 <a
@@ -51,7 +45,7 @@
                             </div>
                         </div>
 
-                        <div class="rounded-[4px] border border-[#dedede] bg-white p-2.5">
+                        <div>
                             <h2 class="text-lg font-extrabold text-[#145943]">Price Range</h2>
                             @php
                                 $rangeMinValue = $minPrice > 0 ? $minPrice : 0;
@@ -115,7 +109,7 @@
                             </div>
                         </div>
 
-                        <div class="rounded-[4px] border border-[#dedede] bg-white p-2.5">
+                        <div>
                             <h2 class="text-lg font-extrabold text-[#145943]">Product Variants</h2>
                             <div class="mt-4 space-y-2">
                                 @foreach ($variantOptions as $variantOption)
@@ -137,50 +131,45 @@
                 </aside>
 
                 <div class="space-y-5">
-                    <div class="flex min-h-11 flex-wrap items-center justify-between gap-3 rounded-[4px] border border-[#dedede] bg-white px-3 py-2.5 shadow-none">
-                        <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="flex w-full flex-wrap items-center justify-between gap-3">
-                            @if ($searchQuery)
-                                <input type="hidden" name="q" value="{{ $searchQuery }}">
-                            @endif
-                            @foreach ($selectedVariants as $selectedVariant)
-                                <input type="hidden" name="variants[]" value="{{ $selectedVariant }}">
-                            @endforeach
-                            @if ($minPrice > 0)
-                                <input type="hidden" name="min_price" value="{{ $minPrice }}">
-                            @endif
-                            @if ($maxPrice > 0)
-                                <input type="hidden" name="max_price" value="{{ $maxPrice }}">
-                            @endif
-                            @if ($flag !== '')
-                                <input type="hidden" name="flag" value="{{ $flag }}">
-                            @endif
-                            <div class="flex flex-wrap items-center gap-2">
-                                <button
-                                    type="button"
-                                    class="rounded-[3px] border border-[#dedede] bg-white px-3 py-1.5 text-xs font-semibold text-[#333] lg:hidden"
-                                    data-shop-filter-toggle
-                                    aria-controls="shop-filter-sidebar"
-                                    aria-expanded="false"
-                                >
-                                    Filters
-                                </button>
-                                <label for="shop-sort" class="text-base font-semibold text-[#333]">Sort By :</label>
-                                <select id="shop-sort" name="sort" class="h-7 rounded-[3px] border border-[#dedede] bg-white px-2 text-xs text-[#333] outline-none focus:border-[#dedede] focus:ring-0" onchange="this.form.submit()">
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[#e5e2d9] bg-white px-3 py-2 shadow-none lg:pl-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-sm font-semibold text-[#145943]">Sort by</span>
+                            <form method="GET" action="{{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}" class="flex flex-wrap items-center gap-2">
+                                @if ($searchQuery)
+                                    <input type="hidden" name="q" value="{{ $searchQuery }}">
+                                @endif
+                                @foreach ($selectedVariants as $selectedVariant)
+                                    <input type="hidden" name="variants[]" value="{{ $selectedVariant }}">
+                                @endforeach
+                                @if ($minPrice > 0)
+                                    <input type="hidden" name="min_price" value="{{ $minPrice }}">
+                                @endif
+                                @if ($maxPrice > 0)
+                                    <input type="hidden" name="max_price" value="{{ $maxPrice }}">
+                                @endif
+                                @if ($flag !== '')
+                                    <input type="hidden" name="flag" value="{{ $flag }}">
+                                @endif
+                                <select name="sort" class="h-9 rounded-[8px] border border-[#e3e0d6] bg-[#f8f7f2] px-3 text-sm text-[#173b32] outline-none focus:border-[#e3e0d6] focus:ring-0" onchange="this.form.submit()">
                                     <option value="default" {{ $sort === 'default' ? 'selected' : '' }}>Default Sorting</option>
                                     <option value="latest" {{ $sort === 'latest' ? 'selected' : '' }}>Sort by Latest</option>
                                     <option value="oldest" {{ $sort === 'oldest' ? 'selected' : '' }}>Sort by Oldest</option>
                                     <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>Price Low to High</option>
                                     <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>Price High to Low</option>
                                 </select>
-                            </div>
-                            <select name="per_page" aria-label="Products per page" class="h-7 rounded-[3px] border border-[#dedede] bg-white px-2 text-xs text-[#333] outline-none focus:border-[#dedede] focus:ring-0" onchange="this.form.submit()">
-                                <option value="default" {{ $perPageSelection === 'default' ? 'selected' : '' }}>Default</option>
-                                <option value="16" {{ $perPageSelection === '16' ? 'selected' : '' }}>Show 16</option>
-                                <option value="20" {{ $perPageSelection === '20' ? 'selected' : '' }}>Show 20</option>
-                                <option value="24" {{ $perPageSelection === '24' ? 'selected' : '' }}>Show 24</option>
-                                <option value="36" {{ $perPageSelection === '36' ? 'selected' : '' }}>Show 36</option>
-                            </select>
-                        </form>
+                            </form>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($categories as $category)
+                                <a
+                                    href="{{ route('shop', ['category' => $category->slug, 'sort' => $sort, 'variants' => $selectedVariants ?: null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null, 'flag' => $flag !== '' ? $flag : null]) }}"
+                                    class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $activeCategory && $activeCategory->id === $category->id ? 'border-[#145943] bg-[#145943] text-white' : 'border-[#dfe2d6] bg-white text-[#4d5c56] hover:border-[#145943] hover:text-[#145943]' }}"
+                                >
+                                    {{ $category->name }}
+                                </a>
+                            @endforeach
+                        </div>
                     </div>
 
                     @if ($products->isEmpty())
@@ -190,10 +179,12 @@
                             <p class="mt-2 text-sm text-[#738078]">Try another keyword or select different filters to browse more items.</p>
                         </div>
                     @else
-                        <div class="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                             @foreach ($products as $product)
                                 @php
                                     $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+                                    $hasAvailableVariant = $product->variants->contains(fn ($variant) => $variant->stock > 0);
+                                    $canPurchase = ! $product->is_out_of_stock && ($product->type !== 'variable' || $hasAvailableVariant);
                                 @endphp
 
                                 <article
@@ -239,30 +230,32 @@
                                                 @endif
                                             </div>
                                         </div>
+                                    </a>
 
                                         <div class="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
-                                            <button
-                                                type="button"
-                                                aria-label="Add {{ $product->name }} to cart"
-                                                data-product-id="{{ $product->id }}"
-                                                data-product-name="{{ $product->name }}"
-                                                data-product-price="{{ (float) $product->price }}"
-                                                data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
-                                                data-product-emoji="🛍️"
-                                                class="inline-flex h-10 w-full items-center justify-center rounded-[4px] border border-[#145943] bg-white px-3 text-xs font-bold text-[#145943] transition-colors hover:bg-[#145943] hover:text-white"
-                                            >
-                                                Add to Cart
-                                            </button>
+                                            @if (! $canPurchase)
+                                                <button type="button" disabled aria-label="{{ $product->name }} is out of stock"
+                                                    class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-xs font-bold text-[#738078]"
+                                                >Out of stock</button>
+                                            @else
+                                                <button
+                                                    type="button"
+                                                    aria-label="Add {{ $product->name }} to cart"
+                                                    data-product-id="{{ $product->id }}"
+                                                    data-product-name="{{ $product->name }}"
+                                                    data-product-price="{{ (float) $product->price }}"
+                                                    data-product-type="{{ $product->type }}"
+                                                    data-product-url="{{ route('products.show', ['product' => $product->slug]) }}"
+                                                    @if ($product->type === 'variable') data-select-variant @endif
+                                                    data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
+                                                    data-product-emoji="🛍️"
+                                                    class="inline-flex h-10 w-full items-center justify-center rounded-[4px] border border-[#145943] bg-white px-3 text-xs font-bold text-[#145943] transition-colors hover:bg-[#145943] hover:text-white"
+                                                >{{ $product->type === 'variable' ? 'Choose options' : 'Add to Cart' }}</button>
+                                            @endif
                                         </div>
-                                    </a>
                                 </article>
                             @endforeach
                         </div>
-                        @if ($products->hasPages())
-                            <div class="pt-4">
-                                {{ $products->links() }}
-                            </div>
-                        @endif
                     @endif
                 </div>
             </div>

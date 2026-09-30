@@ -28,7 +28,6 @@ class AdminUserController extends Controller
         $roles = Role::query()
             ->where('guard_name', 'web')
             ->where('is_active', true)
-            ->where('is_system', false)
             ->orderBy('name')
             ->get();
 
@@ -37,8 +36,6 @@ class AdminUserController extends Controller
 
     public function store(Request $request, SecurityEventService $events): RedirectResponse
     {
-        $this->authorizeOwner($request);
-
         $email = $request->input('email');
 
         if (is_string($email)) {
@@ -50,7 +47,7 @@ class AdminUserController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['integer', Rule::exists('roles', 'id')->where('guard_name', 'web')->where('is_active', true)->where('is_system', 0)],
+            'roles.*' => ['integer', Rule::exists('roles', 'id')->where('guard_name', 'web')->where('is_active', true)],
         ]);
 
         $user = User::query()->create([
@@ -61,19 +58,18 @@ class AdminUserController extends Controller
         $user->forceFill([
             'account_type' => 'admin',
             'status' => 'active',
-            'password_change_required' => true,
         ])->save();
         $user->syncRoles($validated['roles']);
         $user->sendEmailVerificationNotification();
-        $request->user()->notify(new SecurityAlertNotification(
-            'Management account created',
-            'A new management account was created and assigned roles. The new user must verify their email before access is granted.',
-        ));
-        $events->record($request, $request->user(), 'staff_account_created', [
+        $events->record($request, $request->user(), 'management_user_created', [
             'target_user_id' => $user->getKey(),
             'target_email' => $user->email,
             'role_ids' => $validated['roles'],
         ]);
+        $request->user()?->notify(new SecurityAlertNotification(
+            'Management account created',
+            'A management account was created and an email verification link was sent to the new user.',
+        ));
 
         return redirect()->route('admin.users.index')->with('success', 'Staff account created.');
     }
@@ -84,19 +80,17 @@ class AdminUserController extends Controller
 
         $validated = $request->validate([
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['integer', Rule::exists('roles', 'id')->where('guard_name', 'web')->where('is_active', true)->where('is_system', 0)],
+            'roles.*' => ['integer', Rule::exists('roles', 'id')->where('guard_name', 'web')->where('is_active', true)],
         ]);
 
+        $previousRoleIds = $user->roles()->pluck('roles.id')->all();
         $user->syncRoles($validated['roles']);
-        $events->record($request, $request->user(), 'staff_roles_updated', [
+        $events->record($request, $request->user(), 'management_user_roles_updated', [
             'target_user_id' => $user->getKey(),
             'target_email' => $user->email,
-            'role_ids' => $validated['roles'],
+            'added_role_ids' => array_values(array_diff($validated['roles'], $previousRoleIds)),
+            'removed_role_ids' => array_values(array_diff($previousRoleIds, $validated['roles'])),
         ]);
-        $request->user()->notify(new SecurityAlertNotification(
-            'Management user roles changed',
-            'Roles assigned to a management account were changed by the system owner.',
-        ));
 
         return redirect()->route('admin.users.index')->with('success', 'Staff roles updated.');
     }
@@ -109,62 +103,30 @@ class AdminUserController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended'])],
         ]);
 
+        $previousStatus = $user->status;
         $user->forceFill(['status' => $validated['status']])->save();
 
         if ($validated['status'] === 'suspended') {
-            DB::table(config('session.table'))->where('user_id', $user->getKey())->delete();
             $user->tokens()->delete();
+
+            if (config('session.driver') === 'database') {
+                DB::table(config('session.table'))->where('user_id', $user->getKey())->delete();
+            }
         }
 
-        $events->record($request, $request->user(), 'staff_status_updated', [
+        $events->record($request, $request->user(), 'management_user_status_updated', [
             'target_user_id' => $user->getKey(),
             'target_email' => $user->email,
-            'status' => $validated['status'],
+            'previous_status' => $previousStatus,
+            'new_status' => $validated['status'],
         ]);
-        $request->user()->notify(new SecurityAlertNotification(
-            $validated['status'] === 'suspended' ? 'Management account suspended' : 'Management account reactivated',
-            'The status of a management account was changed by the system owner.',
-        ));
 
         return redirect()->route('admin.users.index')->with('success', 'Staff account status updated.');
     }
 
-    public function resetTwoFactor(Request $request, User $user, SecurityEventService $events): RedirectResponse
-    {
-        abort_unless($request->user()?->is_system_owner, 403);
-        $this->ensureManageableStaff($request, $user);
-
-        $user->forceFill([
-            'two_factor_secret' => null,
-            'two_factor_recovery_codes' => null,
-            'two_factor_confirmed_at' => null,
-            'two_factor_last_used_at' => null,
-            'remember_token' => SupportStr::random(60),
-        ])->save();
-
-        DB::table(config('session.table'))->where('user_id', $user->getKey())->delete();
-        $user->tokens()->delete();
-        $user->notify(new SecurityAlertNotification(
-            'Authenticator reset by system owner',
-            'Your management authenticator was reset by the system owner. You must enroll a new authenticator before using management tools.',
-        ));
-        $events->record($request, $request->user(), 'two_factor_reset_by_owner', [
-            'target_user_id' => $user->getKey(),
-            'target_email' => $user->email,
-        ]);
-
-        return redirect()->route('admin.users.index')->with('success', 'Authenticator reset. Staff must enroll again.');
-    }
-
     private function ensureManageableStaff(Request $request, User $user): void
     {
-        $this->authorizeOwner($request);
         abort_unless($user->account_type === 'admin' && ! $user->is_system_owner, 404);
         abort_if($request->user()?->is($user), 403);
-    }
-
-    private function authorizeOwner(Request $request): void
-    {
-        abort_unless($request->user()?->is_system_owner, 403);
     }
 }

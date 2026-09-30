@@ -43,9 +43,17 @@
                 @error('name') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
             </div>
 
-            <div class="rounded-[4px] border border-[#e4e3d8] bg-[#fafaf5] px-4 py-3 text-sm text-[#4d5c56]">
-                Sign-in email: <span class="font-semibold text-[#173b32]">{{ $profileUser->email }}</span>
-                <a href="{{ route('account.security') }}" class="ml-2 font-bold text-[#145943] hover:text-[#a48335]">Change in Account Security</a>
+            <div>
+                <label for="profile-email" class="mb-1 block text-sm font-semibold text-[#4d5c56]">Email</label>
+                <input id="profile-email" type="email" name="email" value="{{ $profileUser->email }}" readonly class="h-11 w-full rounded-[4px] border border-[#dfe3cf] bg-[#f7f4ee] px-3 text-sm text-[#173b32] outline-none">
+                <p class="mt-1 text-xs text-[#738078]">Email changes require verification. <a href="{{ route('account.security') }}" class="font-semibold text-[#145943] underline">Manage email in Account Security</a></p>
+                @error('email') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="current-password" class="mb-1 block text-sm font-semibold text-[#4d5c56]">Current password <span class="font-normal text-[#738078]">(required to change email)</span></label>
+                <input id="current-password" type="password" name="current_password" autocomplete="current-password" class="h-11 w-full rounded-[4px] border border-[#dfe3cf] px-3 text-sm text-[#173b32] outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10">
+                @error('current_password') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
             </div>
 
             <div>

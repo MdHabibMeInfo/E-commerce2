@@ -18,7 +18,7 @@ Route::middleware('web')->group(function () {
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy']);
 });
 
-Route::middleware(['auth:sanctum', 'management.verified', 'management.2fa'])->group(function () {
+Route::middleware(['web', 'auth:sanctum', 'management.verified', 'management.2fa'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -198,6 +198,11 @@ Route::middleware(['auth:sanctum', 'management.verified', 'management.2fa'])->gr
             '/products/{product}/variants/{variant}',
             [ProductVariantController::class, 'destroy']
         );
+
+        Route::patch(
+            '/products/{product}/variants/{variant}/restore',
+            [ProductVariantController::class, 'restore']
+        )->withTrashed();
     });
 });
 

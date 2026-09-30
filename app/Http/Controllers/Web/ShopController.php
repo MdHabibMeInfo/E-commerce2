@@ -145,6 +145,8 @@ class ShopController extends Controller
             }
         }
 
+        $productsQuery->orderBy('is_out_of_stock');
+
         match ($sort) {
             'oldest' => $productsQuery->orderBy('id'),
             'price_asc' => $productsQuery->orderBy('price', 'asc'),
