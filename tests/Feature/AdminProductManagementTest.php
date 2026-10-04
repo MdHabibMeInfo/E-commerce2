@@ -68,6 +68,88 @@ it('allows the owner to toggle product availability without entering a quantity'
     expect($product->fresh()->is_out_of_stock)->toBeFalse();
 });
 
+it('approves reviews for public display and scopes moderation to their product', function () {
+    $product = Product::create([
+        'name' => 'Review Moderation Product',
+        'slug' => 'review-moderation-product',
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $otherProduct = Product::create([
+        'name' => 'Other Review Product',
+        'slug' => 'other-review-product',
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $review = $product->reviews()->create([
+        'name' => 'Customer Reviewer',
+        'email' => 'reviewer@example.com',
+        'rating' => 5,
+        'body' => 'A helpful review.',
+    ]);
+
+    $this->from(route('admin.products.show', $product))
+        ->patch(route('admin.products.reviews.approval', [$product, $review]), ['is_approved' => true])
+        ->assertRedirect(route('admin.products.show', $product));
+
+    $this->assertDatabaseHas('product_reviews', [
+        'id' => $review->id,
+        'is_approved' => true,
+    ]);
+
+    $this->from(route('admin.products.show', $product))
+        ->patch(route('admin.products.reviews.approval', [$product, $review]), ['is_approved' => false])
+        ->assertRedirect(route('admin.products.show', $product));
+
+    $this->assertDatabaseHas('product_reviews', [
+        'id' => $review->id,
+        'is_approved' => false,
+    ]);
+
+    $this->patch(route('admin.products.reviews.approval', [$otherProduct, $review]), ['is_approved' => true])
+        ->assertNotFound();
+});
+
+it('allows the owner to select products for the Just For You homepage row', function () {
+    $this->get(route('admin.products.create'))
+        ->assertSee('name="is_featured"', false)
+        ->assertSee('Show in Just For You');
+
+    $this->post(route('admin.products.store'), [
+        'name' => 'Curated Homepage Product',
+        'slug' => 'curated-homepage-product',
+        'type' => 'simple',
+        'price' => 90,
+        'is_active' => true,
+        'is_featured' => true,
+    ])->assertRedirect(route('admin.products.index'));
+
+    $product = Product::query()->where('slug', 'curated-homepage-product')->firstOrFail();
+
+    $this->assertDatabaseHas('products', [
+        'id' => $product->id,
+        'is_featured' => true,
+    ]);
+
+    $this->get(route('admin.products.edit', $product))
+        ->assertSee('name="is_featured"', false)
+        ->assertSee('Show in Just For You');
+
+    $this->put(route('admin.products.update', $product), [
+        'name' => $product->name,
+        'slug' => $product->slug,
+        'type' => 'simple',
+        'price' => 90,
+        'is_active' => true,
+        'is_featured' => false,
+    ])->assertRedirect(route('admin.products.index'));
+
+    $this->assertDatabaseHas('products', [
+        'id' => $product->id,
+        'is_featured' => false,
+    ]);
+});
+
 it('shows attribute assignment and variant management for variable products', function () {
     $product = Product::create([
         'name' => 'Variable Dashboard Product',
@@ -80,6 +162,7 @@ it('shows attribute assignment and variant management for variable products', fu
         ->assertOk()
         ->assertSee('Product Attributes')
         ->assertSee('Product Variants')
+        ->assertDontSee('name="stock"', false)
         ->assertSee('Assign Attributes');
 });
 
@@ -111,7 +194,6 @@ it('manages variant assignment and lifecycle from the product detail page', func
         'sku' => 'VARIANT-LIFECYCLE-BLUE-S',
         'attribute_value_ids' => [$value->id],
         'price' => 25,
-        'stock' => 5,
         'is_active' => true,
     ])->assertRedirect(route('admin.products.show', $product));
 
@@ -123,7 +205,6 @@ it('manages variant assignment and lifecycle from the product detail page', func
             'sku' => 'VARIANT-LIFECYCLE-BLUE-DUPLICATE',
             'attribute_value_ids' => [$value->id],
             'price' => 26,
-            'stock' => 3,
             'is_active' => true,
         ])
         ->assertRedirect(route('admin.products.show', $product))
@@ -134,11 +215,20 @@ it('manages variant assignment and lifecycle from the product detail page', func
         'sku' => 'VARIANT-LIFECYCLE-BLUE-M',
         'attribute_value_ids' => [$value->id],
         'price' => 27,
-        'stock' => 4,
         'is_active' => true,
     ])->assertRedirect(route('admin.products.show', $product));
 
     expect($variant->fresh()->sku)->toBe('VARIANT-LIFECYCLE-BLUE-M');
+
+    $this->patch(route('admin.products.variants.availability', [$product, $variant]), [
+        'is_out_of_stock' => true,
+    ])->assertRedirect(route('admin.products.show', $product));
+
+    expect($variant->fresh()->is_out_of_stock)->toBeTrue();
+
+    $this->get(route('admin.products.show', $product))
+        ->assertSee('Out of stock')
+        ->assertSee('Mark available');
 
     $this->delete(route('admin.products.variants.destroy', [$product, $variant]))
         ->assertRedirect(route('admin.products.show', $product));

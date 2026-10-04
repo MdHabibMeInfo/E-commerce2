@@ -20,39 +20,43 @@
                     <tr>
                         <th class="px-5 py-3 font-bold">Order</th>
                         <th class="px-5 py-3 font-bold">Customer</th>
-                        <th class="px-5 py-3 font-bold">Products</th>
+                        <th class="px-5 py-3 font-bold">Date</th>
                         <th class="px-5 py-3 font-bold">Total</th>
+                        <th class="px-5 py-3 font-bold">Payment</th>
                         <th class="px-5 py-3 font-bold">Status</th>
+                        <th class="px-5 py-3 font-bold">Courier</th>
+                        <th class="px-5 py-3 font-bold">Shipment</th>
+                        <th class="px-5 py-3 font-bold">Tracking</th>
+                        <th class="px-5 py-3 font-bold">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($orders as $order)
-                        <tr class="border-t border-[#e4e3d8]">
+                        @php $shipment = $order->shipments->last(); @endphp
+                        <tr class="border-t border-[#e4e3d8] align-top">
                             <td class="px-5 py-4 font-semibold text-[#173b32]">{{ $order->order_number }}</td>
                             <td class="px-5 py-4">
                                 <div class="font-semibold text-[#173b32]">{{ $order->customer_name }}</div>
                                 <div class="text-xs text-[#738078]">{{ $order->phone }}</div>
                             </td>
-                            <td class="px-5 py-4">
-                                @foreach ($order->items as $item)
-                                    <div class="text-xs text-[#4d5c56]">
-                                        {{ $item->name }} × {{ $item->quantity }}
-                                        @if ($item->variant_name)
-                                            <span class="block text-[#738078]">{{ $item->variant_name }}{{ $item->variant_sku ? ' · '.$item->variant_sku : '' }}</span>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </td>
+                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $order->created_at?->format('d M Y') }}</td>
                             <td class="px-5 py-4 font-bold text-[#145943]">৳{{ number_format((float) $order->total, 2) }}</td>
+                            <td class="px-5 py-4 text-xs uppercase tracking-wide text-[#738078]">{{ $order->payment_status ?? 'pending' }}</td>
                             <td class="px-5 py-4">
                                 <span class="rounded-full bg-[#edf2e4] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#145943]">
                                     {{ $order->status }}
                                 </span>
                             </td>
+                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? ucfirst($shipment->courier_code) : 'Not selected' }}</td>
+                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? $shipment->status : 'Not created' }}</td>
+                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? ($shipment->tracking_code ?? $shipment->consignment_id ?? 'N/A') : 'N/A' }}</td>
+                            <td class="px-5 py-4">
+                                <a href="{{ route('admin.orders.show', $order) }}" class="rounded-xl bg-[#145943] px-3 py-2 text-xs font-bold text-white">View</a>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-10 text-center text-[#738078]">
+                            <td colspan="10" class="px-5 py-10 text-center text-[#738078]">
                                 No orders yet.
                             </td>
                         </tr>

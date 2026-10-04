@@ -27,7 +27,7 @@ class ProductVariantResource extends JsonResource
 
             'compare_at_price' => $this->compare_at_price,
 
-            'stock' => $this->stock,
+            'is_out_of_stock' => $this->is_out_of_stock,
 
             'is_active' => $this->is_active,
 

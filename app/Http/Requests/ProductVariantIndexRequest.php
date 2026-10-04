@@ -41,12 +41,9 @@ class ProductVariantIndexRequest extends FormRequest
                 'boolean',
             ],
 
-            'stock_status' => [
+            'is_out_of_stock' => [
                 'nullable',
-                Rule::in([
-                    'in_stock',
-                    'out_of_stock',
-                ]),
+                'boolean',
             ],
 
             'min_price' => [
@@ -69,7 +66,7 @@ class ProductVariantIndexRequest extends FormRequest
                     'name',
                     'sku',
                     'price',
-                    'stock',
+                    'is_out_of_stock',
                     'created_at',
                 ]),
             ],

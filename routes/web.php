@@ -4,11 +4,13 @@ use App\Http\Controllers\Web\AccountSecurityController;
 use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\AdminRoleController;
 use App\Http\Controllers\Web\AdminSessionController;
+use App\Http\Controllers\Web\AdminSettingsController;
 use App\Http\Controllers\Web\AdminUserController;
 use App\Http\Controllers\Web\CheckoutController;
 use App\Http\Controllers\Web\CustomerRegistrationController;
 use App\Http\Controllers\Web\EmailVerificationController;
 use App\Http\Controllers\Web\HomeController;
+use App\Http\Controllers\Web\OrderController;
 use App\Http\Controllers\Web\PasswordResetController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ProductReviewController;
@@ -19,6 +21,10 @@ use Illuminate\Support\Facades\Route;
 Route::controller(HomeController::class)->group(function () {
     Route::get('/', 'index')->name('home');
 });
+
+Route::get('/search/suggestions', [ShopController::class, 'suggestions'])
+    ->middleware('throttle:120,1')
+    ->name('shop.suggestions');
 
 Route::controller(ShopController::class)->group(function () {
     Route::get('/shop/{category?}', 'index')
@@ -75,8 +81,16 @@ Route::middleware(['auth', 'management.2fa'])
     });
 
 Route::middleware(['auth', 'management.verified'])->group(function () {
+    Route::get('/account/profile', [AccountSecurityController::class, 'profile'])->name('account.profile');
     Route::put('/account/profile', [AccountSecurityController::class, 'updateProfile'])
         ->middleware(['management.2fa', 'throttle:5,1'])->name('account.profile.update');
+    Route::delete('/account/profile/photo', [AccountSecurityController::class, 'deleteProfilePhoto'])
+        ->middleware(['management.2fa', 'throttle:5,1'])->name('account.profile.photo.destroy');
+    Route::get('/account/orders', [OrderController::class, 'index'])->name('account.orders');
+    Route::get('/account/orders/history', [OrderController::class, 'history'])->name('account.orders.history');
+    Route::post('/account/orders/{order}/cancel', [OrderController::class, 'cancel'])
+        ->middleware('throttle:5,1')->name('account.orders.cancel');
+    Route::get('/account/orders/{order}', [OrderController::class, 'show'])->name('account.orders.show');
     Route::get('/account/security', [AccountSecurityController::class, 'index'])
         ->middleware('management.2fa')->name('account.security');
     Route::put('/account/security/email', [AccountSecurityController::class, 'updateEmail'])
@@ -98,8 +112,28 @@ Route::middleware(['auth', 'management.verified'])->group(function () {
     Route::get('/admin/orders', [AdminController::class, 'orders'])
         ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa'])
         ->name('admin.orders');
+    Route::get('/admin/orders/{order}', [OrderController::class, 'adminShow'])
+        ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa'])
+        ->name('admin.orders.show');
+    Route::get('/admin/orders/{order}/payment-proof', [OrderController::class, 'paymentProof'])
+        ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa'])
+        ->name('admin.orders.payment-proof');
+    Route::patch('/admin/orders/{order}/payment', [OrderController::class, 'reviewPayment'])
+        ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa', 'throttle:10,1'])
+        ->name('admin.orders.payment.review');
+    Route::post('/admin/orders/{order}/shipments', [OrderController::class, 'createShipment'])
+        ->middleware(['can:access-admin', 'management.2fa', 'throttle:5,1'])
+        ->name('admin.orders.shipments.store');
 
     Route::prefix('admin')->name('admin.')->middleware(['can:access-admin', 'management.2fa'])->group(function () {
+        Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('settings');
+        Route::get('/settings/hero-targets', [AdminSettingsController::class, 'heroTargetSuggestions'])
+            ->middleware('throttle:60,1')->name('settings.hero-targets');
+        Route::patch('/settings/branding', [AdminSettingsController::class, 'updateBranding'])
+            ->middleware('can:settings.update')->name('settings.branding.update');
+        Route::patch('/settings/security', [AdminSettingsController::class, 'updateSensitive'])
+            ->middleware(['can:system-owner-settings', 'throttle:5,1'])->name('settings.security.update');
+
         Route::get('/profile', [AdminController::class, 'profile'])
             ->middleware('can:access-admin')
             ->name('profile');
@@ -163,11 +197,13 @@ Route::middleware(['auth', 'management.verified'])->group(function () {
         Route::put('/products/{product}/attributes', [AdminController::class, 'updateProductAttributes'])->middleware('can:products.update')->name('products.attributes.update');
         Route::post('/products/{product}/variants', [AdminController::class, 'storeVariant'])->middleware(['can:products.view', 'can:variants.create'])->name('products.variants.store');
         Route::put('/products/{product}/variants/{variant}', [AdminController::class, 'updateVariant'])->middleware(['can:products.view', 'can:variants.update'])->scopeBindings()->name('products.variants.update');
+        Route::patch('/products/{product}/variants/{variant}/availability', [AdminController::class, 'updateVariantAvailability'])->middleware(['can:products.view', 'can:variants.update'])->scopeBindings()->name('products.variants.availability');
         Route::delete('/products/{product}/variants/{variant}', [AdminController::class, 'deleteVariant'])->middleware(['can:products.view', 'can:variants.delete'])->scopeBindings()->name('products.variants.destroy');
         Route::post('/products/{product}/variants/{variant}/restore', [AdminController::class, 'restoreVariant'])->middleware(['can:products.view', 'can:variants.update'])->scopeBindings()->withTrashed()->name('products.variants.restore');
         Route::get('/products/{product}', [AdminController::class, 'showProduct'])->middleware('can:products.view')->name('products.show');
         Route::get('/products/{product}/edit', [AdminController::class, 'editProduct'])->middleware('can:products.update')->name('products.edit');
         Route::put('/products/{product}', [AdminController::class, 'updateProduct'])->middleware('can:products.update')->name('products.update');
+        Route::patch('/products/{product}/reviews/{review}/approval', [AdminController::class, 'updateProductReviewApproval'])->middleware('can:products.update')->name('products.reviews.approval');
         Route::patch('/products/{product}/availability', [AdminController::class, 'updateProductAvailability'])->middleware('can:products.update')->name('products.availability');
         Route::delete('/products/{product}', [AdminController::class, 'destroyProduct'])->middleware('can:products.delete')->name('products.destroy');
         Route::post('/products/{product}/restore', [AdminController::class, 'restoreProduct'])->middleware('can:products.update')->name('products.restore');

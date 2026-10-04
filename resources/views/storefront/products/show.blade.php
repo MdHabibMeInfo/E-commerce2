@@ -151,7 +151,7 @@
                     @if ($product->type === 'variable')
                         @php
                             $startingVariant = $product->variants
-                                ->where('stock', '>', 0)
+                                ->where('is_out_of_stock', false)
                                 ->sortBy('price')
                                 ->first();
                         @endphp
@@ -179,10 +179,11 @@
                                     value="{{ $variant->id }}"
                                     data-price="{{ $variant->price }}"
                                     data-compare-at-price="{{ $variant->compare_at_price }}"
-                                    data-stock="{{ $variant->stock }}"
-                                    @disabled($variant->stock < 1 || $product->is_out_of_stock)
+                                    data-unavailable="{{ $variant->is_out_of_stock ? 'true' : 'false' }}"
+                                    @selected((string) $variant->id === $selectedVariantId)
+                                    @disabled($variant->is_out_of_stock || $product->is_out_of_stock)
                                 >
-                                    {{ $variant->displayName() }} · ৳{{ number_format((float) $variant->price, 2) }}{{ $variant->stock < 1 ? ' · Out of stock' : '' }}
+                                    {{ $variant->displayName() }} · ৳{{ number_format((float) $variant->price, 2) }}{{ $variant->is_out_of_stock ? ' · Out of stock' : '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -190,7 +191,7 @@
                             @if ($product->variants->isEmpty())
                                 No active variants are available.
                             @else
-                                Select an in-stock option to continue.
+                                Select an available option to continue.
                             @endif
                         </p>
                     @elseif ($product->price !== null || $product->compare_at_price !== null)
@@ -304,7 +305,7 @@
 
                 <div class="grid gap-10 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)] lg:gap-14">
                     <div>
-                        @forelse ($product->reviews as $review)
+                        @forelse ($product->approvedReviews as $review)
                             <article class="border-b border-[#e8e6db] py-5 first:pt-0">
                                 <div class="flex flex-wrap items-start justify-between gap-3">
                                     <div>

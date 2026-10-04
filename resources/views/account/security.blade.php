@@ -1,8 +1,7 @@
-<x-layouts.app>
+<x-layouts.account>
     <x-slot:title>Account security | {{ config('app.name') }}</x-slot:title>
 
-    <section class="bg-[#fbfaf4] px-4 py-10 sm:px-6 lg:px-8">
-        <div class="mx-auto max-w-5xl space-y-6">
+    <div class="space-y-6">
             <header>
                 <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#a48335]">Account</p>
                 <h1 class="mt-2 text-3xl font-extrabold text-[#145943]">Security</h1>
@@ -178,6 +177,5 @@
                     @endforelse
                 </ul>
             </section>
-        </div>
-    </section>
-</x-layouts.app>
+    </div>
+</x-layouts.account>

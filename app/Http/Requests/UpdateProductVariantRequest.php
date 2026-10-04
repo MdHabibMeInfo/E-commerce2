@@ -52,10 +52,9 @@ class UpdateProductVariantRequest extends FormRequest
                 'gt:price',
             ],
 
-            'stock' => [
-                'required',
-                'integer',
-                'min:0',
+            'is_out_of_stock' => [
+                'sometimes',
+                'boolean',
             ],
 
             'is_active' => [

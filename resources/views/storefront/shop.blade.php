@@ -23,12 +23,19 @@
                         @if ($activeCategory)
                             <input type="hidden" name="category" value="{{ $activeCategory->slug }}">
                         @endif
+                        <input type="hidden" name="sort" value="{{ $sort }}">
+                        @if ($perPageSelection !== 'default')
+                            <input type="hidden" name="per_page" value="{{ $perPageSelection }}">
+                        @endif
+                        @if ($flag !== '')
+                            <input type="hidden" name="flag" value="{{ $flag }}">
+                        @endif
 
                         <div>
                             <h2 class="text-lg font-extrabold text-[#145943]">Category</h2>
                             <div class="mt-4 space-y-2">
                                 <a
-                                    href="{{ route('shop', ['sort' => $sort, 'variants' => $selectedVariants ?: null, 'flag' => $flag !== '' ? $flag : null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null]) }}"
+                                    href="{{ route('shop', ['sort' => $sort, 'per_page' => $perPageSelection !== 'default' ? $perPageSelection : null, 'q' => $searchQuery ?: null, 'variants' => $selectedVariants ?: null, 'flag' => $flag !== '' ? $flag : null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null]) }}"
                                     class="flex items-center justify-between rounded-xl px-2 py-2 text-sm transition {{ !$activeCategory ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}"
                                 >
                                     <span>All</span>
@@ -36,7 +43,7 @@
 
                                 @foreach ($categories as $categoryItem)
                                     <a
-                                        href="{{ route('shop', ['category' => $categoryItem->slug, 'sort' => $sort, 'variants' => $selectedVariants ?: null, 'flag' => $flag !== '' ? $flag : null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null]) }}"
+                                        href="{{ route('shop', ['category' => $categoryItem->slug, 'sort' => $sort, 'per_page' => $perPageSelection !== 'default' ? $perPageSelection : null, 'q' => $searchQuery ?: null, 'variants' => $selectedVariants ?: null, 'flag' => $flag !== '' ? $flag : null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null]) }}"
                                         class="flex items-center justify-between rounded-xl px-2 py-2 text-sm transition {{ $activeCategory && $activeCategory->slug === $categoryItem->slug ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}"
                                     >
                                         <span>{{ $categoryItem->name }}</span>
@@ -57,7 +64,7 @@
                             <div class="mt-4 space-y-4">
                                 <div class="relative h-7 px-1.5">
                                     <div class="pointer-events-none absolute left-1 right-1 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#e9e7df]"></div>
-                                    <div class="pointer-events-none absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[]" style="left: {{ $rangeMinPercent }}%; width: {{ $rangeTrackWidth }}%;"></div>
+                                    <div class="pointer-events-none absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#a48335]" style="left: {{ $rangeMinPercent }}%; width: {{ $rangeTrackWidth }}%;"></div>
                                     <input
                                         type="range"
                                         min="0"
@@ -157,13 +164,23 @@
                                     <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>Price Low to High</option>
                                     <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>Price High to Low</option>
                                 </select>
+                                <label class="flex items-center gap-2 text-sm text-[#4d5c56]">
+                                    <span>Show</span>
+                                    <select name="per_page" aria-label="Products per page" class="h-9 rounded-[8px] border border-[#e3e0d6] bg-[#f8f7f2] px-2 text-sm text-[#173b32] outline-none focus:border-[#e3e0d6] focus:ring-0" onchange="this.form.submit()">
+                                        <option value="default" {{ $perPageSelection === 'default' ? 'selected' : '' }}>16</option>
+                                        <option value="20" {{ $perPageSelection === '20' ? 'selected' : '' }}>20</option>
+                                        <option value="24" {{ $perPageSelection === '24' ? 'selected' : '' }}>24</option>
+                                        <option value="36" {{ $perPageSelection === '36' ? 'selected' : '' }}>36</option>
+                                    </select>
+                                    <span>per page</span>
+                                </label>
                             </form>
                         </div>
 
                         <div class="flex flex-wrap gap-2">
                             @foreach ($categories as $category)
                                 <a
-                                    href="{{ route('shop', ['category' => $category->slug, 'sort' => $sort, 'variants' => $selectedVariants ?: null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null, 'flag' => $flag !== '' ? $flag : null]) }}"
+                                    href="{{ route('shop', ['category' => $category->slug, 'sort' => $sort, 'per_page' => $perPageSelection !== 'default' ? $perPageSelection : null, 'q' => $searchQuery ?: null, 'variants' => $selectedVariants ?: null, 'min_price' => $minPrice > 0 ? $minPrice : null, 'max_price' => $maxPrice > 0 ? $maxPrice : null, 'flag' => $flag !== '' ? $flag : null]) }}"
                                     class="rounded-full border px-3 py-1.5 text-xs font-semibold transition {{ $activeCategory && $activeCategory->id === $category->id ? 'border-[#145943] bg-[#145943] text-white' : 'border-[#dfe2d6] bg-white text-[#4d5c56] hover:border-[#145943] hover:text-[#145943]' }}"
                                 >
                                     {{ $category->name }}
@@ -183,7 +200,7 @@
                             @foreach ($products as $product)
                                 @php
                                     $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
-                                    $hasAvailableVariant = $product->variants->contains(fn ($variant) => $variant->stock > 0);
+                                    $hasAvailableVariant = $product->variants->contains(fn ($variant) => ! $variant->is_out_of_stock);
                                     $canPurchase = ! $product->is_out_of_stock && ($product->type !== 'variable' || $hasAvailableVariant);
                                 @endphp
 
@@ -256,6 +273,11 @@
                                 </article>
                             @endforeach
                         </div>
+                        @if ($products->hasPages())
+                            <div class="mt-6">
+                                {{ $products->links() }}
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>

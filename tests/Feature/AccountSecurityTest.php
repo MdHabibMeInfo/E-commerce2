@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Order;
 use App\Models\SecurityEvent;
 use App\Models\User;
 use App\Notifications\EmailChangeVerificationNotification;
@@ -9,6 +10,37 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
+
+it('renders the customer security page and its account controls', function () {
+    $customer = User::factory()->create(['account_type' => 'customer', 'status' => 'active']);
+
+    $this->actingAs($customer)
+        ->get(route('account.security'))
+        ->assertOk()
+        ->assertSee('Security')
+        ->assertSee('Change password')
+        ->assertSee('Active sessions')
+        ->assertSee('Recent security activity');
+});
+
+it('keeps past orders out of the customer profile page', function () {
+    $customer = User::factory()->create(['account_type' => 'customer', 'status' => 'active']);
+    $activeOrder = Order::factory()->create([
+        'user_id' => $customer->id,
+        'status' => 'processing',
+    ]);
+    $pastOrder = Order::factory()->create([
+        'user_id' => $customer->id,
+        'status' => 'delivered',
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('account.profile'))
+        ->assertOk()
+        ->assertSee('Profile details')
+        ->assertSee($activeOrder->order_number)
+        ->assertDontSee($pastOrder->order_number);
+});
 
 it('keeps a customer email unchanged until the new address confirms its signed link', function () {
     $user = User::factory()->create(['email' => 'old-address@example.com']);

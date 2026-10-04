@@ -162,6 +162,12 @@
                 <label for="is_active" class="text-sm font-bold text-[#173b32]">Active product</label>
             </div>
 
+            <div class="flex items-center gap-3">
+                <input type="hidden" name="is_featured" value="0">
+                <input type="checkbox" name="is_featured" id="is_featured" value="1" {{ old('is_featured', false) ? 'checked' : '' }} class="h-4 w-4 rounded border-[#dfe3cf] text-[#145943] focus:ring-[#145943]">
+                <label for="is_featured" class="text-sm font-bold text-[#173b32]">Show in Just For You</label>
+            </div>
+
             <div class="flex items-center justify-end gap-3">
                 <a href="{{ route('admin.products.index') }}" class="rounded-xl border border-[#dfe3cf] bg-white px-4 py-2.5 text-sm font-bold text-[#145943] transition hover:bg-[#f7f4ee]">
                     Cancel

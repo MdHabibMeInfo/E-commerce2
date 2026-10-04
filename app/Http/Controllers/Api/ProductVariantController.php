@@ -47,14 +47,8 @@ class ProductVariantController extends Controller
             );
         }
 
-        if (isset($validated['stock_status'])) {
-            if ($validated['stock_status'] === 'in_stock') {
-                $query->where('stock', '>', 0);
-            }
-
-            if ($validated['stock_status'] === 'out_of_stock') {
-                $query->where('stock', '=', 0);
-            }
+        if (isset($validated['is_out_of_stock'])) {
+            $query->where('is_out_of_stock', $validated['is_out_of_stock']);
         }
 
         if (isset($validated['min_price'])) {

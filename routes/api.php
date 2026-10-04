@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ProductAttributeController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductImageController;
 use App\Http\Controllers\Api\ProductVariantController;
+use App\Http\Controllers\Web\RedxWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +17,9 @@ Route::middleware('web')->group(function () {
     Route::post('/cart/items', [CartController::class, 'store']);
     Route::patch('/cart/items/{cartItem}', [CartController::class, 'update']);
     Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy']);
+    Route::post('/webhooks/couriers/redx', RedxWebhookController::class)
+        ->middleware('throttle:120,1')
+        ->name('webhooks.redx');
 });
 
 Route::middleware(['web', 'auth:sanctum', 'management.verified', 'management.2fa'])->group(function () {

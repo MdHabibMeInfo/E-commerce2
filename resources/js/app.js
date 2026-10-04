@@ -1,4 +1,283 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const brandingForm = document.querySelector('[data-branding-settings-form]');
+
+    if (brandingForm) {
+        const imageInputs = Array.from(brandingForm.querySelectorAll('[data-branding-image]'));
+        const submitButton = brandingForm.querySelector('[data-branding-submit]');
+        const uploadStatus = brandingForm.querySelector('[data-branding-upload-status]');
+        const maximumUploadBytes = 1_700_000;
+
+        brandingForm.addEventListener('submit', async (event) => {
+            if (brandingForm.dataset.imagesReady === 'true') {
+                return;
+            }
+
+            const selectedInputs = imageInputs.filter((input) => input.files?.length);
+
+            if (selectedInputs.length === 0) {
+                return;
+            }
+
+            event.preventDefault();
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+            uploadStatus.textContent = 'Preparing image upload...';
+
+            try {
+                for (const input of selectedInputs) {
+                    const file = input.files[0];
+                    const bitmap = await createImageBitmap(file);
+                    const maximumWidth = Number(input.dataset.maxWidth);
+                    const maximumHeight = Number(input.dataset.maxHeight);
+
+                    if (file.size <= maximumUploadBytes && bitmap.width <= maximumWidth && bitmap.height <= maximumHeight) {
+                        bitmap.close();
+                        continue;
+                    }
+
+                    let scale = Math.min(1, maximumWidth / bitmap.width, maximumHeight / bitmap.height);
+                    let quality = 0.86;
+                    let blob = null;
+
+                    try {
+                        for (let attempt = 0; attempt < 10; attempt += 1) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+                            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+                            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+                            blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+
+                            if (blob && blob.size <= maximumUploadBytes) {
+                                break;
+                            }
+
+                            if (attempt % 2 === 1) {
+                                scale *= 0.85;
+                            } else {
+                                quality = Math.max(0.5, quality - 0.08);
+                            }
+                        }
+                    } finally {
+                        bitmap.close();
+                    }
+
+                    if (!blob || blob.size > maximumUploadBytes) {
+                        throw new Error('This image could not be optimized. Please choose a smaller image.');
+                    }
+
+                    const baseName = file.name.replace(/\.[^.]+$/, '');
+                    const optimizedFile = new File([blob], `${baseName}.webp`, { type: 'image/webp' });
+                    const transfer = new DataTransfer();
+                    transfer.items.add(optimizedFile);
+                    input.files = transfer.files;
+                }
+
+                brandingForm.dataset.imagesReady = 'true';
+                uploadStatus.textContent = '';
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    brandingForm.requestSubmit(submitButton);
+                } else {
+                    brandingForm.requestSubmit();
+                }
+            } catch (error) {
+                uploadStatus.textContent = error instanceof Error
+                    ? error.message
+                    : 'The selected image could not be prepared for upload.';
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
+            }
+        });
+    }
+
+    const heroTargetSearch = document.querySelector('[data-hero-target-search]');
+
+    if (heroTargetSearch) {
+        const heroTargetValue = document.querySelector('[data-hero-target-value]');
+        const heroTargetResults = document.querySelector('[data-hero-target-results]');
+        const heroTargetSelected = document.querySelector('[data-hero-target-selected]');
+        const clearHeroTarget = document.querySelector('[data-clear-hero-target]');
+        let heroTargetTimer = null;
+        let heroTargetRequest = null;
+        let activeHeroTargetIndex = -1;
+
+        const closeHeroTargetResults = () => {
+            heroTargetResults.classList.add('hidden');
+            heroTargetSearch.setAttribute('aria-expanded', 'false');
+            activeHeroTargetIndex = -1;
+        };
+
+        const selectHeroTarget = (item) => {
+            heroTargetValue.value = item.value;
+            heroTargetSearch.value = item.label;
+            heroTargetSelected.textContent = `${item.type}: ${item.label}`;
+            closeHeroTargetResults();
+        };
+
+        const renderHeroTargetResults = (items) => {
+            heroTargetResults.replaceChildren();
+
+            if (!items.length) {
+                const emptyMessage = document.createElement('p');
+                emptyMessage.className = 'px-3 py-3 text-sm text-[#66736d]';
+                emptyMessage.textContent = 'No matching categories, products, or variants.';
+                heroTargetResults.appendChild(emptyMessage);
+                heroTargetResults.classList.remove('hidden');
+                heroTargetSearch.setAttribute('aria-expanded', 'true');
+
+                return;
+            }
+
+            items.forEach((item, index) => {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.role = 'option';
+                option.dataset.heroTargetOption = String(index);
+                option.setAttribute('aria-selected', 'false');
+                option.className = 'flex w-full items-center justify-between gap-3 border-b border-[#eef0ea] px-3 py-3 text-left text-sm last:border-b-0 hover:bg-[#f5f7ee]';
+
+                const label = document.createElement('span');
+                label.className = 'min-w-0 truncate font-medium text-[#173b32]';
+                label.textContent = item.label;
+
+                const type = document.createElement('span');
+                type.className = 'shrink-0 text-xs font-semibold text-[#a48335]';
+                type.textContent = item.type;
+
+                option.append(label, type);
+                option.addEventListener('click', () => selectHeroTarget(item));
+                heroTargetResults.appendChild(option);
+            });
+
+            heroTargetResults.classList.remove('hidden');
+            heroTargetSearch.setAttribute('aria-expanded', 'true');
+        };
+
+        heroTargetSearch.addEventListener('input', () => {
+            heroTargetValue.value = '';
+            heroTargetSelected.textContent = 'No destination selected; clicking the image returns home.';
+            window.clearTimeout(heroTargetTimer);
+            heroTargetRequest?.abort();
+
+            const search = heroTargetSearch.value.trim();
+
+            if (search.length < 2) {
+                closeHeroTargetResults();
+                heroTargetResults.replaceChildren();
+
+                return;
+            }
+
+            heroTargetTimer = window.setTimeout(async () => {
+                heroTargetRequest = new AbortController();
+                const url = new URL(heroTargetSearch.dataset.searchUrl, window.location.origin);
+                url.searchParams.set('search', search);
+
+                try {
+                    const response = await fetch(url, {
+                        headers: { Accept: 'application/json' },
+                        credentials: 'same-origin',
+                        signal: heroTargetRequest.signal,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Search request failed. Try again.');
+                    }
+
+                    const data = await response.json();
+                    renderHeroTargetResults(Array.isArray(data.items) ? data.items : []);
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        heroTargetResults.replaceChildren();
+                        const errorMessage = document.createElement('p');
+                        errorMessage.className = 'px-3 py-3 text-sm text-red-700';
+                        errorMessage.textContent = error.message || 'Unable to search right now.';
+                        heroTargetResults.appendChild(errorMessage);
+                        heroTargetResults.classList.remove('hidden');
+                        heroTargetSearch.setAttribute('aria-expanded', 'true');
+                    }
+                }
+            }, 180);
+        });
+
+        heroTargetSearch.addEventListener('keydown', (event) => {
+            const options = Array.from(heroTargetResults.querySelectorAll('[data-hero-target-option]'));
+
+            if (event.key === 'Escape') {
+                closeHeroTargetResults();
+
+                return;
+            }
+
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                if (!options.length) {
+                    return;
+                }
+
+                event.preventDefault();
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                activeHeroTargetIndex = (activeHeroTargetIndex + direction + options.length) % options.length;
+                options.forEach((option, index) => {
+                    const isActive = index === activeHeroTargetIndex;
+                    option.setAttribute('aria-selected', String(isActive));
+                    option.classList.toggle('bg-[#f5f7ee]', isActive);
+                });
+                options[activeHeroTargetIndex].scrollIntoView({ block: 'nearest' });
+
+                return;
+            }
+
+            if (event.key === 'Enter' && activeHeroTargetIndex >= 0) {
+                event.preventDefault();
+                options[activeHeroTargetIndex]?.click();
+            }
+        });
+
+        clearHeroTarget.addEventListener('click', () => {
+            heroTargetValue.value = '';
+            heroTargetSearch.value = '';
+            heroTargetSelected.textContent = 'No destination selected; clicking the image returns home.';
+            closeHeroTargetResults();
+            heroTargetResults.replaceChildren();
+            heroTargetSearch.focus();
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('[data-hero-target-search]')
+                && !event.target.closest('[data-hero-target-results]')) {
+                closeHeroTargetResults();
+            }
+        });
+    }
+
+    const checkoutForm = document.querySelector('[data-checkout-form]');
+
+    if (checkoutForm) {
+        const paymentInputs = Array.from(checkoutForm.querySelectorAll('[data-payment-method]'));
+        const paymentDetails = checkoutForm.querySelector('[data-payment-details]');
+        const paymentFields = Array.from(checkoutForm.querySelectorAll('[data-payment-required]'));
+        const walletInstructions = Array.from(checkoutForm.querySelectorAll('[data-wallet-instructions]'));
+
+        const updatePaymentFields = () => {
+            const selectedMethod = checkoutForm.querySelector('input[name="payment_method"]:checked')?.value;
+            const isWalletPayment = selectedMethod === 'bkash' || selectedMethod === 'nagad';
+
+            paymentDetails.hidden = !isWalletPayment;
+            paymentDetails.inert = !isWalletPayment;
+            paymentFields.forEach((field) => {
+                field.required = isWalletPayment;
+            });
+            walletInstructions.forEach((instructions) => {
+                instructions.hidden = instructions.dataset.walletInstructions !== selectedMethod;
+            });
+        };
+
+        paymentInputs.forEach((input) => input.addEventListener('change', updatePaymentFields));
+        updatePaymentFields();
+    }
+
     const buildSuggestionsUrl = (baseUrl, search) => {
         const url = new URL(baseUrl, window.location.origin);
         url.searchParams.set('search', search);
@@ -144,6 +423,174 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.addEventListener('click', (event) => {
             if (!input.parentElement.contains(event.target)) closeSuggestions();
+        });
+    });
+
+    document.querySelectorAll('[data-storefront-search]').forEach((form) => {
+        const input = form.querySelector('[data-storefront-search-input]');
+        const results = form.querySelector('[data-storefront-search-results]');
+        let debounceTimeout = null;
+        let activeRequest = null;
+        let activeIndex = -1;
+
+        if (!input || !results) return;
+
+        const closeSuggestions = () => {
+            results.classList.add('hidden');
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+            activeIndex = -1;
+        };
+
+        const setActiveSuggestion = (index) => {
+            const options = [...results.querySelectorAll('[data-storefront-search-option]')];
+            if (options.length === 0) return;
+
+            activeIndex = (index + options.length) % options.length;
+            options.forEach((option, optionIndex) => {
+                const isActive = optionIndex === activeIndex;
+                option.setAttribute('aria-selected', String(isActive));
+                option.classList.toggle('bg-[#f7f4ee]', isActive);
+            });
+            input.setAttribute('aria-activedescendant', options[activeIndex].id);
+        };
+
+        const renderSuggestions = (suggestions) => {
+            results.replaceChildren();
+            activeIndex = -1;
+            input.removeAttribute('aria-activedescendant');
+
+            if (suggestions.length === 0) {
+                const emptyOption = document.createElement('div');
+                emptyOption.setAttribute('role', 'option');
+                emptyOption.setAttribute('aria-disabled', 'true');
+                emptyOption.className = 'px-4 py-3 text-sm text-[#738078]';
+                emptyOption.textContent = 'No matching products';
+                results.append(emptyOption);
+                results.classList.remove('hidden');
+                input.setAttribute('aria-expanded', 'true');
+
+                return;
+            }
+
+            suggestions.forEach((suggestion, index) => {
+                const option = document.createElement('button');
+                option.id = `${input.id}-suggestion-${index}`;
+                option.type = 'button';
+                option.setAttribute('role', 'option');
+                option.setAttribute('aria-selected', 'false');
+                option.dataset.storefrontSearchOption = '';
+                option.className = 'flex w-full min-w-0 items-center gap-3 px-3 py-2.5 text-left text-sm text-[#173b32] transition hover:bg-[#f7f4ee] focus:bg-[#f7f4ee] focus:outline-none';
+
+                const thumbnailPlaceholder = document.createElement('span');
+                thumbnailPlaceholder.className = 'grid h-12 w-12 shrink-0 place-items-center rounded-[3px] border border-[#e8e6db] bg-[#fbfaf4] text-xl';
+                thumbnailPlaceholder.setAttribute('aria-hidden', 'true');
+                thumbnailPlaceholder.textContent = '🛍️';
+
+                if (suggestion.image) {
+                    const thumbnail = document.createElement('img');
+                    thumbnail.className = 'h-12 w-12 shrink-0 rounded-[3px] border border-[#e8e6db] bg-white object-contain p-0.5';
+                    thumbnail.src = suggestion.image;
+                    thumbnail.alt = '';
+                    thumbnail.loading = 'lazy';
+                    thumbnail.decoding = 'async';
+                    thumbnail.addEventListener('error', () => thumbnail.replaceWith(thumbnailPlaceholder), { once: true });
+                    option.append(thumbnail);
+                } else {
+                    option.append(thumbnailPlaceholder);
+                }
+
+                const details = document.createElement('span');
+                details.className = 'flex min-w-0 flex-1 items-center justify-between gap-3';
+                const text = document.createElement('span');
+                text.className = 'flex min-w-0 flex-col gap-1';
+
+                const name = document.createElement('span');
+                name.className = 'min-w-0 truncate font-semibold';
+                name.textContent = suggestion.name;
+                text.append(name);
+
+                if (suggestion.category) {
+                    const category = document.createElement('span');
+                    category.className = 'truncate text-xs text-[#738078]';
+                    category.textContent = suggestion.category;
+                    text.append(category);
+                }
+
+                details.append(text);
+
+                if (suggestion.price !== null && suggestion.price !== '') {
+                    const price = document.createElement('span');
+                    price.className = 'shrink-0 text-xs font-bold text-[#a48335]';
+                    price.textContent = `৳${suggestion.price}`;
+                    details.append(price);
+                }
+
+                option.append(details);
+
+                option.addEventListener('mouseenter', () => setActiveSuggestion(index));
+                option.addEventListener('click', () => window.location.assign(suggestion.url));
+                results.append(option);
+            });
+
+            results.classList.remove('hidden');
+            input.setAttribute('aria-expanded', 'true');
+        };
+
+        const loadSuggestions = (search) => {
+            window.clearTimeout(debounceTimeout);
+            activeRequest?.abort();
+            closeSuggestions();
+            results.replaceChildren();
+
+            if (search.length < 2) return;
+
+            debounceTimeout = window.setTimeout(async () => {
+                const request = new AbortController();
+                activeRequest = request;
+
+                try {
+                    const response = await fetch(buildSuggestionsUrl(form.dataset.suggestionsUrl, search), {
+                        headers: { Accept: 'application/json' },
+                        signal: request.signal,
+                    });
+
+                    if (!response.ok) throw new Error('Product suggestions are unavailable.');
+
+                    const suggestions = await response.json();
+                    if (request.signal.aborted) return;
+
+                    renderSuggestions(Array.isArray(suggestions) ? suggestions : []);
+                } catch (error) {
+                    if (error.name !== 'AbortError') closeSuggestions();
+                }
+            }, 200);
+        };
+
+        input.addEventListener('focus', () => loadSuggestions(input.value.trim()));
+        input.addEventListener('click', () => {
+            if (results.classList.contains('hidden')) loadSuggestions(input.value.trim());
+        });
+        input.addEventListener('input', () => loadSuggestions(input.value.trim()));
+        input.addEventListener('keydown', (event) => {
+            const options = [...results.querySelectorAll('[data-storefront-search-option]')];
+
+            if (!results.classList.contains('hidden') && options.length > 0 && event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveSuggestion(activeIndex + 1);
+            } else if (!results.classList.contains('hidden') && options.length > 0 && event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveSuggestion(activeIndex < 0 ? options.length - 1 : activeIndex - 1);
+            } else if (event.key === 'Enter' && activeIndex >= 0) {
+                event.preventDefault();
+                options[activeIndex]?.click();
+            } else if (event.key === 'Escape') {
+                closeSuggestions();
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!form.contains(event.target)) closeSuggestions();
         });
     });
 
@@ -902,8 +1349,7 @@ document.addEventListener('DOMContentLoaded', () => {
     variantSelect?.addEventListener('change', () => {
         const selectedOption = variantSelect.selectedOptions[0];
         const variantId = variantSelect.value;
-        const stock = Number(selectedOption?.dataset.stock || 0);
-        const isAvailable = Boolean(variantId) && stock > 0 && variantSelect.dataset.productUnavailable !== 'true';
+        const isAvailable = Boolean(variantId) && selectedOption?.dataset.unavailable !== 'true' && variantSelect.dataset.productUnavailable !== 'true';
         const status = document.querySelector('[data-variant-selection-status]');
         const priceDisplay = document.querySelector('[data-variant-price-display]');
         const compareDisplay = document.querySelector('[data-variant-compare-display]');
@@ -919,13 +1365,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const compareAtPrice = Number(selectedOption.dataset.compareAtPrice || 0);
             compareDisplay.textContent = compareAtPrice > 0 ? money(compareAtPrice) : '';
             compareDisplay.classList.toggle('hidden', compareAtPrice <= 0);
-            status.textContent = `${stock} available`;
+            status.textContent = 'Available';
         } else {
             compareDisplay.textContent = '';
             compareDisplay.classList.add('hidden');
-            status.textContent = variantId ? 'This option is unavailable.' : 'Select an in-stock option to continue.';
+            status.textContent = variantId ? 'This option is unavailable.' : 'Select an available option to continue.';
         }
     });
+
+    if (variantSelect?.value) {
+        variantSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
 
     floatingCart.addEventListener('click', () => setCartDrawerState(true));
     overlay.addEventListener('click', () => setCartDrawerState(false));
@@ -1243,6 +1693,7 @@ document.addEventListener('DOMContentLoaded', () => {
         centerWhenFits = false,
         initialDirection = 1,
         reversePauseMs = 2300,
+        paginationLabel = 'products',
     }) => {
         const track = document.querySelector(trackSelector);
         if (!track) return;
@@ -1305,7 +1756,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dot = document.createElement('button');
                 dot.type = 'button';
                 dot.className = 'h-2.5 w-2.5 rounded-full bg-[#c6c8b9] transition-all duration-300 hover:bg-[#a48335] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48335] focus-visible:ring-offset-2';
-                dot.setAttribute('aria-label', `Show featured products starting at card ${index + 1}`);
+                dot.setAttribute('aria-label', `Show ${paginationLabel} starting at card ${index + 1}`);
                 dot.addEventListener('click', () => {
                     clearReverse();
                     const target = index === pageCount - 1 ? maxScroll() : Math.min(maxScroll(), index * stepSize());
@@ -1455,6 +1906,19 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileMaxVisible: 2,
         initialDirection: 1,
         reversePauseMs: 2300,
+        paginationLabel: 'new arrivals',
+    });
+
+    setupCarousel({
+        trackSelector: '[data-just-for-you-track]',
+        paginationSelector: '[data-just-for-you-pagination]',
+        minCardWidth: 220,
+        maxVisible: 5,
+        mobileMinCardWidth: 120,
+        mobileMaxVisible: 2,
+        initialDirection: 1,
+        reversePauseMs: 2300,
+        paginationLabel: 'Just For You',
     });
 
     document.querySelectorAll('[data-category-product-track]').forEach((track) => {

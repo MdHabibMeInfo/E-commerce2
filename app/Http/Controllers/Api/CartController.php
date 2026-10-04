@@ -45,12 +45,6 @@ class CartController extends Controller
                 ->first();
             $newQuantity = (int) ($item?->quantity ?? 0) + $quantity;
 
-            if ($line['variant'] && $newQuantity > $line['variant']->stock) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'The requested quantity exceeds available stock.',
-                ]);
-            }
-
             if ($item) {
                 $item->update([
                     'product_variant_id' => $line['variant']?->id,
@@ -94,12 +88,6 @@ class CartController extends Controller
         DB::transaction(function () use ($cartItem, $validated): void {
             $product = Product::query()->lockForUpdate()->findOrFail($cartItem->product_id);
             $line = $this->resolvePurchasableLine($product, $cartItem->product_variant_id);
-
-            if ($line['variant'] && $validated['quantity'] > $line['variant']->stock) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'The requested quantity exceeds available stock.',
-                ]);
-            }
 
             $cartItem->update([
                 'variant_name' => $line['variant_name'],
@@ -190,9 +178,9 @@ class CartController extends Controller
                 ]);
             }
 
-            if ($variant->stock < 1) {
+            if ($variant->is_out_of_stock) {
                 throw ValidationException::withMessages([
-                    'product_variant_id' => 'The selected product variant is out of stock.',
+                    'product_variant_id' => 'The selected product variant is currently unavailable.',
                 ]);
             }
 

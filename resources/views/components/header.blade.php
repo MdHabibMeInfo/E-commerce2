@@ -3,7 +3,7 @@
         <div class="mx-auto flex h-[78px] max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
             <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="{{ config('app.name') }} home">
                 <img
-                    src="{{ asset('images/brand/ziyanmart-logo.png') }}"
+                    src="{{ ! empty($siteBranding['logo_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($siteBranding['logo_path']) : asset('images/brand/ziyanmart-logo.png') }}"
                     alt="{{ config('app.name') }}"
                     class="h-12 w-auto object-contain sm:h-14"
                 >
@@ -43,13 +43,19 @@
             </p>
 
             <div class="hidden items-center gap-4 md:flex">
-                <a href="#" class="transition hover:text-[#e5cf8b]">Track Order</a>
+                <a href="{{ route('account.orders') }}" class="transition hover:text-[#e5cf8b]">Track Order</a>
                 <span class="text-white/30">|</span>
                 <a href="#" class="transition hover:text-[#e5cf8b]">Help</a>
                 <span class="text-white/30">|</span>
                 @auth
-                    <span class="max-w-40 truncate">{{ auth()->user()->name }}</span>
-                    <a href="{{ route('account.security') }}" class="transition hover:text-[#e5cf8b]">Security</a>
+                    <a href="{{ route('account.profile') }}" class="grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-white/30 bg-white/10 text-xs font-bold text-white transition hover:bg-white/20" aria-label="Customer profile">
+                        @if (auth()->user()->profile_photo_path)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url(auth()->user()->profile_photo_path) }}" alt="Profile photo" class="h-full w-full object-cover">
+                        @else
+                            {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                        @endif
+                    </a>
+                    <a href="{{ route('account.profile') }}" class="max-w-40 truncate transition hover:text-[#e5cf8b]">{{ auth()->user()->name }}</a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="transition hover:text-[#e5cf8b]">Sign out</button>
@@ -68,7 +74,7 @@
 
             <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="{{ config('app.name') }} home">
                 <img
-                    src="{{ asset('images/brand/ziyanmart-logo.png') }}"
+                    src="{{ ! empty($siteBranding['logo_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($siteBranding['logo_path']) : asset('images/brand/ziyanmart-logo.png') }}"
                     alt="{{ config('app.name') }}"
                     class="h-12 w-auto object-contain sm:h-14"
                 >
@@ -76,7 +82,7 @@
 
             {{-- Search --}}
             <div class="hidden min-w-0 flex-1 lg:block lg:max-w-[480px] lg:mx-auto">
-                <form action="{{ route('shop') }}" method="GET" class="relative">
+                <form action="{{ route('shop') }}" method="GET" class="relative" role="search" data-storefront-search data-suggestions-url="{{ route('shop.suggestions') }}">
                     <label for="header-search" class="sr-only">Search products</label>
                     <input
                         id="header-search"
@@ -84,8 +90,15 @@
                         name="q"
                         value="{{ request('q') }}"
                         placeholder="Search in..."
+                        autocomplete="off"
+                        maxlength="100"
+                        aria-autocomplete="list"
+                        aria-controls="header-search-suggestions"
+                        aria-expanded="false"
+                        data-storefront-search-input
                         class="h-11 w-full rounded-[5px] border border-transparent bg-[#f1f1f1] pl-4 pr-12 text-base text-[#173b32] outline-none transition placeholder:text-[#7c8580] focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10"
                     >
+                    <div id="header-search-suggestions" data-storefront-search-results role="listbox" class="absolute left-0 right-0 top-full z-50 mt-2 hidden max-h-80 overflow-y-auto rounded-[4px] border border-[#e3e0d6] bg-white py-1 shadow-lg"></div>
                     <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[4px] text-[#4d5c56] transition hover:bg-[#e7ebdf] hover:text-[#145943]">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                             <circle cx="11" cy="11" r="6.5"></circle>
@@ -144,7 +157,7 @@
         {{-- Mobile navigation --}}
         <div id="mobile-navigation" data-mobile-menu class="hidden border-t border-[#e7e4d8] bg-[#fffef9] xl:hidden">
             <div class="mx-auto max-w-[1600px] px-4 py-4 sm:px-6">
-                <form action="{{ route('shop') }}" method="GET" class="relative mb-4">
+                <form action="{{ route('shop') }}" method="GET" class="relative mb-4" role="search" data-storefront-search data-suggestions-url="{{ route('shop.suggestions') }}">
                     <label for="mobile-search" class="sr-only">Search products</label>
                     <input
                         id="mobile-search"
@@ -152,8 +165,15 @@
                         name="q"
                         value="{{ request('q') }}"
                         placeholder="Search in..."
+                        autocomplete="off"
+                        maxlength="100"
+                        aria-autocomplete="list"
+                        aria-controls="mobile-search-suggestions"
+                        aria-expanded="false"
+                        data-storefront-search-input
                         class="h-11 w-full rounded-[5px] border border-transparent bg-[#f1f1f1] pl-4 pr-12 text-base text-[#173b32] outline-none transition placeholder:text-[#7c8580] focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/10"
                     >
+                    <div id="mobile-search-suggestions" data-storefront-search-results role="listbox" class="absolute left-0 right-0 top-full z-50 mt-2 hidden max-h-80 overflow-y-auto rounded-[4px] border border-[#e3e0d6] bg-white py-1 shadow-lg"></div>
                     <button type="submit" aria-label="Search products" class="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-[4px] text-[#4d5c56] transition hover:bg-[#e7ebdf] hover:text-[#145943]">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                             <circle cx="11" cy="11" r="6.5"></circle>
@@ -169,9 +189,9 @@
                     <a href="#" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">About</a>
                     <a href="#" class="rounded-xl px-4 py-3 text-sm font-medium text-[#4d5c56] hover:bg-[#f5f4ec]">Contact</a>
                     <div class="mt-2 flex gap-2 border-t border-[#e7e4d8] pt-3">
-                        <a href="#" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Track Order</a>
+                        <a href="{{ route('account.orders') }}" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Track Order</a>
                         @auth
-                            <a href="{{ route('account.security') }}" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Security</a>
+                            <a href="{{ route('account.profile') }}" class="flex-1 rounded-xl border border-[#dedbd0] px-4 py-3 text-center text-sm font-semibold text-[#145943]">Profile</a>
                             <form method="POST" action="{{ route('logout') }}" class="flex-1">
                                 @csrf
                                 <button type="submit" class="w-full rounded-xl bg-[#145943] px-4 py-3 text-center text-sm font-semibold text-white">Sign out</button>

@@ -17,6 +17,7 @@ it('stores a customer review and its uploaded photo', function () {
         'rating' => 5,
         'body' => 'Fresh and excellent quality.',
         'images' => [$image],
+        'is_approved' => true,
     ]);
 
     $response->assertRedirect(route('products.show', ['product' => $product->slug]).'#customer-reviews');
@@ -27,9 +28,11 @@ it('stores a customer review and its uploaded photo', function () {
         'email' => 'amina@example.com',
         'rating' => 5,
         'body' => 'Fresh and excellent quality.',
+        'is_approved' => false,
     ]);
 
     $review = ProductReview::query()->firstOrFail();
+    expect($review->is_approved)->toBeFalse();
     expect($review->images)->toHaveCount(1);
     Storage::disk('public')->assertExists($review->images[0]);
 });
@@ -47,6 +50,7 @@ it('shows the product details and saved reviews without exposing reviewer email'
         'rating' => 4,
         'body' => $unsafeReviewBody,
         'images' => [],
+        'is_approved' => true,
     ]);
     $product->reviews()->create([
         'name' => 'Karim Hasan',
@@ -61,15 +65,16 @@ it('shows the product details and saved reviews without exposing reviewer email'
     $response->assertSee('Product Details');
     $response->assertSee('Sourced from local farms.');
     $response->assertSee('Packed with care.');
-    $response->assertSee('4.5');
-    $response->assertSee('2 reviews');
+    $response->assertSee('4.0');
+    $response->assertSee('1 review');
     $response->assertSee($unsafeDescription);
     $response->assertSee($unsafeReviewerName);
     $response->assertSee($unsafeReviewBody);
     $response->assertDontSee($unsafeDescription, false);
     $response->assertDontSee($unsafeReviewerName, false);
     $response->assertDontSee($unsafeReviewBody, false);
-    $response->assertSee('Would order again.');
+    $response->assertDontSee('Would order again.');
+    $response->assertDontSee('Karim Hasan');
     $response->assertSee('Write a review');
     $response->assertSee('name="images[]"', false);
     $response->assertDontSee('private@example.com');

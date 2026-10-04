@@ -301,7 +301,7 @@ class ProductVariantService
                     'combination_hash' => $combinationHash,
                     'price' => $data['price'],
                     'compare_at_price' => $data['compare_at_price'] ?? null,
-                    'stock' => $data['stock'],
+                    'is_out_of_stock' => $data['is_out_of_stock'] ?? false,
                     'is_active' => $data['is_active'] ?? true,
                 ]);
 
@@ -384,7 +384,7 @@ class ProductVariantService
                     'combination_hash' => $combinationHash,
                     'price' => $data['price'],
                     'compare_at_price' => $data['compare_at_price'] ?? null,
-                    'stock' => $data['stock'],
+                    'is_out_of_stock' => $data['is_out_of_stock'] ?? $variant->is_out_of_stock,
                     'is_active' => $data['is_active'] ?? $variant->is_active,
                 ]);
 

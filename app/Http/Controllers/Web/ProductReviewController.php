@@ -39,6 +39,6 @@ class ProductReviewController extends Controller
         ]);
 
         return redirect()->to(route('products.show', ['product' => $product->slug]).'#customer-reviews')
-            ->with('status', 'Thanks, your review has been submitted.');
+            ->with('status', 'Thanks, your review has been submitted and is awaiting approval.');
     }
 }

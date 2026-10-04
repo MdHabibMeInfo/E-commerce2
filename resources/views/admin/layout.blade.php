@@ -158,10 +158,12 @@
                             <span>Account Security</span>
                             <span class="text-xs">›</span>
                         </a>
-                        <a href="#" class="flex items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]">
+                        @canany(['settings.view', 'settings.update'])
+                        <a href="{{ route('admin.settings') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ request()->routeIs('admin.settings*') ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
                             <span>Settings</span>
                             <span class="text-xs">›</span>
                         </a>
+                        @endcanany
                     </nav>
 
                     <div class="mt-8 rounded-[18px] bg-[#f7f4ee] p-4">

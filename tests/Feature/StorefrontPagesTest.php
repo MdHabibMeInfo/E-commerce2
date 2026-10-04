@@ -2,15 +2,229 @@
 
 use App\Models\Cart;
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductAttribute;
 use App\Models\ProductImage;
+use App\Models\User;
 use App\Services\ProductVariantService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 it('loads the home page', function () {
     $response = $this->get(route('home'));
 
     $response->assertOk();
+});
+
+it('shows five home category rows by skipping categories without active products', function () {
+    for ($position = 1; $position <= 8; $position++) {
+        $category = Category::create([
+            'name' => 'Homepage Category '.$position,
+            'slug' => 'homepage-category-'.$position,
+            'is_active' => true,
+            'sort_order' => $position,
+        ]);
+
+        if ($position === 2) {
+            Product::create([
+                'category_id' => $category->id,
+                'name' => 'Inactive Homepage Product',
+                'slug' => 'inactive-homepage-product',
+                'type' => 'simple',
+                'is_active' => false,
+            ]);
+        }
+
+        if ($position >= 3) {
+            Product::create([
+                'category_id' => $category->id,
+                'name' => 'Homepage Product '.$position,
+                'slug' => 'homepage-product-'.$position,
+                'type' => 'simple',
+                'is_active' => true,
+            ]);
+        }
+    }
+
+    $response = $this->get(route('home'));
+
+    foreach (range(3, 7) as $position) {
+        $response->assertSee('data-category-product-track="homepage-category-'.$position.'"', false);
+    }
+
+    $response->assertDontSee('data-category-product-track="homepage-category-1"', false);
+    $response->assertDontSee('data-category-product-track="homepage-category-2"', false);
+    $response->assertDontSee('data-category-product-track="homepage-category-8"', false);
+});
+
+it('shows new arrivals and selected products in Just For You with a non-empty fallback', function () {
+    $selectedProduct = Product::create([
+        'name' => 'Selected Homepage Product',
+        'slug' => 'selected-homepage-product',
+        'price' => 120,
+        'type' => 'simple',
+        'is_active' => true,
+        'is_featured' => true,
+        'created_at' => now()->subDay(),
+    ]);
+    $newArrival = Product::create([
+        'name' => 'Newest Homepage Product',
+        'slug' => 'newest-homepage-product',
+        'price' => 140,
+        'type' => 'simple',
+        'is_active' => true,
+        'created_at' => now(),
+    ]);
+
+    $response = $this->get(route('home'));
+
+    $response
+        ->assertSee('id="new-arrivals"', false)
+        ->assertSee('New Arrivals')
+        ->assertSee('id="just-for-you"', false)
+        ->assertSee('Just For You')
+        ->assertViewHas('newArrivals', fn ($products) => $products->first()?->is($newArrival))
+        ->assertViewHas('justForYouProducts', fn ($products) => $products->contains(fn ($product) => $product->is($selectedProduct))
+            && ! $products->contains(fn ($product) => $product->is($newArrival)));
+
+    $selectedProduct->forceFill(['is_featured' => false])->save();
+
+    $this->get(route('home'))
+        ->assertViewHas('justForYouProducts', fn ($products) => $products->first()?->is($newArrival));
+});
+
+it('shows only approved customer reviews before the footer', function () {
+    $product = Product::create([
+        'name' => 'Review Homepage Product',
+        'slug' => 'review-homepage-product',
+        'price' => 180,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $product->reviews()->create([
+        'name' => 'Approved Customer',
+        'email' => 'approved@example.com',
+        'rating' => 5,
+        'body' => 'Approved review for the homepage.',
+        'is_approved' => true,
+    ]);
+    $product->reviews()->create([
+        'name' => 'Waiting Customer',
+        'email' => 'waiting@example.com',
+        'rating' => 1,
+        'body' => 'This review is still waiting.',
+    ]);
+
+    $this->get(route('home'))
+        ->assertSeeInOrder(['id="just-for-you"', 'id="customer-reviews"', '<footer'], false)
+        ->assertSee('Approved Customer')
+        ->assertSee('Approved review for the homepage.')
+        ->assertDontSee('Waiting Customer')
+        ->assertDontSee('This review is still waiting.');
+});
+
+it('paginates shop products and preserves search and sort on category links', function () {
+    $category = Category::create([
+        'name' => 'Pagination Category',
+        'slug' => 'pagination-category',
+        'is_active' => true,
+    ]);
+
+    for ($position = 1; $position <= 17; $position++) {
+        Product::create([
+            'category_id' => $category->id,
+            'name' => 'Pagination Product '.str_pad((string) $position, 2, '0', STR_PAD_LEFT),
+            'slug' => 'pagination-product-'.$position,
+            'type' => 'simple',
+            'is_active' => true,
+        ]);
+    }
+
+    $response = $this->get(route('shop', [
+        'q' => 'Pagination',
+        'sort' => 'oldest',
+        'per_page' => '16',
+    ]));
+
+    $response
+        ->assertSee('name="per_page"', false)
+        ->assertSee('page=2', false)
+        ->assertSee('q=Pagination', false)
+        ->assertSee('/shop/pagination-category?sort=oldest&amp;per_page=16&amp;q=Pagination', false);
+
+    $this->get(route('shop', [
+        'q' => 'Pagination',
+        'sort' => 'oldest',
+        'per_page' => '16',
+        'page' => 2,
+    ]))->assertSee('Pagination Product 17');
+});
+
+it('returns up to eight active products for storefront search suggestions', function () {
+    $category = Category::create([
+        'name' => 'Fresh Produce',
+        'slug' => 'fresh-produce',
+        'is_active' => true,
+    ]);
+
+    for ($position = 1; $position <= 10; $position++) {
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Fresh Apple '.$position,
+            'slug' => 'fresh-apple-'.$position,
+            'price' => 240,
+            'type' => 'simple',
+            'is_active' => true,
+        ]);
+
+        if ($position === 1) {
+            ProductImage::create([
+                'product_id' => $product->id,
+                'image_path' => 'products/fresh-apple.jpg',
+                'alt_text' => 'Fresh apple',
+                'is_primary' => true,
+                'sort_order' => 0,
+            ]);
+        }
+
+        if ($position === 2) {
+            ProductImage::create([
+                'product_id' => $product->id,
+                'image_path' => 'products/fresh-apple-secondary.jpg',
+                'alt_text' => 'Fresh apple packaging',
+                'is_primary' => false,
+                'sort_order' => 1,
+            ]);
+        }
+    }
+
+    Product::create([
+        'category_id' => $category->id,
+        'name' => 'Fresh Inactive Product',
+        'slug' => 'fresh-inactive-product',
+        'type' => 'simple',
+        'is_active' => false,
+    ]);
+
+    $this->getJson(route('shop.suggestions', ['search' => 'Fresh']))
+        ->assertOk()
+        ->assertJsonCount(8)
+        ->assertJsonStructure([['name', 'category', 'price', 'image', 'url']])
+        ->assertJsonFragment([
+            'name' => 'Fresh Apple 1',
+            'price' => '240.00',
+            'image' => '/storage/products/fresh-apple.jpg',
+        ])
+        ->assertJsonFragment([
+            'name' => 'Fresh Apple 10',
+            'image' => '/storage/products/fresh-apple-secondary.jpg',
+        ])
+        ->assertJsonMissing(['name' => 'Fresh Inactive Product']);
+
+    $this->getJson(route('shop.suggestions', ['search' => 'F']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('search');
 });
 
 it('lists out-of-stock products last and disables their cart button', function () {
@@ -265,7 +479,7 @@ it('requires a variant when adding a variable product to the cart', function () 
     ]);
 });
 
-it('keeps variant cart lines distinct and enforces available stock', function () {
+it('keeps variant cart lines distinct and blocks manually unavailable variants', function () {
     $product = Product::create([
         'name' => 'Variable Cart Shirt',
         'slug' => 'variable-cart-shirt',
@@ -336,17 +550,28 @@ it('keeps variant cart lines distinct and enforces available stock', function ()
         'product_id' => $product->id,
         'product_variant_id' => $redVariant->id,
         'quantity' => 1,
-    ])->assertUnprocessable()->assertJsonValidationErrors('quantity');
+    ])->assertOk()->assertJsonFragment([
+        'product_variant_id' => $redVariant->id,
+        'quantity' => 3,
+    ]);
+
+    $redVariant->forceFill(['is_out_of_stock' => true])->save();
+
+    $this->postJson('/api/cart/items', [
+        'product_id' => $product->id,
+        'product_variant_id' => $redVariant->id,
+        'quantity' => 1,
+    ])->assertUnprocessable()->assertJsonValidationErrors('product_variant_id');
 
     $this->assertDatabaseCount('cart_items', 2);
     $this->assertDatabaseHas('cart_items', [
         'product_variant_id' => $redVariant->id,
-        'quantity' => 2,
+        'quantity' => 3,
         'price' => 25,
     ]);
 });
 
-it('checks out a selected variant and reserves its stock', function () {
+it('checks out a selected variant without changing a stock quantity', function () {
     $product = Product::create([
         'name' => 'Checkout Variant Shirt',
         'slug' => 'checkout-variant-shirt',
@@ -368,7 +593,6 @@ it('checks out a selected variant and reserves its stock', function () {
         'sku' => 'CHECKOUT-SHIRT-LARGE',
         'attribute_value_ids' => [$large->id],
         'price' => 31,
-        'stock' => 3,
     ]);
     $cart = Cart::query()->create(['session_id' => session()->getId()]);
     session()->put('cart_id', $cart->id);
@@ -381,6 +605,21 @@ it('checks out a selected variant and reserves its stock', function () {
         'price' => 1,
         'quantity' => 2,
     ]);
+
+    $variant->forceFill(['is_out_of_stock' => true])->save();
+
+    $this->post(route('checkout.store'), [
+        'cart_id' => $cart->id,
+        'customer_name' => 'John Doe',
+        'phone' => '01712345678',
+        'address' => 'House 12, Road 6, Dhanmondi',
+        'city' => 'Dhaka',
+        'payment_method' => 'cod',
+    ])->assertRedirect()->assertSessionHasErrors('cart');
+
+    $this->assertDatabaseCount('orders', 0);
+
+    $variant->forceFill(['is_out_of_stock' => false])->save();
 
     $this->post(route('checkout.store'), [
         'cart_id' => $cart->id,
@@ -401,7 +640,7 @@ it('checks out a selected variant and reserves its stock', function () {
     ]);
     $this->assertDatabaseHas('product_variants', [
         'id' => $variant->id,
-        'stock' => 1,
+        'is_out_of_stock' => false,
     ]);
     $this->assertDatabaseCount('cart_items', 0);
 });
@@ -483,6 +722,58 @@ it('creates an order from the current cart', function () {
     ]);
 });
 
+it('limits the order success page to its owning account', function () {
+    $customer = User::factory()->create(['account_type' => 'customer', 'status' => 'active']);
+    $otherCustomer = User::factory()->create(['account_type' => 'customer', 'status' => 'active']);
+    $customersOrder = Order::factory()->create(['user_id' => $customer->id]);
+    $otherCustomersOrder = Order::factory()->create(['user_id' => $otherCustomer->id]);
+
+    $this->actingAs($customer)
+        ->get(route('checkout.success', $customersOrder))
+        ->assertOk()
+        ->assertSee($customersOrder->order_number);
+
+    $this->get(route('checkout.success', $otherCustomersOrder))->assertNotFound();
+});
+
+it('uses a signed guest success URL and rejects unsigned access from another session', function () {
+    $product = Product::create([
+        'name' => 'Guest Checkout Product',
+        'slug' => 'guest-checkout-product',
+        'price' => 100,
+        'stock' => 10,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $cart = Cart::query()->create(['session_id' => session()->getId()]);
+    session()->put('cart_id', $cart->id);
+    $cart->items()->create([
+        'product_id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->price,
+        'quantity' => 1,
+    ]);
+
+    $checkoutResponse = $this->followingRedirects()->post(route('checkout.store'), [
+        'customer_name' => 'Guest Success Customer',
+        'phone' => '01710000007',
+        'address' => 'House 7, Test Street',
+        'city' => 'Dhaka',
+        'area' => 'Dhanmondi',
+        'payment_method' => 'cod',
+    ]);
+    $guestOrder = Order::query()->where('customer_name', 'Guest Success Customer')->firstOrFail();
+    $otherSessionOrder = Order::factory()->create([
+        'user_id' => null,
+        'session_id' => 'another-session-id',
+    ]);
+
+    $checkoutResponse->assertOk()
+        ->assertSee($guestOrder->order_number);
+
+    $this->get(route('checkout.success', $otherSessionOrder))->assertNotFound();
+});
+
 it('rejects checkout when a product in the cart is out of stock', function () {
     $product = Product::create([
         'name' => 'Unavailable Bread',
@@ -518,6 +809,9 @@ it('rejects checkout when a product in the cart is out of stock', function () {
 });
 
 it('shows the system owner dashboard with permissions and maintenance overview', function () {
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $this->actingAs($owner);
+
     $response = $this->get(route('admin'));
 
     $response->assertOk();
@@ -529,10 +823,113 @@ it('shows the system owner dashboard with permissions and maintenance overview',
 });
 
 it('loads the checkout page', function () {
+    config()->set('payments.mobile_wallets.bkash.merchant_number', '01700000001');
+    config()->set('payments.mobile_wallets.nagad.merchant_number', '01800000002');
+
     $response = $this->get(route('checkout'));
 
     $response->assertOk();
     $response->assertSee('Cash on Delivery');
+    $response->assertSee('bKash');
+    $response->assertSee('Nagad');
+    $response->assertSee('data-payment-details', false);
+});
+
+it('rejects online checkout until a payment gateway is configured', function () {
+    $this->post(route('checkout.store'), [
+        'customer_name' => 'Unpaid Customer',
+        'phone' => '01710000008',
+        'address' => 'House 8, Test Street',
+        'city' => 'Dhaka',
+        'payment_method' => 'online',
+    ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('payment_method');
+
+    $this->assertDatabaseCount('orders', 0);
+});
+
+it('creates a pending bKash order with private receipt details', function () {
+    config()->set('payments.mobile_wallets.bkash.merchant_number', '01700000001');
+    Storage::fake('local');
+
+    $product = Product::create([
+        'name' => 'Mobile Payment Product',
+        'slug' => 'mobile-payment-product',
+        'price' => 120,
+        'stock' => 5,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $cart = Cart::query()->create(['session_id' => session()->getId()]);
+    session()->put('cart_id', $cart->id);
+    $cart->items()->create([
+        'product_id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->price,
+        'quantity' => 1,
+    ]);
+
+    $response = $this->post(route('checkout.store'), [
+        'customer_name' => 'Mobile Wallet Customer',
+        'phone' => '01712345678',
+        'address' => 'House 12, Test Street',
+        'city' => 'Dhaka',
+        'payment_method' => 'bkash',
+        'payment_sender_phone' => '01711112222',
+        'payment_transaction_id' => 'BKASH-TXN-1001',
+        'payment_proof' => UploadedFile::fake()->image('receipt.jpg'),
+    ]);
+
+    $order = Order::query()->where('payment_transaction_id', 'BKASH-TXN-1001')->firstOrFail();
+
+    $response->assertRedirect();
+    expect($order->payment_status)->toBe('pending')
+        ->and((float) $order->payment_amount)->toBe(180.0)
+        ->and($order->payment_method)->toBe('bkash');
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+        'payment_sender_phone' => '01711112222',
+        'payment_transaction_id' => 'BKASH-TXN-1001',
+        'payment_amount' => 180,
+    ]);
+    Storage::disk('local')->assertExists($order->payment_proof_path);
+});
+
+it('requires transaction details and a receipt for mobile wallet checkout', function () {
+    config()->set('payments.mobile_wallets.nagad.merchant_number', '01800000002');
+
+    $this->post(route('checkout.store'), [
+        'customer_name' => 'Incomplete Payment Customer',
+        'phone' => '01710000008',
+        'address' => 'House 8, Test Street',
+        'city' => 'Dhaka',
+        'payment_method' => 'nagad',
+    ])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['payment_sender_phone', 'payment_transaction_id', 'payment_proof']);
+
+    $this->assertDatabaseCount('orders', 0);
+});
+
+it('lets an authorized order manager confirm a pending wallet payment', function () {
+    $orderManager = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $order = Order::factory()->create([
+        'payment_method' => 'nagad',
+        'payment_transaction_id' => 'NAGAD-TXN-1002',
+        'payment_status' => 'pending',
+    ]);
+
+    $response = $this->actingAs($orderManager)->patch(route('admin.orders.payment.review', $order), [
+        'payment_status' => 'paid',
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+        'payment_status' => 'paid',
+        'payment_reviewed_by' => $orderManager->id,
+    ]);
 });
 
 it('displays product detail carousel with all product images and counter', function () {
@@ -613,19 +1010,46 @@ it('shows active variant options and routes variable products to option selectio
         'sku' => 'DETAIL-SHIRT-RED',
         'attribute_value_ids' => [$red->id],
         'price' => 29,
-        'stock' => 3,
+    ]);
+    $blue = $color->values()->create([
+        'value' => 'Blue',
+        'slug' => 'detail-blue',
+        'is_active' => true,
+    ]);
+    app(ProductVariantService::class)->createVariant($product, [
+        'sku' => 'DETAIL-SHIRT-BLUE',
+        'attribute_value_ids' => [$blue->id],
+        'price' => 30,
+        'is_active' => false,
     ]);
 
     $this->get(route('products.show', $product->slug))
         ->assertOk()
         ->assertSee('data-product-variant-select', false)
         ->assertSee('Color: Red')
-        ->assertSee('Select an in-stock option to continue.');
+        ->assertSee('Select an available option to continue.');
+
+    $variant = $product->variants()->firstOrFail();
+    $variant->forceFill(['is_out_of_stock' => true])->save();
+
+    $this->get(route('products.show', $product->slug))
+        ->assertOk()
+        ->assertSee('Color: Red')
+        ->assertSee('Out of stock')
+        ->assertSee('data-unavailable="true"', false)
+        ->assertSee('disabled', false);
 
     $this->get(route('shop'))
         ->assertOk()
-        ->assertSee('Choose options')
-        ->assertSee('data-select-variant', false);
+        ->assertSee('Out of stock')
+        ->assertSee('disabled', false)
+        ->assertDontSee('data-select-variant', false);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('Variant Detail Shirt')
+        ->assertSee('Out of stock')
+        ->assertSee('disabled', false);
 });
 
 it('displays designated primary image on shop and home product cards', function () {

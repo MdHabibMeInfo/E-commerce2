@@ -19,6 +19,7 @@ class ProductReview extends Model
         'rating',
         'body',
         'images',
+        'is_approved',
     ];
 
     protected function casts(): array
@@ -26,6 +27,7 @@ class ProductReview extends Model
         return [
             'rating' => 'integer',
             'images' => 'array',
+            'is_approved' => 'boolean',
         ];
     }
 

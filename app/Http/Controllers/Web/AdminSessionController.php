@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\LoginNotification;
 use App\Services\SecurityEventService;
+use App\Services\SiteSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class AdminSessionController extends Controller
         return view('auth.login');
     }
 
-    public function store(Request $request, SecurityEventService $events): RedirectResponse
+    public function store(Request $request, SecurityEventService $events, SiteSettings $settings): RedirectResponse
     {
         $credentials = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -29,8 +30,10 @@ class AdminSessionController extends Controller
         ]);
         $credentials['email'] = Str::lower($credentials['email']);
         $throttleKey = $this->throttleKey($request);
+        $maxAttempts = $settings->integer('security_login_attempts');
+        $decaySeconds = $settings->integer('security_login_lockout_minutes') * 60;
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+        if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($throttleKey);
 
             throw ValidationException::withMessages([
@@ -38,7 +41,7 @@ class AdminSessionController extends Controller
             ]);
         }
 
-        RateLimiter::hit($throttleKey, 60);
+        RateLimiter::hit($throttleKey, $decaySeconds);
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             $events->record(
@@ -78,7 +81,11 @@ class AdminSessionController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        if ($canUseAdmin || $user->two_factor_confirmed_at !== null) {
+        $requiresTwoFactor = $canUseAdmin
+            ? $settings->boolean('security_admin_2fa_required')
+            : $user->two_factor_confirmed_at !== null;
+
+        if ($requiresTwoFactor) {
             $request->session()->forget('security.two_factor_verified_user');
             $request->session()->forget('security.two_factor_verified_at');
             $request->session()->put('security.pending_login_after_mfa', true);

@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function show(string $product): View
+    public function show(Request $request, string $product): View
     {
         $product = Product::query()
             ->where('slug', $product)
@@ -26,14 +27,21 @@ class ProductController extends Controller
                     ->where('is_active', true)
                     ->with('attributeValues.productAttribute'),
                 'productAttributes',
-                'reviews' => fn ($query) => $query->latest()->limit(8),
+                'approvedReviews' => fn ($query) => $query->latest()->limit(8),
             ])
-            ->withCount('reviews')
-            ->withAvg('reviews', 'rating')
+            ->withCount('approvedReviews as reviews_count')
+            ->withAvg('approvedReviews as reviews_avg_rating', 'rating')
             ->firstOrFail();
+        $selectedVariant = $product->variants->firstWhere('id', $request->integer('variant'));
+        $selectedVariantId = $selectedVariant
+            && ! $selectedVariant->is_out_of_stock
+            && ! $product->is_out_of_stock
+                ? (string) $selectedVariant->getKey()
+                : null;
 
         return view('storefront.products.show', [
             'product' => $product,
+            'selectedVariantId' => $selectedVariantId,
         ]);
     }
 }

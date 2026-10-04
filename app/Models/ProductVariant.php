@@ -19,7 +19,7 @@ class ProductVariant extends Model
         'combination_hash',
         'price',
         'compare_at_price',
-        'stock',
+        'is_out_of_stock',
         'is_active',
     ];
 
@@ -28,7 +28,7 @@ class ProductVariant extends Model
         return [
             'price' => 'decimal:2',
             'compare_at_price' => 'decimal:2',
-            'stock' => 'integer',
+            'is_out_of_stock' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

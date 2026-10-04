@@ -19,7 +19,7 @@
                 <div class="mt-4 grid gap-3 text-sm text-white/70">
                     <a href="{{ route('shop') }}" class="transition hover:text-white">All Products</a>
                     <a href="{{ route('shop') }}" class="transition hover:text-white">Categories</a>
-                    <a href="{{ route('home') }}#featured-products" class="transition hover:text-white">Featured Products</a>
+                    <a href="{{ route('home') }}#new-arrivals" class="transition hover:text-white">New Arrivals</a>
                     <a href="{{ route('checkout') }}" class="transition hover:text-white">Checkout</a>
                 </div>
             </div>

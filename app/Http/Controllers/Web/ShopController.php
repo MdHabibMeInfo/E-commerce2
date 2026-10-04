@@ -7,10 +7,57 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ShopController extends Controller
 {
+    public function suggestions(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->validate([
+            'search' => ['required', 'string', 'min:2', 'max:100'],
+        ])['search']);
+
+        if (mb_strlen($search) < 2) {
+            return response()->json([]);
+        }
+
+        $prefix = $search.'%';
+
+        $suggestions = Product::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($prefix) {
+                $query
+                    ->where('name', 'like', $prefix)
+                    ->orWhere('sku', 'like', $prefix);
+            })
+            ->with([
+                'category:id,name',
+                'images:id,product_id,image_path,alt_text,is_primary,sort_order',
+                'primaryImage:id,product_id,image_path,alt_text',
+            ])
+            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$prefix])
+            ->orderBy('name')
+            ->limit(8)
+            ->get(['id', 'category_id', 'name', 'slug', 'price'])
+            ->map(function (Product $product): array {
+                $image = $product->primaryImage
+                    ?? $product->images->firstWhere('is_primary', true)
+                    ?? $product->images->first();
+
+                return [
+                    'name' => $product->name,
+                    'category' => $product->category?->name,
+                    'price' => $product->price,
+                    'image' => $image ? '/storage/'.ltrim($image->image_path, '/') : null,
+                    'url' => route('products.show', ['product' => $product->slug]),
+                ];
+            })
+            ->all();
+
+        return response()->json($suggestions);
+    }
+
     public function index(Request $request, ?string $category = null): View
     {
         $activeCategory = null;

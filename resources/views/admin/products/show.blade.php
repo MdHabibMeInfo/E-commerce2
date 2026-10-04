@@ -271,11 +271,6 @@
                                         <input id="variant-compare-price" type="number" name="compare_at_price" value="{{ old('compare_at_price') }}" min="0" step="0.01" class="w-full rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm focus:border-[#145943] focus:outline-none">
                                         @error('compare_at_price') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
                                     </div>
-                                    <div>
-                                        <label for="variant-stock" class="mb-1 block text-xs font-bold text-[#4d5c56]">Variant stock</label>
-                                        <input id="variant-stock" type="number" name="stock" value="{{ old('stock', 0) }}" required min="0" class="w-full rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm focus:border-[#145943] focus:outline-none">
-                                        @error('stock') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
-                                    </div>
                                 </div>
 
                                 <fieldset class="space-y-3">
@@ -326,9 +321,9 @@
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <h3 class="font-bold text-[#173b32]">{{ $variant->name ?: $variant->attributeValues->pluck('value')->implode(' / ') }}</h3>
-                                    <p class="mt-1 text-xs text-[#738078]">{{ $variant->sku }} · ৳{{ number_format((float) $variant->price, 2) }} · Variant stock {{ $variant->stock }}</p>
-                                    <p class="mt-1 text-xs {{ $variant->trashed() ? 'text-[#a15b1d]' : ($variant->is_active ? 'text-[#145943]' : 'text-[#738078]') }}">
-                                        {{ $variant->trashed() ? 'Deleted' : ($variant->is_active ? 'Active' : 'Inactive') }}
+                                    <p class="mt-1 text-xs text-[#738078]">{{ $variant->sku }} · ৳{{ number_format((float) $variant->price, 2) }}</p>
+                                    <p class="mt-1 text-xs {{ $variant->trashed() || $variant->is_out_of_stock ? 'text-[#a15b1d]' : ($variant->is_active ? 'text-[#145943]' : 'text-[#738078]') }}">
+                                        {{ $variant->trashed() ? 'Deleted' : ($variant->is_out_of_stock ? 'Out of stock' : ($variant->is_active ? 'Active' : 'Inactive')) }}
                                         @if ($variant->attributeValues->isNotEmpty())
                                             · {{ $variant->attributeValues->map(fn ($value) => $value->productAttribute->name.': '.$value->value)->implode(' / ') }}
                                         @endif
@@ -353,7 +348,6 @@
                                                     <input name="sku" value="{{ $variant->sku }}" required maxlength="255" aria-label="Variant SKU" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
                                                     <input type="number" name="price" value="{{ $variant->price }}" required min="0" step="0.01" aria-label="Variant price" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
                                                     <input type="number" name="compare_at_price" value="{{ $variant->compare_at_price }}" min="0" step="0.01" aria-label="Variant compare-at price" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
-                                                    <input type="number" name="stock" value="{{ $variant->stock }}" required min="0" aria-label="Variant stock" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-sm">
                                                 </div>
                                                 @foreach ($product->productAttributes as $attribute)
                                                     <fieldset>
@@ -377,6 +371,16 @@
                                             </form>
                                         @endcan
                                     </details>
+                                    @can('variants.update')
+                                        <form method="POST" action="{{ route('admin.products.variants.availability', [$product, $variant]) }}" class="mt-3">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="is_out_of_stock" value="{{ $variant->is_out_of_stock ? 0 : 1 }}">
+                                            <button type="submit" class="rounded-lg border border-[#dfe3cf] px-3 py-2 text-xs font-bold text-[#145943]">
+                                                {{ $variant->is_out_of_stock ? 'Mark available' : 'Mark out of stock' }}
+                                            </button>
+                                        </form>
+                                    @endcan
                                 @endif
                             </div>
 
@@ -398,6 +402,50 @@
             </section>
         </div>
     @endif
+
+    <section class="mt-6 rounded-[22px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#efeae0] pb-4">
+            <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Moderation</p>
+                <h2 class="mt-1 text-xl font-extrabold text-[#145943]">Customer Reviews</h2>
+            </div>
+            <span class="text-sm text-[#738078]">{{ $productReviews->total() }} total</span>
+        </div>
+
+        <div class="divide-y divide-[#efeae0]">
+            @forelse ($productReviews as $review)
+                <article class="flex flex-col gap-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="font-bold text-[#173b32]">{{ $review->name }}</h3>
+                            <span class="rounded-[3px] px-2 py-0.5 text-[10px] font-bold uppercase {{ $review->is_approved ? 'bg-[#edf8f1] text-[#145943]' : 'bg-[#fef0d8] text-[#a15b1d]' }}">
+                                {{ $review->is_approved ? 'Approved' : 'Pending approval' }}
+                            </span>
+                            <span class="text-xs text-[#738078]">{{ $review->rating }}/5 · {{ $review->created_at->format('M j, Y') }}</span>
+                        </div>
+                        <p class="mt-2 whitespace-pre-line text-sm leading-6 text-[#59675f]">{{ $review->body }}</p>
+                    </div>
+
+                    @can('products.update')
+                        <form method="POST" action="{{ route('admin.products.reviews.approval', [$product, $review->id]) }}" class="shrink-0">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="is_approved" value="{{ $review->is_approved ? 0 : 1 }}">
+                            <button type="submit" class="rounded-[4px] border border-[#145943] px-3 py-2 text-xs font-bold text-[#145943] transition hover:bg-[#145943] hover:text-white">
+                                {{ $review->is_approved ? 'Hide from site' : 'Approve for site' }}
+                            </button>
+                        </form>
+                    @endcan
+                </article>
+            @empty
+                <p class="py-8 text-center text-sm text-[#738078]">No customer reviews for this product yet.</p>
+            @endforelse
+        </div>
+
+        @if ($productReviews->hasPages())
+            <div class="mt-4">{{ $productReviews->links() }}</div>
+        @endif
+    </section>
 
     <script>
         document.getElementById('show_upload_images')?.addEventListener('change', function(e) {

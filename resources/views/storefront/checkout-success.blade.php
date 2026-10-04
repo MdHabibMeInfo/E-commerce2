@@ -8,8 +8,12 @@
     </x-slot:metaDescription>
 
     <x-slot:canonicalUrl>
-        {{ route('checkout.success', ['order' => $order->id]) }}
+        {{ route('home') }}
     </x-slot:canonicalUrl>
+
+    <x-slot:head>
+        <meta name="robots" content="noindex, nofollow">
+    </x-slot:head>
 
     <section class="bg-[#f5f7ee]">
         <div class="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
@@ -24,8 +28,15 @@
                 <div class="mt-6 rounded-2xl bg-[#f7f6f1] p-5 text-left text-sm text-[#4d5c56]">
                     <div class="flex items-center justify-between gap-4">
                         <span>Payment method</span>
-                        <span class="font-semibold text-[#173b32]">{{ $order->payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment' }}</span>
+                        <span class="font-semibold text-[#173b32]">{{ match ($order->payment_method) { 'bkash' => 'bKash', 'nagad' => 'Nagad', default => 'Cash on Delivery' } }}</span>
                     </div>
+                    @if (in_array($order->payment_method, ['bkash', 'nagad'], true))
+                        <div class="mt-3 flex items-center justify-between gap-4">
+                            <span>Payment status</span>
+                            <span class="font-semibold capitalize text-[#173b32]">{{ $order->payment_status }}</span>
+                        </div>
+                        <p class="mt-3 text-xs text-[#738078]">Your payment will be confirmed after the transaction details are reviewed.</p>
+                    @endif
                     <div class="mt-3 flex items-center justify-between gap-4">
                         <span>Total amount</span>
                         <span class="font-bold text-[#145943]">৳{{ number_format((float) $order->total, 2) }}</span>

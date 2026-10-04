@@ -26,6 +26,7 @@ class Product extends Model
         'type',
         'is_active',
         'is_out_of_stock',
+        'is_featured',
     ];
 
     protected function casts(): array
@@ -35,6 +36,7 @@ class Product extends Model
             'compare_at_price' => 'decimal:2',
             'is_active' => 'boolean',
             'is_out_of_stock' => 'boolean',
+            'is_featured' => 'boolean',
         ];
     }
 
@@ -51,6 +53,11 @@ class Product extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(ProductReview::class);
+    }
+
+    public function approvedReviews(): HasMany
+    {
+        return $this->reviews()->where('is_approved', true);
     }
 
     public function images(): HasMany

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -25,6 +26,20 @@ use Illuminate\Validation\ValidationException;
 
 class AccountSecurityController extends Controller
 {
+    public function profile(Request $request): View
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        $activeOrders = $user->orders()
+            ->whereNotIn('status', ['delivered', 'cancelled', 'returned'])
+            ->with('shipments')
+            ->latest()
+            ->get();
+
+        return view('account.profile', compact('user', 'activeOrders'));
+    }
+
     public function updateProfile(Request $request, SecurityEventService $events): RedirectResponse
     {
         $user = $request->user();
@@ -33,15 +48,42 @@ class AccountSecurityController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($user->getKey())],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
+
+        $oldProfilePhotoPath = $user->profile_photo_path;
+        $profilePhotoPath = $oldProfilePhotoPath;
+
+        if ($request->hasFile('profile_photo')) {
+            $profilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
 
         $user->fill([
             'name' => $validated['name'],
             'phone' => $validated['phone'] ?? null,
+            'profile_photo_path' => $profilePhotoPath,
         ])->save();
-        $events->record($request, $user, 'profile_updated', ['fields' => ['name', 'phone']]);
+
+        if ($request->hasFile('profile_photo') && ! empty($oldProfilePhotoPath) && $oldProfilePhotoPath !== $profilePhotoPath) {
+            Storage::disk('public')->delete($oldProfilePhotoPath);
+        }
+
+        $events->record($request, $user, 'profile_updated', ['fields' => ['name', 'phone', 'profile_photo']]);
 
         return back()->with('status', 'Profile details updated.');
+    }
+
+    public function deleteProfilePhoto(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        if ($user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
+            $user->forceFill(['profile_photo_path' => null])->save();
+        }
+
+        return redirect()->route('account.profile')->with('status', 'Profile photo removed.');
     }
 
     public function index(Request $request): View

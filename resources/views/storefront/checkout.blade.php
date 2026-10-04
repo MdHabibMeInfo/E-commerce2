@@ -4,7 +4,7 @@
     </x-slot:title>
 
     <x-slot:metaDescription>
-        Complete your order securely with cash on delivery or online payment.
+        Complete your order securely with cash on delivery, bKash, or Nagad.
     </x-slot:metaDescription>
 
     <x-slot:canonicalUrl>
@@ -36,7 +36,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('checkout.store') }}" class="mt-8 space-y-8">
+                    <form method="POST" action="{{ route('checkout.store') }}" enctype="multipart/form-data" data-checkout-form class="mt-8 space-y-8">
                         @csrf
                         <input type="hidden" name="cart_id" value="{{ $cart->id ?? '' }}">
 
@@ -48,7 +48,7 @@
                                     <input
                                         type="text"
                                         name="customer_name"
-                                        value="{{ old('customer_name', 'John Doe') }}"
+                                        value="{{ old('customer_name', auth()->user()?->name ?? '') }}"
                                         class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-[#faf9f5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
                                         required
                                     >
@@ -58,7 +58,7 @@
                                     <input
                                         type="tel"
                                         name="phone"
-                                        value="{{ old('phone', '01712-345678') }}"
+                                        value="{{ old('phone', auth()->user()?->phone ?? '') }}"
                                         class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-[#faf9f5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
                                         required
                                     >
@@ -68,7 +68,7 @@
                                     <input
                                         type="text"
                                         name="address"
-                                        value="{{ old('address', 'House 12, Road 6, Dhanmondi') }}"
+                                        value="{{ old('address') }}"
                                         class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-[#faf9f5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
                                         required
                                     >
@@ -78,7 +78,7 @@
                                     <input
                                         type="text"
                                         name="city"
-                                        value="{{ old('city', 'Dhaka') }}"
+                                        value="{{ old('city') }}"
                                         class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-[#faf9f5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
                                         required
                                     >
@@ -88,7 +88,7 @@
                                     <input
                                         type="text"
                                         name="area"
-                                        value="{{ old('area', 'Dhanmondi') }}"
+                                        value="{{ old('area') }}"
                                         class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-[#faf9f5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10"
                                     >
                                 </label>
@@ -108,16 +108,58 @@
                                     </div>
                                     <span class="text-sm font-bold text-[#145943]">Default</span>
                                 </label>
-
-                                <label class="flex cursor-pointer items-center justify-between rounded-2xl border border-[#dfe3cf] bg-[#f8f9f2] p-4">
-                                    <div class="flex items-center gap-3">
-                                        <input type="radio" name="payment_method" value="online" {{ old('payment_method') === 'online' ? 'checked' : '' }} class="h-4 w-4 accent-[#145943]">
-                                        <div>
-                                            <p class="font-semibold text-[#173b32]">Online Payment</p>
-                                            <p class="text-xs text-[#738078]">Card, mobile banking, and digital wallet.</p>
-                                        </div>
-                                    </div>
-                                    <span class="text-sm font-bold text-[#a48335]">Secure</span>
+                                @foreach ($paymentAccounts as $provider => $paymentAccount)
+                                    <label class="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[#dfe3cf] bg-white p-4">
+                                        <span class="flex items-center gap-3">
+                                            <input
+                                                type="radio"
+                                                name="payment_method"
+                                                value="{{ $provider }}"
+                                                data-payment-method
+                                                {{ old('payment_method') === $provider ? 'checked' : '' }}
+                                                {{ blank($paymentAccount['merchant_number']) ? 'disabled' : '' }}
+                                                class="h-4 w-4 accent-[#145943]"
+                                            >
+                                            <span>
+                                                <span class="block font-semibold text-[#173b32]">{{ $paymentAccount['label'] }}</span>
+                                                <span class="block text-xs text-[#738078]">
+                                                    {{ blank($paymentAccount['merchant_number']) ? 'Not available yet' : 'Pay securely using your mobile wallet.' }}
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span class="shrink-0 text-right text-sm font-bold text-[#145943]">
+                                            {{ $paymentAccount['merchant_number'] ? '৳ '.$paymentAccount['merchant_number'] : 'Unavailable' }}
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div data-payment-details hidden inert class="mt-4 space-y-4 rounded-2xl border border-[#dfe3cf] bg-[#f8f9f2] p-4 sm:p-5">
+                                <div>
+                                    <h3 class="font-bold text-[#173b32]">Mobile payment details</h3>
+                                    <p class="mt-1 text-sm text-[#66736d]">Pay exactly ৳{{ number_format((float) $total, 2) }} to the selected store number, then enter the transaction details below.</p>
+                                </div>
+                                <label data-wallet-instructions="bkash" hidden class="block text-sm font-medium text-[#4d5c56]">
+                                    bKash merchant number
+                                    <span class="mt-2 block rounded-xl border border-[#e3e0d6] bg-white px-3 py-3 font-bold text-[#145943]">{{ $paymentAccounts['bkash']['merchant_number'] }}</span>
+                                </label>
+                                <label data-wallet-instructions="nagad" hidden class="block text-sm font-medium text-[#4d5c56]">
+                                    Nagad merchant number
+                                    <span class="mt-2 block rounded-xl border border-[#e3e0d6] bg-white px-3 py-3 font-bold text-[#145943]">{{ $paymentAccounts['nagad']['merchant_number'] }}</span>
+                                </label>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <label class="block text-sm font-medium text-[#4d5c56]">
+                                        Sender wallet number
+                                        <input type="tel" name="payment_sender_phone" value="{{ old('payment_sender_phone') }}" autocomplete="tel" maxlength="20" data-payment-required class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-white px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
+                                    </label>
+                                    <label class="block text-sm font-medium text-[#4d5c56]">
+                                        Transaction ID
+                                        <input type="text" name="payment_transaction_id" value="{{ old('payment_transaction_id') }}" maxlength="100" autocomplete="off" data-payment-required class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-white px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
+                                    </label>
+                                </div>
+                                <label class="block text-sm font-medium text-[#4d5c56]">
+                                    Payment receipt image
+                                    <input type="file" name="payment_proof" accept="image/jpeg,image/png,image/webp" data-payment-required class="mt-2 block w-full rounded-xl border border-[#e3e0d6] bg-white px-3 py-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[#145943] file:px-3 file:py-2 file:font-bold file:text-white">
+                                    <span class="mt-1 block text-xs text-[#738078]">JPG, PNG, or WebP; maximum 5 MB.</span>
                                 </label>
                             </div>
                         </div>

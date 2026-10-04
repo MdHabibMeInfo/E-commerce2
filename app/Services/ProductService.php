@@ -87,6 +87,7 @@ class ProductService
                 'type' => $data['type'],
                 'is_active' => $data['is_active'] ?? true,
                 'is_out_of_stock' => $data['is_out_of_stock'] ?? false,
+                'is_featured' => $data['is_featured'] ?? false,
             ]);
         });
     }
@@ -222,6 +223,7 @@ class ProductService
                 'type' => $data['type'],
                 'is_active' => $data['is_active'] ?? $product->is_active,
                 'is_out_of_stock' => $data['is_out_of_stock'] ?? $product->is_out_of_stock,
+                'is_featured' => $data['is_featured'] ?? $product->is_featured,
             ]);
 
             return $product->refresh();

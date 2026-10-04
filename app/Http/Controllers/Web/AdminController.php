@@ -2,13 +2,9 @@
 
 namespace App\Http\Controllers\Web;
 
-use App\Exceptions\DuplicateVariantCombinationException;
-use App\Exceptions\InvalidVariantAttributeValueException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCategoryRequest;
-use App\Http\Requests\StoreProductVariantRequest;
 use App\Http\Requests\UpdateCategoryRequest;
-use App\Http\Requests\UpdateProductVariantRequest;
 use App\Models\AttributeValue;
 use App\Models\Category;
 use App\Models\Order;
@@ -20,7 +16,6 @@ use App\Models\SecurityEvent;
 use App\Models\User;
 use App\Services\AttributeValueService;
 use App\Services\CategoryService;
-use App\Services\ProductAttributeAssignmentService;
 use App\Services\ProductAttributeService;
 use App\Services\ProductImageService;
 use App\Services\ProductService;
@@ -28,7 +23,6 @@ use App\Services\ProductVariantService;
 use App\Services\SecurityEventService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -101,33 +95,16 @@ class AdminController extends Controller
 
         $categories = Category::query();
 
-        if ($request->boolean('trashed_products')) {
-            $categories->withTrashed()->whereHas('products', function (Builder $products): void {
-                $products->onlyTrashed();
-            });
-        } elseif ($request->boolean('trashed')) {
+        if ($request->boolean('trashed')) {
             $categories->onlyTrashed();
-        }
-
-        if ($request->boolean('parents_only')) {
-            $categories->whereHas('children');
         }
 
         if ($search !== '') {
             $this->applySearch($categories, ['name', 'slug'], $search);
         }
 
-        if ($search !== '') {
-            $lowerSearch = strtolower($search);
-            $categories->orderByRaw(
-                'CASE WHEN LOWER(name) LIKE ? THEN 0 WHEN LOWER(name) LIKE ? THEN 1 ELSE 2 END',
-                [$lowerSearch.'%', '%'.$lowerSearch.'%']
-            );
-        }
-
         $matches = $categories
             ->orderBy('name')
-            ->limit(8)
             ->get(['id', 'name', 'slug'])
             ->map(fn (Category $category): array => [
                 'id' => $category->id,
@@ -137,7 +114,21 @@ class AdminController extends Controller
             ])
             ->all();
 
-        return response()->json($matches);
+        if ($search !== '') {
+            $lowerSearch = strtolower($search);
+            usort($matches, function (array $a, array $b) use ($lowerSearch): int {
+                $aPriority = str_starts_with(strtolower((string) $a['label']), $lowerSearch)
+                    ? 0
+                    : (str_contains(strtolower((string) $a['label']), $lowerSearch) ? 1 : 2);
+                $bPriority = str_starts_with(strtolower((string) $b['label']), $lowerSearch)
+                    ? 0
+                    : (str_contains(strtolower((string) $b['label']), $lowerSearch) ? 1 : 2);
+
+                return $aPriority <=> $bPriority ?: strcmp(strtolower((string) $a['label']), strtolower((string) $b['label']));
+            });
+        }
+
+        return response()->json(array_slice($matches, 0, 8));
     }
 
     public function createCategory(): View
@@ -281,7 +272,7 @@ class AdminController extends Controller
     {
         $attribute->load([
             'values' => function ($query) {
-                $query->withTrashed()->orderBy('sort_order')->orderBy('id');
+                $query->orderBy('sort_order')->orderBy('id');
             },
         ]);
 
@@ -367,7 +358,7 @@ class AdminController extends Controller
     public function productSuggestions(Request $request): JsonResponse
     {
         $search = trim((string) ($request->validate([
-            'search' => ['nullable', 'string', 'max:255'],
+            'search' => ['nullable', 'string', 'max:100'],
         ])['search'] ?? ''));
 
         $products = Product::query();
@@ -380,17 +371,8 @@ class AdminController extends Controller
             $this->applySearch($products, ['name', 'slug', 'sku'], $search);
         }
 
-        if ($search !== '') {
-            $lowerSearch = strtolower($search);
-            $products->orderByRaw(
-                'CASE WHEN LOWER(name) LIKE ? THEN 0 WHEN LOWER(name) LIKE ? THEN 1 ELSE 2 END',
-                [$lowerSearch.'%', '%'.$lowerSearch.'%']
-            );
-        }
-
         $matches = $products
             ->orderBy('name')
-            ->limit(8)
             ->get(['name', 'sku'])
             ->map(fn (Product $product): array => [
                 'label' => $product->name,
@@ -399,7 +381,21 @@ class AdminController extends Controller
             ])
             ->all();
 
-        return response()->json($matches);
+        if ($search !== '') {
+            $lowerSearch = strtolower($search);
+            usort($matches, function (array $a, array $b) use ($lowerSearch): int {
+                $aPriority = str_starts_with(strtolower((string) $a['label']), $lowerSearch)
+                    ? 0
+                    : (str_contains(strtolower((string) $a['label']), $lowerSearch) ? 1 : 2);
+                $bPriority = str_starts_with(strtolower((string) $b['label']), $lowerSearch)
+                    ? 0
+                    : (str_contains(strtolower((string) $b['label']), $lowerSearch) ? 1 : 2);
+
+                return $aPriority <=> $bPriority ?: strcmp(strtolower((string) $a['label']), strtolower((string) $b['label']));
+            });
+        }
+
+        return response()->json(array_slice($matches, 0, 8));
     }
 
     private function applySearch(Builder $query, array $columns, string $search): Builder
@@ -430,61 +426,18 @@ class AdminController extends Controller
                     ->orderBy('sort_order')
                     ->orderBy('id');
             },
-            'productAttributes.values' => function ($query) {
-                $query->withTrashed()->orderBy('sort_order')->orderBy('id');
-            },
+            'variants',
+            'productAttributes',
         ]);
 
-        $availableAttributes = ProductAttribute::query()
-            ->where('is_active', true)
-            ->with(['values' => function ($query) {
-                $query->where('is_active', true)->orderBy('sort_order')->orderBy('id');
-            }])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
-        $variants = $product->variants()
-            ->withTrashed()
-            ->with('attributeValues.productAttribute')
-            ->orderByDesc('id')
-            ->paginate(self::ITEMS_PER_PAGE)
-            ->withQueryString();
-        $canCreateVariants = $product->productAttributes->isNotEmpty()
-            && $product->productAttributes->every(
-                fn (ProductAttribute $attribute): bool => $attribute->values->contains(
-                    fn (AttributeValue $value): bool => ! $value->trashed() && $value->is_active
-                )
-            );
-
-        return view('admin.products.show', compact('product', 'availableAttributes', 'variants', 'canCreateVariants'));
-    }
-
-    public function updateProductAttributes(
-        Request $request,
-        Product $product,
-        ProductAttributeAssignmentService $assignmentService
-    ): RedirectResponse {
-        $validated = $request->validate([
-            'product_attribute_ids' => ['nullable', 'array'],
-            'product_attribute_ids.*' => ['required', 'integer', 'distinct', Rule::exists('product_attributes', 'id')->where('is_active', true)],
-        ]);
-
-        $assignmentService->assign($product, $validated['product_attribute_ids'] ?? []);
-
-        return redirect()->route('admin.products.show', $product)->with('success', 'Product attributes updated successfully.');
+        return view('admin.products.show', compact('product'));
     }
 
     public function trashedProducts(Request $request): View
     {
         $query = Product::query()
             ->onlyTrashed()
-            ->with([
-                'category' => function (BelongsTo $category): void {
-                    $category->withTrashed();
-                },
-                'primaryImage',
-                'images',
-            ]);
+            ->with(['category', 'primaryImage', 'images']);
         $search = $request->string('search')->trim()->toString();
 
         if ($search !== '') {
@@ -507,7 +460,7 @@ class AdminController extends Controller
 
         $products = $query->latest('deleted_at')->paginate(self::ITEMS_PER_PAGE)->withQueryString();
         $selectedCategory = $request->filled('category_id') && ctype_digit((string) $request->input('category_id'))
-            ? Category::withTrashed()->find((int) $request->input('category_id'))
+            ? Category::query()->find((int) $request->input('category_id'))
             : null;
 
         return view('admin.products.trashed', compact('products', 'selectedCategory'));
@@ -528,6 +481,7 @@ class AdminController extends Controller
             'type' => ['required', 'in:simple,variable'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0', 'gt:price'],
+            'stock' => ['nullable', 'integer', 'min:0'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
             'images' => ['nullable', 'array'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
@@ -576,6 +530,7 @@ class AdminController extends Controller
             'type' => ['required', 'in:simple,variable'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0'],
+            'stock' => ['nullable', 'integer', 'min:0'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
             'images' => ['nullable', 'array'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
@@ -607,22 +562,6 @@ class AdminController extends Controller
         }
 
         return redirect()->route('admin.products.index')->with('success', 'Product updated successfully.');
-    }
-
-    public function updateProductAvailability(Request $request, Product $product): RedirectResponse
-    {
-        $validated = $request->validate([
-            'is_out_of_stock' => ['required', 'boolean'],
-        ]);
-
-        $product->forceFill([
-            'is_out_of_stock' => $validated['is_out_of_stock'],
-        ])->save();
-
-        return redirect()->route('admin.products.index')->with(
-            'success',
-            $product->is_out_of_stock ? 'Product marked out of stock.' : 'Product marked available.'
-        );
     }
 
     public function uploadProductImages(
@@ -785,99 +724,100 @@ class AdminController extends Controller
         return redirect()->route('admin.attributes.index')->with('success', 'Attribute restored successfully.');
     }
 
-    public function storeAttributeValue(Request $request, ProductAttribute $attribute, AttributeValueService $attributeValueService): RedirectResponse
+    public function storeAttributeValue(Request $request, AttributeValueService $attributeValueService): RedirectResponse
     {
         $validated = $request->validate([
+            'product_attribute_id' => ['required', 'integer', 'exists:product_attributes,id'],
             'value' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $validated['product_attribute_id'] = $attribute->id;
         $attributeValueService->create($validated);
 
-        return redirect()->route('admin.attributes.show', $attribute)->with('success', 'Attribute value created successfully.');
+        return redirect()->route('admin')->with('success', 'Attribute value created successfully.');
     }
 
-    public function updateAttributeValue(Request $request, ProductAttribute $attribute, AttributeValue $attributeValue, AttributeValueService $attributeValueService): RedirectResponse
+    public function updateAttributeValue(Request $request, AttributeValue $attributeValue, AttributeValueService $attributeValueService): RedirectResponse
     {
-        abort_if($attributeValue->product_attribute_id !== $attribute->id, 404);
-
         $validated = $request->validate([
+            'product_attribute_id' => ['required', 'integer', 'exists:product_attributes,id'],
             'value' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
-        $validated['product_attribute_id'] = $attribute->id;
         $attributeValueService->update($attributeValue, $validated);
 
-        return redirect()->route('admin.attributes.show', $attribute)->with('success', 'Attribute value updated successfully.');
+        return redirect()->route('admin')->with('success', 'Attribute value updated successfully.');
     }
 
-    public function deleteAttributeValue(ProductAttribute $attribute, AttributeValue $attributeValue, AttributeValueService $attributeValueService): RedirectResponse
+    public function deleteAttributeValue(AttributeValue $attributeValue, AttributeValueService $attributeValueService): RedirectResponse
     {
-        abort_if($attributeValue->product_attribute_id !== $attribute->id, 404);
-
         $attributeValueService->delete($attributeValue);
 
-        return redirect()->route('admin.attributes.show', $attribute)->with('success', 'Attribute value deleted successfully.');
+        return redirect()->route('admin')->with('success', 'Attribute value deleted successfully.');
     }
 
-    public function restoreAttributeValue(ProductAttribute $attribute, AttributeValue $attributeValue, AttributeValueService $attributeValueService): RedirectResponse
+    public function restoreAttributeValue(AttributeValue $attributeValue, AttributeValueService $attributeValueService): RedirectResponse
     {
-        abort_if($attributeValue->product_attribute_id !== $attribute->id, 404);
-
         $attributeValueService->restore($attributeValue);
 
-        return redirect()->route('admin.attributes.show', $attribute)->with('success', 'Attribute value restored successfully.');
+        return redirect()->route('admin')->with('success', 'Attribute value restored successfully.');
     }
 
-    public function storeVariant(StoreProductVariantRequest $request, Product $product, ProductVariantService $productVariantService): RedirectResponse
+    public function storeVariant(Request $request, ProductVariantService $productVariantService): RedirectResponse
     {
-        try {
-            $productVariantService->createVariant($product, $request->validated());
-        } catch (DuplicateVariantCombinationException|InvalidVariantAttributeValueException $exception) {
-            return back()
-                ->withErrors(['attribute_value_ids' => $exception->getMessage()])
-                ->withInput();
-        }
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'sku' => ['required', 'string', 'max:255', 'unique:product_variants,sku'],
+            'attribute_value_ids' => ['required', 'array'],
+            'attribute_value_ids.*' => ['required', 'integer', 'exists:attribute_values,id'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'compare_at_price' => ['nullable', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
 
-        return redirect()->route('admin.products.show', $product)->with('success', 'Variant created successfully.');
+        $product = Product::query()->findOrFail($validated['product_id']);
+        $productVariantService->createVariant($product, $validated);
+
+        return redirect()->route('admin')->with('success', 'Variant created successfully.');
     }
 
-    public function updateVariant(UpdateProductVariantRequest $request, Product $product, ProductVariant $variant, ProductVariantService $productVariantService): RedirectResponse
+    public function updateVariant(Request $request, Product $product, ProductVariant $variant, ProductVariantService $productVariantService): RedirectResponse
     {
-        try {
-            $productVariantService->updateVariant($product, $variant, $request->validated());
-        } catch (DuplicateVariantCombinationException|InvalidVariantAttributeValueException $exception) {
-            return back()
-                ->withErrors(['attribute_value_ids' => $exception->getMessage()])
-                ->withInput();
-        }
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'sku' => ['required', 'string', 'max:255'],
+            'attribute_value_ids' => ['required', 'array'],
+            'attribute_value_ids.*' => ['required', 'integer', 'exists:attribute_values,id'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'compare_at_price' => ['nullable', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
 
-        return redirect()->route('admin.products.show', $product)->with('success', 'Variant updated successfully.');
+        $productVariantService->updateVariant($product, $variant, $validated);
+
+        return redirect()->route('admin')->with('success', 'Variant updated successfully.');
     }
 
-    public function deleteVariant(Product $product, ProductVariant $variant, ProductVariantService $productVariantService): RedirectResponse
+    public function deleteVariant(ProductVariant $variant, ProductVariantService $productVariantService): RedirectResponse
     {
-        abort_if($variant->product_id !== $product->id, 404);
         $productVariantService->deleteVariant($variant);
 
-        return redirect()->route('admin.products.show', $product)->with('success', 'Variant deleted successfully.');
+        return redirect()->route('admin')->with('success', 'Variant deleted successfully.');
     }
 
-    public function restoreVariant(Product $product, ProductVariant $variant, ProductVariantService $productVariantService): RedirectResponse
+    public function restoreVariant(ProductVariant $variant, ProductVariantService $productVariantService): RedirectResponse
     {
-        try {
-            $productVariantService->restoreVariant($product, $variant);
-        } catch (DuplicateVariantCombinationException|InvalidVariantAttributeValueException $exception) {
-            return back()->withErrors(['variant' => $exception->getMessage()]);
-        }
+        $productVariantService->restoreVariant($variant);
 
-        return redirect()->route('admin.products.show', $product)->with('success', 'Variant restored successfully.');
+        return redirect()->route('admin')->with('success', 'Variant restored successfully.');
     }
 
     public function profile(): View
@@ -959,37 +899,26 @@ class AdminController extends Controller
 
     public function notifications(Request $request): View
     {
-        $user = $request->user();
-        abort_unless($user instanceof User, 403);
-
         $notifications = Order::query()
             ->latest()
             ->limit(10)
             ->get(['id', 'order_number', 'customer_name', 'total', 'status', 'created_at']);
-        $user->forceFill([
-            'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
-        ])->save();
+        $request->session()->put('admin_notifications_last_seen_order_id', (int) (Order::query()->max('id') ?? 0));
 
         return view('admin.notifications', compact('notifications'));
     }
 
     public function unreadNotifications(Request $request): JsonResponse
     {
-        $user = $request->user();
-        abort_unless($user instanceof User, 403);
-        $lastSeenOrderId = $user->admin_notifications_last_seen_order_id;
+        $query = Order::query();
+        $lastSeenOrderId = $request->session()->get('admin_notifications_last_seen_order_id');
 
-        if ($lastSeenOrderId === null) {
-            $lastSeenOrderId = (int) (Order::query()->max('id') ?? 0);
-            $user->forceFill([
-                'admin_notifications_last_seen_order_id' => $lastSeenOrderId,
-            ])->save();
+        if ($lastSeenOrderId !== null) {
+            $query->where('id', '>', (int) $lastSeenOrderId);
         }
 
         return response()->json([
-            'count' => Order::query()
-                ->where('id', '>', (int) $lastSeenOrderId)
-                ->count(),
+            'count' => $query->count(),
         ]);
     }
 
