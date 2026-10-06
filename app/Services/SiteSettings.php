@@ -20,9 +20,14 @@ class SiteSettings
     private const DEFAULTS = [
         'logo_path' => null,
         'hero_image_path' => null,
+        'home_ad_image_path' => null,
+        'home_ad_url' => null,
         'hero_title' => 'Good Food for a Better You',
         'hero_description' => 'Discover fresh, high-quality products that bring health and happiness to your everyday life.',
         'hero_target' => null,
+        'about_us_article' => '',
+        'whatsapp_number' => null,
+        'whatsapp_url' => null,
         'security_admin_2fa_required' => '1',
         'security_login_attempts' => '5',
         'security_login_lockout_minutes' => '1',
@@ -32,11 +37,20 @@ class SiteSettings
     private const ALLOWED_KEYS = [
         'logo_path',
         'hero_image_path',
+        'home_ad_image_path',
+        'home_ad_url',
         'hero_title',
         'hero_description',
         'hero_target',
+        'about_us_article',
+        'whatsapp_number',
+        'whatsapp_url',
         'bkash_merchant_number',
         'nagad_merchant_number',
+        'rocket_merchant_number',
+        'delivery_fee',
+        'delivery_fee_inside_dhaka',
+        'delivery_fee_outside_dhaka',
         'security_admin_2fa_required',
         'security_login_attempts',
         'security_login_lockout_minutes',
@@ -85,9 +99,14 @@ class SiteSettings
         return Arr::only($this->all(), [
             'logo_path',
             'hero_image_path',
+            'home_ad_image_path',
+            'home_ad_url',
             'hero_title',
             'hero_description',
             'hero_target',
+            'about_us_article',
+            'whatsapp_number',
+            'whatsapp_url',
         ]);
     }
 
@@ -106,6 +125,11 @@ class SiteSettings
     {
         $target = $this->get('hero_target');
 
+        return is_string($target) ? $this->targetLabel($target) : null;
+    }
+
+    public function targetLabel(?string $target): ?string
+    {
         if (! is_string($target) || ! preg_match('/^(category|product|variant):([1-9][0-9]*)$/', $target, $matches)) {
             return null;
         }

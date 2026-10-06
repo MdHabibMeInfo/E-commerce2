@@ -11,124 +11,88 @@
     <x-slot:canonicalUrl>
         {{ route('home') }}
     </x-slot:canonicalUrl>
+
     @php
-        $heroProducts = $featuredProducts->take(3);
-        $hasCustomHero = filled($siteBranding['hero_image_path']);
-        $heroSlideCount = max(1, $heroProducts->count() + ($hasCustomHero ? 1 : 0));
+        $homeAdImagePath = $siteBranding['home_ad_image_path'] ?? null;
+        $homeAdUrl = $siteBranding['home_ad_url'] ?? null;
+        $showHomeAd = filled($homeAdImagePath) && filled($homeAdUrl);
     @endphp
-    <section data-hero-carousel class="relative overflow-hidden bg-[#f0f2dc]" aria-label="Featured products" aria-roledescription="carousel">
-        <div class="relative mx-auto max-w-[1600px]">
-            <div data-hero-viewport class="overflow-hidden">
-                <div data-hero-track class="flex transition-transform duration-500 ease-out motion-reduce:transition-none">
-                    @if ($hasCustomHero)
-                        <article
-                            data-hero-slide
-                            aria-roledescription="slide"
-                            aria-label="1 of {{ $heroSlideCount }}"
-                            aria-hidden="false"
-                            class="grid min-h-[380px] w-full shrink-0 items-center gap-8 px-4 py-10 sm:min-h-[420px] sm:px-6 lg:min-h-[480px] lg:grid-cols-2 lg:px-8 lg:py-14"
-                        >
-                            <div class="max-w-xl">
-                                <p class="text-xs font-bold uppercase tracking-[0.14em] text-[#a48335]">Fresh · Natural · Organic</p>
-                                <h1 class="mt-4 text-4xl font-extrabold leading-[1.05] text-[#145943] sm:text-5xl lg:text-6xl">{{ $siteBranding['hero_title'] }}</h1>
-                                <p class="mt-5 max-w-lg text-base leading-7 text-[#56665f] sm:text-lg">{{ $siteBranding['hero_description'] }}</p>
-                            </div>
-                            <a href="{{ $heroDestination ?? route('home') }}" aria-label="{{ $siteBranding['hero_title'] }}" class="group relative mx-auto flex min-h-[240px] w-full max-w-2xl items-center justify-center overflow-hidden bg-[#e4ead5] sm:min-h-[300px] lg:min-h-[390px]">
-                                <img
-                                    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($siteBranding['hero_image_path']) }}"
-                                    alt="{{ $siteBranding['hero_title'] }}"
-                                    width="900"
-                                    height="700"
-                                    fetchpriority="high"
-                                    decoding="async"
-                                    class="h-full max-h-[480px] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                                >
-                            </a>
-                        </article>
-                    @endif
 
-                    @forelse ($heroProducts as $index => $product)
-                        @php
-                            $heroImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
-                            $slideIndex = $index + ($hasCustomHero ? 1 : 0);
-                        @endphp
-
-                        <article
-                            data-hero-slide
-                            aria-roledescription="slide"
-                            aria-label="{{ $slideIndex + 1 }} of {{ $heroSlideCount }}"
-                            aria-hidden="{{ $slideIndex === 0 ? 'false' : 'true' }}"
-                            @if ($slideIndex !== 0) inert @endif
-                            class="grid min-h-[380px] w-full shrink-0 items-center gap-8 px-4 py-10 sm:min-h-[420px] sm:px-6 lg:min-h-[480px] lg:grid-cols-2 lg:px-8 lg:py-14"
-                        >
-                            <div class="max-w-xl">
-                                <p class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-[#a48335]">
-                                    <span class="h-2 w-2 rounded-full bg-[#a48335]" aria-hidden="true"></span>
-                                    {{ $product->category?->name ?? 'Fresh picks for you' }}
-                                </p>
-
-                                @if ($slideIndex === 0)
-                                    <h1 class="mt-4 text-4xl font-extrabold leading-[1.05] text-[#145943] sm:text-5xl lg:text-6xl">{{ $product->name }}</h1>
-                                @else
-                                    <h2 class="mt-4 text-4xl font-extrabold leading-[1.05] text-[#145943] sm:text-5xl lg:text-6xl">{{ $product->name }}</h2>
-                                @endif
-
-                                <p class="mt-5 max-w-lg text-base leading-7 text-[#56665f] sm:text-lg">
-                                    Carefully selected quality products for everyday freshness, taste, and value.
-                                </p>
-
-                            </div>
-
-                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="group relative mx-auto flex min-h-[240px] w-full max-w-2xl items-center justify-center overflow-hidden bg-[#e4ead5] sm:min-h-[300px] lg:min-h-[390px]" aria-label="View {{ $product->name }}">
-                                @if ($heroImage)
-                                    <img
-                                        src="/storage/{{ ltrim($heroImage->image_path, '/') }}"
-                                        alt="{{ $heroImage->alt_text ?: $product->name }}"
-                                        width="700"
-                                        height="600"
-                                        fetchpriority="{{ $slideIndex === 0 ? 'high' : 'auto' }}"
-                                        loading="{{ $slideIndex === 0 ? 'eager' : 'lazy' }}"
-                                        decoding="async"
-                                        class="h-full max-h-[390px] w-full object-contain transition-transform duration-500 group-hover:scale-105"
+    @if ($heroBanners->isNotEmpty())
+        <div class="mx-auto max-w-[1600px] px-4 pt-4 sm:px-6 lg:px-8">
+            <div class="grid items-stretch gap-4 {{ $showHomeAd ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : '' }}">
+                <div class="min-w-0">
+                    <section data-hero-carousel class="relative h-[clamp(250px,25vw,420px)] w-full overflow-hidden bg-[#fbfaf4]" aria-label="Homepage hero images" aria-roledescription="carousel">
+                        <div data-hero-viewport class="h-full overflow-hidden">
+                            <div data-hero-track class="flex h-full transition-transform duration-500 ease-out motion-reduce:transition-none">
+                                @foreach ($heroBanners as $index => $heroBanner)
+                                    <article
+                                        data-hero-slide
+                                        aria-roledescription="slide"
+                                        aria-label="{{ $index + 1 }} of {{ $heroBanners->count() }}"
+                                        aria-hidden="{{ $index === 0 ? 'false' : 'true' }}"
+                                        @if ($index !== 0) inert @endif
+                                        class="relative h-full w-full shrink-0"
                                     >
-                                @else
-                                    <span class="text-8xl sm:text-9xl" aria-hidden="true">🛍️</span>
-                                @endif
-                            </a>
-                        </article>
-                    @empty
-                        @if (! $hasCustomHero)
-                        <article data-hero-slide aria-roledescription="slide" aria-label="1 of 1" class="grid min-h-[380px] w-full shrink-0 items-center gap-8 px-4 py-10 sm:min-h-[420px] sm:px-6 lg:min-h-[480px] lg:grid-cols-2 lg:px-8 lg:py-14">
-                            <div class="max-w-xl">
-                                <p class="text-xs font-bold uppercase tracking-[0.14em] text-[#a48335]">Fresh · Natural · Organic</p>
-                                <h1 class="mt-4 text-4xl font-extrabold leading-[1.05] text-[#145943] sm:text-5xl lg:text-6xl">Good Food for a Better You</h1>
-                                <p class="mt-5 max-w-lg text-base leading-7 text-[#56665f] sm:text-lg">Discover fresh, high-quality products that bring health and happiness to your everyday life.</p>
+                                        <a
+                                            href="{{ $heroBannerDestinations[$heroBanner->id] ?? route('home') }}"
+                                            aria-label="{{ $heroBannerDestinations[$heroBanner->id] ? 'Open selected destination' : 'Open homepage' }}"
+                                            class="absolute inset-0 block"
+                                        >
+                                            <img
+                                                src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($heroBanner->image_path) }}"
+                                                alt=""
+                                                @if ($index === 0) fetchpriority="high" @else loading="lazy" @endif
+                                                decoding="async"
+                                                class="h-full w-full object-contain"
+                                            >
+                                        </a>
+                                    </article>
+                                @endforeach
                             </div>
-                            <div class="grid min-h-[240px] place-items-center bg-[#e4ead5] text-8xl sm:min-h-[300px] sm:text-9xl lg:min-h-[390px]" aria-hidden="true">🥬</div>
-                        </article>
+                        </div>
+
+                        @if ($heroBanners->count() > 1)
+                            <button type="button" data-hero-prev class="absolute left-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/35 text-white transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Previous hero image">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                            </button>
+                            <button type="button" data-hero-next class="absolute right-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/35 text-white transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Next hero image">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                            </button>
                         @endif
-                    @endforelse
+                    </section>
+
+                    @if ($heroBanners->count() > 1)
+                        <nav data-hero-pagination class="flex items-center justify-center gap-1 bg-[#fbfaf4] py-1" aria-label="Choose hero image">
+                            @foreach ($heroBanners as $index => $heroBanner)
+                                <button
+                                    type="button"
+                                    data-hero-dot="{{ $index }}"
+                                    aria-label="Show hero image {{ $index + 1 }}"
+                                    aria-current="{{ $index === 0 ? 'true' : 'false' }}"
+                                    class="grid h-8 w-8 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943]"
+                                >
+                                    <span class="h-2.5 {{ $index === 0 ? 'w-6 bg-[#145943]' : 'w-2.5 bg-[#c6c8b9]' }} rounded-full transition-all duration-300" aria-hidden="true"></span>
+                                </button>
+                            @endforeach
+                        </nav>
+                    @endif
                 </div>
-            </div>
 
-            @if ($heroSlideCount > 1)
-                <button type="button" data-hero-prev class="absolute left-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white/95 text-[#145943] shadow-md transition hover:bg-[#145943] hover:text-white sm:left-4" aria-label="Previous hero slide">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-                </button>
-                <button type="button" data-hero-next class="absolute right-2 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white/95 text-[#145943] shadow-md transition hover:bg-[#145943] hover:text-white sm:right-4" aria-label="Next hero slide">
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-                </button>
-            @endif
+                @if ($showHomeAd)
+                    <a href="{{ $homeAdUrl }}" target="_blank" rel="noopener noreferrer" aria-label="Open advertisement" class="hidden h-[clamp(250px,25vw,420px)] overflow-hidden bg-[#fbfaf4] lg:block">
+                        <img
+                            src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($homeAdImagePath) }}"
+                            alt="Advertisement"
+                            loading="lazy"
+                            decoding="async"
+                            class="h-full w-full object-contain"
+                        >
+                    </a>
+                @endif
+            </div>
         </div>
-
-        @if ($heroSlideCount > 1)
-            <div data-hero-pagination class="flex items-center justify-center gap-2 pb-5" role="group" aria-label="Choose hero slide">
-                @for ($index = 0; $index < $heroSlideCount; $index++)
-                    <button type="button" data-hero-dot="{{ $index }}" class="h-2.5 {{ $index === 0 ? 'w-8 bg-[#145943]' : 'w-2.5 bg-[#c6c8b9]' }} rounded-full transition-all duration-300 hover:bg-[#a48335] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a48335] focus-visible:ring-offset-2" aria-label="Show hero slide {{ $index + 1 }}" aria-current="{{ $index === 0 ? 'true' : 'false' }}"></button>
-                @endfor
-            </div>
-        @endif
-    </section>
+    @endif
 
     {{-- Categories --}}
     <section id="categories" class="border-t border-[#e8e6db] bg-[#fbfaf4]">
@@ -162,7 +126,7 @@
                             class="category-card group flex shrink-0 cursor-pointer flex-col items-center gap-2 rounded-xl bg-transparent text-center"
                         >
                             <span
-                                class="grid h-[92px] w-full place-items-center overflow-hidden rounded-2xl border border-[#e8e6db] bg-white shadow-sm sm:h-[104px]"
+                                class="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-white"
                             >
                                 @if ($category->image)
                                     <img
@@ -185,7 +149,7 @@
                             </span>
 
                             <span
-                                class="category-name w-full px-1 text-xs font-medium leading-4 text-[#26352f] transition-colors duration-200 sm:text-sm"
+                                class="category-name w-full px-1 text-sm font-medium leading-5 text-[#26352f] transition-colors duration-200 sm:text-base"
                             >
                                 {{ $category->name }}
                             </span>
@@ -202,7 +166,7 @@
                 <button
                     type="button"
                     data-category-next
-                    class="absolute right-0 top-1/2 z-20 grid h-10 w-10 translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] shadow-md transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:opacity-0"
+                    class="absolute right-0 top-1/2 z-20 grid h-10 w-10 translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:opacity-0"
                     aria-label="Next categories"
                 >
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -219,16 +183,16 @@
             <div class="mx-auto max-w-[1600px] px-4 pt-0 pb-8 sm:px-6 sm:pb-10 lg:px-8">
                 <h2 class="mb-6 text-center text-2xl font-semibold text-[#26352f] sm:text-3xl">Top Selling Products</h2>
 
-                <div class="grid gap-5 md:grid-cols-2">
+                <div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 md:gap-5">
                     @foreach ($topSellingProducts as $product)
                         @php
                             $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
                         @endphp
 
-                        <article class="group relative grid min-h-[230px] grid-cols-[48%_minmax(0,1fr)] overflow-hidden rounded-sm bg-white sm:min-h-[270px] lg:min-h-[300px]">
+                        <article class="group relative flex min-w-0 flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white md:grid md:min-h-[270px] md:grid-cols-[48%_minmax(0,1fr)] md:rounded-sm md:border-0 lg:min-h-[300px]">
                             <span class="absolute right-2 top-2 z-10 rounded-[3px] bg-[#ef4938] px-2 py-1 text-[10px] font-bold text-white">Best Selling</span>
 
-                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex h-full min-h-0 items-center justify-center overflow-hidden bg-white" aria-label="View {{ $product->name }}">
+                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex aspect-square w-full items-center justify-center overflow-hidden bg-white md:h-full md:aspect-auto md:min-h-0" aria-label="View {{ $product->name }}">
                                 @if ($primaryImage)
                                     <img
                                         src="/storage/{{ ltrim($primaryImage->image_path, '/') }}"
@@ -244,24 +208,20 @@
                                 @endif
                             </a>
 
-                            <div class="flex min-w-0 flex-col justify-center py-8 pl-3 pr-3 sm:px-6">
-                                <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="line-clamp-2 text-base font-semibold leading-6 text-[#173b32] hover:text-[#145943] sm:text-lg">
+                            <div class="flex min-w-0 flex-col px-3 pt-3 pb-2 sm:px-4 md:justify-center md:px-6 md:py-8 max-sm:flex-1">
+                                <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="line-clamp-2 text-sm font-normal leading-5 text-[#173b32] hover:text-[#145943] md:text-lg md:font-semibold md:leading-6">
                                     {{ $product->name }}
                                 </a>
-                                @if ($product->price !== null || $product->compare_at_price !== null)
-                                    <div class="mt-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-                                        @if ($product->price !== null)
-                                            <span class="text-base font-bold text-[#145943] sm:text-lg">৳{{ number_format((float) $product->price, 2) }}</span>
-                                        @endif
-                                        @if ($product->compare_at_price !== null)
-                                            <span class="text-xs text-[#9aa19c] line-through sm:text-sm">৳{{ number_format((float) $product->compare_at_price, 2) }}</span>
-                                        @endif
-                                    </div>
-                                @endif
+                                @include('storefront.partials.product-price', [
+                                    'product' => $product,
+                                    'containerClass' => 'mt-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 md:mt-2',
+                                    'priceClass' => 'text-sm font-extrabold text-[#145943] md:text-base',
+                                    'comparePriceClass' => 'text-xs text-[#9aa19c] line-through',
+                                ])
 
-                                <div class="mt-5 flex flex-wrap gap-2.5">
+                                <div class="mt-3 flex flex-col gap-2.5 md:mt-5 md:flex-row md:flex-wrap max-sm:mt-auto">
                                     @if ($product->is_out_of_stock || ($product->type === 'variable' && ! $product->variants->contains(fn ($variant) => $variant->is_active && ! $variant->is_out_of_stock)))
-                                        <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 cursor-not-allowed items-center justify-center rounded-sm border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-semibold text-[#738078] sm:px-4">
+                                        <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-semibold text-[#738078] md:w-auto md:rounded-sm md:px-4">
                                             Out of stock
                                         </button>
                                     @else
@@ -276,7 +236,7 @@
                                         @if ($product->type === 'variable') data-select-variant @endif
                                         data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                         data-product-emoji="🛍️"
-                                        class="inline-flex h-10 items-center justify-center gap-2 rounded-sm border border-[#145943] px-3 text-sm font-semibold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white sm:px-4"
+                                        class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[4px] border border-[#145943] px-3 text-sm font-semibold text-[#145943] transition-all duration-200 hover:bg-[#145943] hover:text-white md:w-auto md:rounded-sm md:px-4"
                                     >
                                         <svg data-cart-button-icon class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                             <path d="M3 3h2l2.4 12.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
@@ -304,7 +264,7 @@
                                         @if ($product->type === 'variable') data-select-variant @endif
                                         data-product-image="{{ $primaryImage ? '/storage/' . ltrim($primaryImage->image_path, '/') : '' }}"
                                         data-product-emoji="🛍️"
-                                        class="inline-flex h-9 items-center justify-center rounded-sm border border-[#a48335] bg-[#a48335] px-3 text-xs font-semibold text-white transition-colors hover:border-[#145943] hover:bg-[#145943] sm:h-10 sm:px-4 sm:text-sm"
+                                        class="inline-flex h-10 w-full items-center justify-center rounded-[4px] border border-[#a48335] bg-[#a48335] px-3 text-sm font-semibold text-white transition-colors hover:border-[#145943] hover:bg-[#145943] md:w-auto md:rounded-sm md:px-4"
                                     >
                                         Buy now
                                     </button>
@@ -372,9 +332,9 @@
 
                                         <article
                                             data-carousel-item
-                                            class="group relative shrink-0 overflow-hidden rounded-[4px] border border-[#e9e5db] bg-white shadow-none"
+                                            class="group relative flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#e9e5db] bg-white shadow-none"
                                         >
-                                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex h-full flex-col">
+                                            <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex flex-1 flex-col">
                                                 <div class="overflow-hidden bg-white">
                                                     @if ($primaryImage)
                                                         <div class="aspect-square overflow-hidden">
@@ -398,24 +358,21 @@
                                                         {{ $product->name }}
                                                     </h4>
 
-                                                    @if ($product->price !== null || $product->compare_at_price !== null)
-                                                        <div class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-2">
-                                                            @if ($product->price !== null)
-                                                                <span class="text-sm font-extrabold text-[#145943] sm:text-base">৳{{ number_format((float) $product->price, 2) }}</span>
-                                                            @endif
-                                                            @if ($product->compare_at_price !== null)
-                                                                <span class="text-xs text-[#9aa19c] line-through sm:text-sm">৳{{ number_format((float) $product->compare_at_price, 2) }}</span>
-                                                            @endif
-                                                        </div>
-                                                    @endif
+                                                    @include('storefront.partials.product-price', [
+                                                        'product' => $product,
+                                                        'containerClass' => 'flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-2',
+                                                        'priceClass' => 'text-sm font-extrabold text-[#145943] sm:text-base',
+                                                        'comparePriceClass' => 'text-xs text-[#9aa19c] line-through sm:text-sm',
+                                                    ])
                                                 </div>
+                                            </a>
 
-                                                <div class="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
-                                                    @if ($product->is_out_of_stock || ($product->type === 'variable' && ! $product->variants->contains(fn ($variant) => $variant->is_active && ! $variant->is_out_of_stock)))
-                                                        <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-bold text-[#738078]">
-                                                            Out of stock
-                                                        </button>
-                                                    @else
+                                            <div class="mt-auto px-3 pb-2 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
+                                                @if ($product->is_out_of_stock || ($product->type === 'variable' && ! $product->variants->contains(fn ($variant) => $variant->is_active && ! $variant->is_out_of_stock)))
+                                                    <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-bold text-[#738078]">
+                                                        Out of stock
+                                                    </button>
+                                                @else
                                                     <button
                                                         type="button"
                                                         aria-label="Add {{ $product->name }} to cart"
@@ -443,9 +400,8 @@
                                                         </svg>
                                                         <span data-cart-button-label>{{ $product->type === 'variable' ? 'Choose options' : 'Add to Cart' }}</span>
                                                     </button>
-                                                    @endif
-                                                </div>
-                                            </a>
+                                                @endif
+                                            </div>
                                         </article>
                                     @endforeach
                                 </div>
@@ -459,22 +415,8 @@
         </div>
     </section>
 
-    {{-- CTA --}}
-    <section class="border-t border-[#e3e2d9] px-4 py-10 sm:px-6 lg:px-8">
-        <div class="mx-auto max-w-[1600px]">
-            <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Shop smarter</p>
-                    <h2 class="mt-2 text-2xl font-extrabold text-[#145943] sm:text-3xl">Fresh choices, delivered to your door.</h2>
-                    <p class="mt-2 max-w-2xl text-sm leading-6 text-[#56665f]">Explore our complete collection and find everything you need in one place.</p>
-                </div>
-                <a href="{{ route('shop') }}" class="shrink-0 rounded-full border border-[#145943] bg-[#145943] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[#a48335] hover:border-[#a48335]">Start Shopping →</a>
-            </div>
-        </div>
-    </section>
-
     {{-- Site-selected recommendations --}}
-    <section id="just-for-you" class="border-t border-[#e8e6db] bg-[#fbfaf4]">
+    <section id="just-for-you" class="bg-[#fbfaf4]">
         <div class="mx-auto max-w-[1600px] px-4 pt-8 pb-12 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between gap-3 border-b border-[#e7e2d4] pb-2">
                 <h2 class="text-xl font-extrabold tracking-tight text-[#26352f]">Just For You</h2>
@@ -499,31 +441,47 @@
         </div>
     </section>
 
-    <section id="customer-reviews" class="border-t border-[#e8e6db] bg-[#fffef9]">
+    <section id="customer-reviews" class="border-t border-[#e8e6db] bg-[#fbfaf4]">
         <div class="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8">
-            <div class="border-b border-[#e7e2d4] pb-3">
-                <p class="text-xs font-bold uppercase tracking-[0.16em] text-[#a48335]">Customer feedback</p>
-                <h2 class="mt-1 text-xl font-extrabold text-[#26352f] sm:text-2xl">Customer Reviews</h2>
-            </div>
-
             @forelse ($approvedReviews as $review)
-                <div class="grid gap-4 border-b border-[#e8e6db] py-5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="flex text-sm leading-none text-[#d9a700]" aria-label="{{ $review->rating }} out of 5 stars">
-                                @for ($star = 1; $star <= 5; $star++)
-                                    <span aria-hidden="true">{{ $star <= $review->rating ? '★' : '☆' }}</span>
-                                @endfor
-                            </span>
-                            <span class="text-sm font-bold text-[#173b32]">{{ $review->name }}</span>
+                @if ($loop->first)
+                    <div class="relative mt-5">
+                        <div class="overflow-hidden">
+                            <div data-home-review-track class="flex gap-4 overflow-x-auto scroll-smooth pb-2 pr-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="list" aria-label="Customer reviews">
+                @endif
+                                <article data-carousel-item role="listitem" class="flex min-h-52 flex-col rounded-[4px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="flex min-w-0 items-center gap-3">
+                                            @if ($review->reviewer?->profile_photo_path)
+                                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($review->reviewer->profile_photo_path) }}" alt="{{ $review->name }} profile photo" class="h-10 w-10 shrink-0 rounded-full border border-[#dce6ce] object-cover">
+                                            @else
+                                                <span role="img" aria-label="Avatar for {{ $review->name }}" class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#edf2e4] text-sm font-bold text-[#145943]">{{ strtoupper(substr(trim($review->name), 0, 1)) }}</span>
+                                            @endif
+                                            <span class="min-w-0">
+                                                <span class="block truncate text-sm font-bold text-[#173b32]">{{ $review->name }}</span>
+                                            </span>
+                                        </div>
+                                        <span class="shrink-0 text-sm leading-none text-[#d9a700]" aria-label="{{ $review->rating }} out of 5 stars">
+                                            @for ($star = 1; $star <= 5; $star++)
+                                                <span aria-hidden="true">{{ $star <= $review->rating ? '★' : '☆' }}</span>
+                                            @endfor
+                                        </span>
+                                    </div>
+                                    <p class="mt-4 whitespace-pre-line break-words text-sm leading-6 text-[#59675f]">{{ $review->body }}</p>
+                                    <div class="mt-auto pt-5">
+                                        <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#738078]">Review for</p>
+                                        <a href="{{ route('products.show', ['product' => $review->product->slug]) }}" class="mt-1 flex items-center justify-between gap-3 rounded-[4px] border border-[#dce6ce] bg-[#f7f9f1] px-3 py-2 text-sm font-bold text-[#145943] transition hover:border-[#145943]">
+                                            <span class="min-w-0 break-words">{{ $review->product->name }}</span>
+                                            <span aria-hidden="true">&rarr;</span>
+                                        </a>
+                                    </div>
+                                </article>
+                @if ($loop->last)
+                            </div>
                         </div>
-                        <p class="mt-2 max-w-4xl whitespace-pre-line text-sm leading-6 text-[#59675f]">{{ $review->body }}</p>
-                        <time class="mt-2 block text-xs text-[#77837c]" datetime="{{ $review->created_at->toDateString() }}">{{ $review->created_at->diffForHumans() }}</time>
+                        <div data-home-review-pagination class="flex items-center justify-center gap-2.5 pt-4" role="group" aria-label="Customer review pages"></div>
                     </div>
-                    <a href="{{ route('products.show', ['product' => $review->product->slug]) }}" class="text-sm font-semibold text-[#145943] transition hover:text-[#a48335]">
-                        {{ $review->product->name }}
-                    </a>
-                </div>
+                @endif
             @empty
                 <p class="py-6 text-sm text-[#738078]">Customer reviews will appear here after they are approved.</p>
             @endforelse

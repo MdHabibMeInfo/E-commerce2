@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use App\Notifications\EmailChangeVerificationNotification;
 use Illuminate\Http\UploadedFile;
@@ -20,6 +21,9 @@ it('shows profile and notification actions without storefront header controls', 
         ->assertSee(route('admin.profile'), false)
         ->assertSee(route('admin.notifications'), false)
         ->assertSee('aria-label="Admin notifications"', false)
+        ->assertSee('aria-label="Open profile and logout menu"', false)
+        ->assertSee('action="'.route('logout').'"', false)
+        ->assertSee('>Logout</span>', false)
         ->assertDontSee('Search in...')
         ->assertDontSee('Wishlist')
         ->assertDontSee('Shopping cart');
@@ -34,15 +38,96 @@ it('displays the signed-in admin profile details', function () {
     $user = createSystemOwnerUser([
         'name' => 'Admin Profile',
         'email' => 'admin-profile@example.com',
+        'profile_photo_path' => 'profile-photos/admin-avatar.jpg',
     ]);
 
     $this->actingAs(completeManagementTwoFactorForTest($user))
         ->get(route('admin.profile'))
         ->assertOk()
         ->assertSee('Profile')
+        ->assertSee('<details', false)
+        ->assertSee('Profile overview')
+        ->assertSee('My orders')
+        ->assertSee('Order history')
+        ->assertSee('Security')
+        ->assertDontSee('Continue shopping')
+        ->assertSee(route('account.orders'), false)
+        ->assertSee(route('account.orders.history'), false)
         ->assertSee('Admin Profile')
         ->assertSee('admin-profile@example.com')
+        ->assertSee('data-profile-photo-input', false)
+        ->assertSee('data-profile-photo-preview', false)
+        ->assertSee('form="admin-profile-photo-remove"', false)
         ->assertSee('Save changes');
+
+    $this->get(route('account.profile'))
+        ->assertRedirect(route('admin.profile'));
+
+    $this->get(route('account.security'))
+        ->assertSee('Overview')
+        ->assertSee('Security Audit Log')
+        ->assertSee('Profile overview')
+        ->assertDontSee('Customer account');
+});
+
+it('shows only the signed-in management users orders on their profile', function () {
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $this->actingAs($admin);
+
+    Order::create([
+        'order_number' => 'ORD-ADMIN-ACTIVE',
+        'user_id' => $admin->id,
+        'customer_name' => 'Active Customer',
+        'phone' => '01700000000',
+        'address' => 'Test address',
+        'city' => 'Dhaka',
+        'subtotal' => 500,
+        'total' => 500,
+        'status' => 'pending',
+    ]);
+    Order::create([
+        'order_number' => 'ORD-ADMIN-HISTORY',
+        'user_id' => $admin->id,
+        'customer_name' => 'History Customer',
+        'phone' => '01700000001',
+        'address' => 'Test address',
+        'city' => 'Dhaka',
+        'subtotal' => 800,
+        'total' => 800,
+        'status' => 'delivered',
+    ]);
+    Order::create([
+        'order_number' => 'ORD-OTHER-ACTIVE',
+        'user_id' => User::factory()->create()->id,
+        'customer_name' => 'Other Customer',
+        'phone' => '01700000002',
+        'address' => 'Test address',
+        'city' => 'Dhaka',
+        'subtotal' => 600,
+        'total' => 600,
+        'status' => 'pending',
+    ]);
+
+    $this->get(route('admin.profile'))
+        ->assertSee('Active orders')
+        ->assertSee('ORD-ADMIN-ACTIVE')
+        ->assertDontSee('ORD-ADMIN-HISTORY')
+        ->assertDontSee('ORD-OTHER-ACTIVE');
+
+    $this->get(route('account.orders'))
+        ->assertSee('ORD-ADMIN-ACTIVE')
+        ->assertSee('ORD-ADMIN-HISTORY')
+        ->assertSee('Security Audit Log')
+        ->assertDontSee('ORD-OTHER-ACTIVE');
+
+    $this->get(route('account.orders.history'))
+        ->assertSee('ORD-ADMIN-HISTORY')
+        ->assertDontSee('ORD-OTHER-ACTIVE');
+
+    $this->get(route('admin.orders'))
+        ->assertSee('ORD-ADMIN-ACTIVE')
+        ->assertSee('ORD-ADMIN-HISTORY')
+        ->assertSee('ORD-OTHER-ACTIVE');
 });
 
 it('shows recent orders as admin notifications', function () {
@@ -66,12 +151,27 @@ it('shows recent orders as admin notifications', function () {
         ->assertSee('Test Customer');
 });
 
-it('counts new order notifications until the notification page is opened', function () {
+it('counts new order and review notifications until the notification page is opened', function () {
     $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
     $admin->forceFill([
         'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
+        'admin_notifications_last_seen_review_id' => 0,
     ])->save();
     $this->actingAs($admin);
+
+    $product = Product::create([
+        'name' => 'Notification Review Product',
+        'slug' => 'notification-review-product',
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $product->reviews()->create([
+        'name' => 'Unread Reviewer',
+        'email' => 'unread-reviewer@example.com',
+        'rating' => 5,
+        'body' => 'A newly submitted review.',
+        'images' => [],
+    ]);
 
     Order::create([
         'order_number' => 'ORD-ADMIN-1002',
@@ -86,9 +186,11 @@ it('counts new order notifications until the notification page is opened', funct
 
     $this->getJson(route('admin.notifications.unread'))
         ->assertOk()
-        ->assertJsonPath('count', 1);
+        ->assertJsonPath('count', 2);
 
-    $this->get(route('admin.notifications'))->assertOk();
+    $this->get(route('admin.notifications'))
+        ->assertOk()
+        ->assertSee('A newly submitted review.');
 
     $this->getJson(route('admin.notifications.unread'))
         ->assertOk()
@@ -115,6 +217,18 @@ it('counts new order notifications until the notification page is opened', funct
     $this->getJson(route('admin.notifications.unread'))
         ->assertOk()
         ->assertJsonPath('count', 1);
+
+    $product->reviews()->create([
+        'name' => 'Second Reviewer',
+        'email' => 'second-reviewer@example.com',
+        'rating' => 4,
+        'body' => 'Another new review after the read state.',
+        'images' => [],
+    ]);
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertOk()
+        ->assertJsonPath('count', 2);
 });
 
 it('requires a signed-in user to update profile details', function () {

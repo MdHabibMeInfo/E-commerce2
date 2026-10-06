@@ -4,14 +4,23 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\HeroBanner;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Services\SiteSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 
 class HomeController extends Controller
 {
-    public function index(): View
+    public function about(SiteSettings $settings): View
+    {
+        return view('storefront.about', [
+            'aboutUsArticle' => $settings->get('about_us_article', ''),
+        ]);
+    }
+
+    public function index(SiteSettings $settings): View
     {
         $topSellingProducts = Product::query()
             ->where('is_active', true)
@@ -29,7 +38,7 @@ class HomeController extends Controller
             ->with([
                 'primaryImage',
                 'images:id,product_id,image_path,alt_text,is_primary,sort_order',
-                'variants:id,product_id,is_active,is_out_of_stock',
+                'variants:id,product_id,price,is_active,is_out_of_stock',
             ])
             ->orderBy('is_out_of_stock')
             ->orderByDesc('units_sold')
@@ -62,7 +71,7 @@ class HomeController extends Controller
                     ->with([
                         'primaryImage',
                         'images:id,product_id,image_path,alt_text,is_primary,sort_order',
-                        'variants:id,product_id,is_active,is_out_of_stock',
+                        'variants:id,product_id,price,is_active,is_out_of_stock',
                     ])
                     ->orderBy('is_out_of_stock')
                     ->orderByDesc('id')
@@ -76,12 +85,6 @@ class HomeController extends Controller
                 'name',
                 'slug',
             ]);
-
-        $featuredProducts = $this->homeProductsQuery()
-            ->orderBy('is_out_of_stock')
-            ->latest('id')
-            ->limit(12)
-            ->get();
 
         $newArrivals = $this->homeProductsQuery()
             ->latest('created_at')
@@ -103,18 +106,31 @@ class HomeController extends Controller
         $approvedReviews = ProductReview::query()
             ->where('is_approved', true)
             ->whereHas('product', fn ($query) => $query->where('is_active', true))
-            ->with('product:id,name,slug')
+            ->with([
+                'product:id,name,slug',
+                'reviewer:id,email,profile_photo_path',
+            ])
             ->latest()
             ->limit(6)
             ->get();
 
         $benefits = config('storefront.home_benefits', []);
+        $heroBanners = HeroBanner::query()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+        $heroBannerDestinations = $heroBanners->mapWithKeys(fn (HeroBanner $heroBanner): array => [
+            $heroBanner->id => $heroBanner->target
+                ? $settings->destinationFor($heroBanner->target)
+                : null,
+        ]);
 
         return view('storefront.home', [
+            'heroBanners' => $heroBanners,
+            'heroBannerDestinations' => $heroBannerDestinations,
             'topSellingProducts' => $topSellingProducts,
             'categories' => $categories,
             'categoryRows' => $categoryRows,
-            'featuredProducts' => $featuredProducts,
             'newArrivals' => $newArrivals,
             'justForYouProducts' => $justForYouProducts,
             'approvedReviews' => $approvedReviews,
@@ -141,7 +157,7 @@ class HomeController extends Controller
                 'category:id,name,slug',
                 'primaryImage',
                 'images:id,product_id,image_path,alt_text,is_primary,sort_order',
-                'variants:id,product_id,is_active,is_out_of_stock',
+                'variants:id,product_id,price,is_active,is_out_of_stock',
             ]);
     }
 }

@@ -36,7 +36,7 @@
     {{ $head ?? '' }}
 </head>
 
-<body class="min-h-screen bg-[#fbfaf4] text-[#173b32] antialiased" data-admin-area="{{ request()->routeIs('admin*') ? 'true' : 'false' }}">
+<body class="min-h-screen bg-[#fbfaf4] text-[#173b32] antialiased" data-admin-area="{{ request()->routeIs('admin*') || (auth()->user()?->can('access-admin') && request()->routeIs('account.orders*', 'account.security*')) ? 'true' : 'false' }}">
 
     <x-header />
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\AccountSecurityController;
 use App\Http\Controllers\Web\AdminController;
+use App\Http\Controllers\Web\AdminReviewController;
 use App\Http\Controllers\Web\AdminRoleController;
 use App\Http\Controllers\Web\AdminSessionController;
 use App\Http\Controllers\Web\AdminSettingsController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Web\AdminUserController;
 use App\Http\Controllers\Web\CheckoutController;
 use App\Http\Controllers\Web\CustomerRegistrationController;
 use App\Http\Controllers\Web\EmailVerificationController;
+use App\Http\Controllers\Web\HeroBannerController;
 use App\Http\Controllers\Web\HomeController;
 use App\Http\Controllers\Web\OrderController;
 use App\Http\Controllers\Web\PasswordResetController;
@@ -20,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::controller(HomeController::class)->group(function () {
     Route::get('/', 'index')->name('home');
+    Route::get('/about-us', 'about')->name('about');
 });
 
 Route::get('/search/suggestions', [ShopController::class, 'suggestions'])
@@ -124,6 +127,12 @@ Route::middleware(['auth', 'management.verified'])->group(function () {
     Route::post('/admin/orders/{order}/shipments', [OrderController::class, 'createShipment'])
         ->middleware(['can:access-admin', 'management.2fa', 'throttle:5,1'])
         ->name('admin.orders.shipments.store');
+    Route::post('/admin/orders/{order}/courier-history', [OrderController::class, 'checkCustomerCourierHistory'])
+        ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa', 'throttle:10,1'])
+        ->name('admin.orders.courier-history');
+    Route::post('/admin/orders/{order}/shipments/reconcile', [OrderController::class, 'reconcileShipment'])
+        ->middleware(['can:access-admin', 'management.2fa', 'throttle:5,1'])
+        ->name('admin.orders.shipments.reconcile');
 
     Route::prefix('admin')->name('admin.')->middleware(['can:access-admin', 'management.2fa'])->group(function () {
         Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('settings');
@@ -131,6 +140,12 @@ Route::middleware(['auth', 'management.verified'])->group(function () {
             ->middleware('throttle:60,1')->name('settings.hero-targets');
         Route::patch('/settings/branding', [AdminSettingsController::class, 'updateBranding'])
             ->middleware('can:settings.update')->name('settings.branding.update');
+        Route::post('/settings/hero-banners', [HeroBannerController::class, 'store'])
+            ->middleware('can:settings.update')->name('settings.hero-banners.store');
+        Route::put('/settings/hero-banners/{heroBanner}', [HeroBannerController::class, 'update'])
+            ->middleware('can:settings.update')->name('settings.hero-banners.update');
+        Route::delete('/settings/hero-banners/{heroBanner}', [HeroBannerController::class, 'destroy'])
+            ->middleware('can:settings.update')->name('settings.hero-banners.destroy');
         Route::patch('/settings/security', [AdminSettingsController::class, 'updateSensitive'])
             ->middleware(['can:system-owner-settings', 'throttle:5,1'])->name('settings.security.update');
 
@@ -144,11 +159,14 @@ Route::middleware(['auth', 'management.verified'])->group(function () {
             ->middleware('can:access-admin')
             ->name('profile.photo.destroy');
         Route::get('/notifications', [AdminController::class, 'notifications'])
-            ->middleware('can:orders.view')
             ->name('notifications');
         Route::get('/notifications/unread-count', [AdminController::class, 'unreadNotifications'])
-            ->middleware('can:orders.view')
             ->name('notifications.unread');
+
+        Route::get('/reviews', [AdminReviewController::class, 'index'])->middleware('can:reviews.view')->name('reviews.index');
+        Route::get('/reviews/{review}', [AdminReviewController::class, 'show'])->middleware('can:reviews.view')->name('reviews.show');
+        Route::patch('/reviews/{review}', [AdminReviewController::class, 'update'])
+            ->middleware(['can:reviews.moderate', 'throttle:10,1'])->name('reviews.update');
 
         Route::get('/roles', [AdminRoleController::class, 'index'])->middleware('can:roles.view')->name('roles.index');
         Route::post('/roles', [AdminRoleController::class, 'store'])->middleware('can:roles.create')->name('roles.store');
@@ -203,7 +221,7 @@ Route::middleware(['auth', 'management.verified'])->group(function () {
         Route::get('/products/{product}', [AdminController::class, 'showProduct'])->middleware('can:products.view')->name('products.show');
         Route::get('/products/{product}/edit', [AdminController::class, 'editProduct'])->middleware('can:products.update')->name('products.edit');
         Route::put('/products/{product}', [AdminController::class, 'updateProduct'])->middleware('can:products.update')->name('products.update');
-        Route::patch('/products/{product}/reviews/{review}/approval', [AdminController::class, 'updateProductReviewApproval'])->middleware('can:products.update')->name('products.reviews.approval');
+        Route::patch('/products/{product}/reviews/{review}/approval', [AdminReviewController::class, 'updateProductApproval'])->middleware('can:reviews.moderate')->name('products.reviews.approval');
         Route::patch('/products/{product}/availability', [AdminController::class, 'updateProductAvailability'])->middleware('can:products.update')->name('products.availability');
         Route::delete('/products/{product}', [AdminController::class, 'destroyProduct'])->middleware('can:products.delete')->name('products.destroy');
         Route::post('/products/{product}/restore', [AdminController::class, 'restoreProduct'])->middleware('can:products.update')->name('products.restore');

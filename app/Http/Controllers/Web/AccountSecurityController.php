@@ -26,10 +26,14 @@ use Illuminate\Validation\ValidationException;
 
 class AccountSecurityController extends Controller
 {
-    public function profile(Request $request): View
+    public function profile(Request $request): View|RedirectResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 403);
+
+        if ($user->can('access-admin')) {
+            return redirect()->route('admin.profile');
+        }
 
         $activeOrders = $user->orders()
             ->whereNotIn('status', ['delivered', 'cancelled', 'returned'])

@@ -75,7 +75,6 @@ class AppServiceProvider extends ServiceProvider
         ViewFacade::composer('storefront.home', static function (View $view): void {
             $settings = app(SiteSettings::class);
             $view->with('siteBranding', $settings->branding());
-            $view->with('heroDestination', $settings->heroDestination());
         });
 
         Gate::policy(Order::class, OrderPolicy::class);

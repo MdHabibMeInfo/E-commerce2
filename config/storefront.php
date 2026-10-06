@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'delivery_fee' => 60.00,
+    'delivery_fee_inside_dhaka' => 60.00,
+    'delivery_fee_outside_dhaka' => 60.00,
+    'delivery_fee_inside_dhaka' => 60.00,
+    'delivery_fee_outside_dhaka' => 60.00,
     'home_benefits' => [
         [
             'icon' => '🚚',

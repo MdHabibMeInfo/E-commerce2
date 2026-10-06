@@ -42,6 +42,32 @@
         </div>
     </div>
 
+    @if ($canViewReviews)
+        <section class="overflow-hidden rounded-[4px] border border-[#e5e2d9] bg-white">
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#e5e2d9] px-5 py-4">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-[#a48335]">Customer feedback</p>
+                    <h2 class="mt-1 text-xl font-extrabold text-[#145943]">Reviews to review</h2>
+                    <p class="mt-1 text-sm text-[#738078]">{{ $stats['pending_reviews'] }} waiting for a publishing decision</p>
+                </div>
+                <a href="{{ route('admin.reviews.index') }}" class="rounded-[4px] border border-[#145943] px-4 py-2 text-sm font-bold text-[#145943] transition hover:bg-[#145943] hover:text-white">Open review queue</a>
+            </div>
+            <div class="divide-y divide-[#ece8dc]">
+                @forelse ($pendingReviews as $review)
+                    <a href="{{ route('admin.reviews.show', $review) }}" class="flex flex-col gap-2 px-5 py-4 transition hover:bg-[#f8f9f2] sm:flex-row sm:items-center sm:justify-between">
+                        <span class="min-w-0">
+                            <span class="block truncate text-sm font-bold text-[#173b32]">{{ $review->product->name }} · {{ $review->name }}</span>
+                            <span class="mt-1 block truncate text-sm text-[#59675f]">{{ $review->body }}</span>
+                        </span>
+                        <span class="shrink-0 text-xs font-semibold text-[#738078]">{{ $review->rating }}/5 · {{ $review->created_at->diffForHumans() }}</span>
+                    </a>
+                @empty
+                    <p class="px-5 py-7 text-sm text-[#738078]">No reviews are waiting for moderation.</p>
+                @endforelse
+            </div>
+        </section>
+    @endif
+
     <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
             <div class="mb-4 flex items-center justify-between">

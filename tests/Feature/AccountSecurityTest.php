@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 
 it('renders the customer security page and its account controls', function () {
-    $customer = User::factory()->create(['account_type' => 'customer', 'status' => 'active']);
+    $customer = User::factory()->create([
+        'account_type' => 'customer',
+        'status' => 'active',
+    ]);
 
     $this->actingAs($customer)
         ->get(route('account.security'))
@@ -24,7 +27,11 @@ it('renders the customer security page and its account controls', function () {
 });
 
 it('keeps past orders out of the customer profile page', function () {
-    $customer = User::factory()->create(['account_type' => 'customer', 'status' => 'active']);
+    $customer = User::factory()->create([
+        'account_type' => 'customer',
+        'status' => 'active',
+        'profile_photo_path' => 'profile-photos/customer-avatar.jpg',
+    ]);
     $activeOrder = Order::factory()->create([
         'user_id' => $customer->id,
         'status' => 'processing',
@@ -38,6 +45,11 @@ it('keeps past orders out of the customer profile page', function () {
         ->get(route('account.profile'))
         ->assertOk()
         ->assertSee('Profile details')
+        ->assertSee(route('logout'), false)
+        ->assertSee('Sign out')
+        ->assertSee('data-profile-photo-input', false)
+        ->assertSee('data-profile-photo-preview', false)
+        ->assertSee('form="account-profile-photo-remove"', false)
         ->assertSee($activeOrder->order_number)
         ->assertDontSee($pastOrder->order_number);
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Category;
+use App\Models\HeroBanner;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\SecurityEvent;
@@ -36,26 +37,21 @@ it('lets a settings editor update branding but denies sensitive settings', funct
 
     $this->get(route('admin.settings'))
         ->assertOk()
-        ->assertSee('Logo & Homepage Hero')
+        ->assertSee('Site Logo')
+        ->assertSee('Homepage Hero Images')
         ->assertDontSee('security_admin_2fa_required', false)
+        ->assertDontSee('name="about_us_article"', false)
+        ->assertDontSee('name="whatsapp_number"', false)
         ->assertDontSee('bkash_merchant_number', false);
 
     $this->patch(route('admin.settings.branding.update'), [
         'logo' => UploadedFile::fake()->image('store-logo.png', 300, 120),
-        'hero_image' => UploadedFile::fake()->image('store-hero.png', 900, 700),
-        'hero_title' => 'Fresh food, delivered',
-        'hero_description' => 'Everyday essentials, delivered with care.',
-        'hero_target' => 'category:'.$category->id,
     ])->assertRedirect();
 
     $logoPath = app(SiteSettings::class)->get('logo_path');
-    $heroImagePath = app(SiteSettings::class)->get('hero_image_path');
     Storage::disk('public')->assertExists($logoPath);
-    Storage::disk('public')->assertExists($heroImagePath);
-    expect(app(SiteSettings::class)->get('hero_title'))->toBe('Fresh food, delivered');
     $this->get(route('home'))
-        ->assertSee('Fresh food, delivered')
-        ->assertSee('href="'.route('shop', ['category' => $category->slug]).'"', false);
+        ->assertDontSee('data-hero-carousel', false);
     $this->assertDatabaseHas('security_events', ['action' => 'site_branding_updated']);
 
     $this->patch(route('admin.settings.security.update'), [
@@ -71,16 +67,50 @@ it('lets a settings editor update branding but denies sensitive settings', funct
 
     $this->patch(route('admin.settings.branding.update'), [
         'remove_logo' => '1',
-        'remove_hero_image' => '1',
-        'hero_title' => 'Fresh food, delivered',
-        'hero_description' => 'Everyday essentials, delivered with care.',
-        'hero_target' => '',
     ])->assertRedirect();
 
     Storage::disk('public')->assertMissing($logoPath);
-    Storage::disk('public')->assertMissing($heroImagePath);
     expect(app(SiteSettings::class)->get('logo_path'))->toBeNull();
-    expect(app(SiteSettings::class)->get('hero_image_path'))->toBeNull();
+});
+
+it('shows the homepage side advertisement only when its image and link are configured', function () {
+    Storage::fake('public');
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    HeroBanner::create([
+        'image_path' => 'hero-banners/main.jpg',
+        'target' => null,
+        'sort_order' => 0,
+    ]);
+
+    $this->actingAs($owner)->patch(route('admin.settings.branding.update'), [
+        'home_ad_image' => UploadedFile::fake()->image('side-ad.png', 640, 640),
+    ])->assertRedirect();
+
+    $adPath = app(SiteSettings::class)->get('home_ad_image_path');
+    Storage::disk('public')->assertExists($adPath);
+    $this->get(route('home'))
+        ->assertSee('data-hero-carousel', false)
+        ->assertDontSee('lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]', false);
+
+    $this->patch(route('admin.settings.branding.update'), [
+        'home_ad_url' => 'https://example.com/offer',
+    ])->assertRedirect();
+
+    $this->get(route('home'))
+        ->assertSee('lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]', false)
+        ->assertSee('href="https://example.com/offer"', false)
+        ->assertSee('pt-4', false)
+        ->assertSee('alt="Advertisement"', false)
+        ->assertSee('class="h-full w-full object-contain"', false)
+        ->assertSee('hidden h-[clamp(250px,25vw,420px)] overflow-hidden bg-[#fbfaf4] lg:block', false);
+
+    $this->patch(route('admin.settings.branding.update'), [
+        'remove_home_ad_image' => '1',
+    ])->assertRedirect();
+
+    Storage::disk('public')->assertMissing($adPath);
+    $this->get(route('home'))
+        ->assertDontSee('lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]', false);
 });
 
 it('lets the system owner update encrypted payment and security settings', function () {
@@ -90,11 +120,22 @@ it('lets the system owner update encrypted payment and security settings', funct
     $this->get(route('admin.settings'))
         ->assertOk()
         ->assertSee('System Owner Only')
-        ->assertSee('name="bkash_merchant_number"', false);
+        ->assertSee('name="bkash_merchant_number"', false)
+        ->assertSee('name="rocket_merchant_number"', false)
+        ->assertSee('name="about_us_article"', false)
+        ->assertSee('name="whatsapp_number"', false)
+        ->assertSee('name="delivery_fee_inside_dhaka"', false)
+        ->assertSee('name="delivery_fee_outside_dhaka"', false);
 
     $this->patch(route('admin.settings.security.update'), [
         'bkash_merchant_number' => '01700000000',
         'nagad_merchant_number' => '01800000000',
+        'rocket_merchant_number' => '01900000003',
+        'delivery_fee_inside_dhaka' => '45.50',
+        'delivery_fee_outside_dhaka' => '85.50',
+        'about_us_article' => 'Our story starts with a promise of quality.',
+        'whatsapp_number' => '8801712345678',
+        'whatsapp_url' => 'https://wa.me/8801712345678',
         'security_admin_2fa_required' => '1',
         'security_login_attempts' => 7,
         'security_login_lockout_minutes' => 15,
@@ -105,6 +146,12 @@ it('lets the system owner update encrypted payment and security settings', funct
     expect($encryptedMerchantNumber)
         ->not->toBe('01700000000')
         ->and(Crypt::decryptString($encryptedMerchantNumber))->toBe('01700000000')
+        ->and(app(SiteSettings::class)->get('rocket_merchant_number'))->toBe('01900000003')
+        ->and(app(SiteSettings::class)->get('delivery_fee_inside_dhaka'))->toBe('45.50')
+        ->and(app(SiteSettings::class)->get('delivery_fee_outside_dhaka'))->toBe('85.50')
+        ->and(app(SiteSettings::class)->get('about_us_article'))->toBe('Our story starts with a promise of quality.')
+        ->and(app(SiteSettings::class)->get('whatsapp_number'))->toBe('8801712345678')
+        ->and(app(SiteSettings::class)->get('whatsapp_url'))->toBe('https://wa.me/8801712345678')
         ->and(app(SiteSettings::class)->integer('security_login_attempts'))->toBe(7)
         ->and(app(SiteSettings::class)->integer('security_password_min_length'))->toBe(16);
     $this->assertDatabaseHas('security_events', ['action' => 'sensitive_site_settings_updated']);
@@ -234,34 +281,160 @@ it('searches active categories products and available variants for hero destinat
         ->and($variantResponse->json('items'))->toHaveCount(1);
 });
 
-it('renders a custom hero image without a link when no target is selected', function () {
-    Storage::fake('public');
-    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+it('does not render an automatic hero when no banner images were added', function () {
     Product::create([
-        'name' => 'Second Hero Carousel Slide',
-        'slug' => 'second-hero-carousel-slide',
+        'name' => 'Automatic Hero Must Not Appear',
+        'slug' => 'automatic-hero-must-not-appear',
         'price' => 125,
         'stock' => 8,
         'type' => 'simple',
         'is_active' => true,
     ]);
 
-    $this->actingAs($owner)->patch(route('admin.settings.branding.update'), [
-        'hero_image' => UploadedFile::fake()->image('image-only-hero.png', 900, 700),
-        'hero_title' => 'Image only advertisement',
-        'hero_description' => 'A custom campaign image.',
-        'hero_target' => '',
+    $this->get(route('home'))
+        ->assertDontSee('data-hero-carousel', false)
+        ->assertDontSee('data-hero-slide', false);
+
+    $this->assertDatabaseCount('hero_banners', 0);
+});
+
+it('allows a settings editor to add update order and delete hero images', function () {
+    Storage::fake('public');
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $this->actingAs($owner);
+
+    $this->get(route('home'))->assertDontSee('data-hero-carousel', false);
+
+    $this->post(route('admin.settings.hero-banners.store'), [
+        'image' => UploadedFile::fake()->image('hero-first.png', 1200, 600),
+        'sort_order' => 4,
+    ])->assertRedirect();
+    $this->post(route('admin.settings.hero-banners.store'), [
+        'image' => UploadedFile::fake()->image('hero-second.png', 1200, 600),
+        'sort_order' => 1,
     ])->assertRedirect();
 
-    $heroImageUrl = Storage::disk('public')->url(app(SiteSettings::class)->get('hero_image_path'));
+    $firstBanner = HeroBanner::query()->where('sort_order', 4)->firstOrFail();
+    $secondBanner = HeroBanner::query()->where('sort_order', 1)->firstOrFail();
+    $firstPath = $firstBanner->image_path;
+    $secondPath = $secondBanner->image_path;
+    Storage::disk('public')->assertExists([$firstPath, $secondPath]);
 
-    $this->get(route('home'))
-        ->assertSee('Image only advertisement')
-        ->assertSee($heroImageUrl)
-        ->assertSee('<a href="'.route('home').'" aria-label="Image only advertisement"', false)
-        ->assertSee('data-hero-next', false)
-        ->assertDontSee('Shop now')
-        ->assertDontSee('<a href="'.$heroImageUrl.'"', false);
+    $response = $this->get(route('home'))
+        ->assertSee(Storage::disk('public')->url($secondPath))
+        ->assertSee(Storage::disk('public')->url($firstPath))
+        ->assertSee('class="h-full w-full object-contain"', false)
+        ->assertDontSee('Fresh · Natural · Organic')
+        ->assertDontSee('data-hero-pagination', false);
+    expect(strpos($response->getContent(), Storage::disk('public')->url($secondPath)))
+        ->toBeLessThan(strpos($response->getContent(), Storage::disk('public')->url($firstPath)));
+
+    $this->put(route('admin.settings.hero-banners.update', $secondBanner), [
+        'image' => UploadedFile::fake()->image('hero-replacement.png', 1400, 700),
+        'sort_order' => 7,
+    ])->assertRedirect();
+
+    $secondBanner->refresh();
+    Storage::disk('public')->assertMissing($secondPath);
+    Storage::disk('public')->assertExists($secondBanner->image_path);
+    expect($secondBanner->sort_order)->toBe(7);
+
+    $this->delete(route('admin.settings.hero-banners.destroy', $firstBanner))->assertRedirect();
+
+    $this->assertDatabaseMissing('hero_banners', ['id' => $firstBanner->id]);
+    Storage::disk('public')->assertMissing($firstPath);
+    $this->assertDatabaseHas('security_events', ['action' => 'hero_banner_created']);
+    $this->assertDatabaseHas('security_events', ['action' => 'hero_banner_updated']);
+    $this->assertDatabaseHas('security_events', ['action' => 'hero_banner_deleted']);
+});
+
+it('forbids users without settings permission from managing hero images', function () {
+    $user = User::factory()->create([
+        'account_type' => 'admin',
+        'status' => 'active',
+    ]);
+    $this->actingAs(completeManagementTwoFactorForTest($user))
+        ->post(route('admin.settings.hero-banners.store'), [
+            'image' => UploadedFile::fake()->image('unauthorized-hero.png'),
+        ])
+        ->assertForbidden();
+});
+
+it('links hero images to selected categories products and variants or the homepage', function () {
+    Storage::fake('public');
+    $category = Category::create([
+        'name' => 'Hero Destination Category',
+        'slug' => 'hero-destination-category',
+        'is_active' => true,
+    ]);
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => 'Hero Destination Product',
+        'slug' => 'hero-destination-product',
+        'price' => 100,
+        'stock' => 10,
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    $variant = ProductVariant::create([
+        'product_id' => $product->id,
+        'name' => 'Large',
+        'sku' => 'HERO-DESTINATION-LARGE',
+        'combination_hash' => str_repeat('f', 64),
+        'price' => 120,
+        'stock' => 5,
+        'is_active' => true,
+        'is_out_of_stock' => false,
+    ]);
+    $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()));
+
+    foreach ([
+        ['hero-category.png', 'category:'.$category->id],
+        ['hero-product.png', 'product:'.$product->id],
+        ['hero-variant.png', 'variant:'.$variant->id],
+        ['hero-home.png', null],
+    ] as [$filename, $target]) {
+        $this->post(route('admin.settings.hero-banners.store'), array_filter([
+            'image' => UploadedFile::fake()->image($filename, 1200, 600),
+            'target' => $target,
+        ], static fn (mixed $value): bool => $value !== null))->assertRedirect();
+    }
+
+    $settingsResponse = $this->get(route('admin.settings'))
+        ->assertSee('hero-target-search-new', false)
+        ->assertSee('Hero Destination Category')
+        ->assertSee('Hero Destination Product');
+    expect(substr_count($settingsResponse->getContent(), 'data-hero-target-search'))
+        ->toBe(5)
+        ->and(substr_count($settingsResponse->getContent(), 'data-clear-hero-target'))
+        ->toBe(5);
+
+    $response = $this->get(route('home'));
+    $html = preg_replace('/\s+/', ' ', $response->getContent());
+
+    expect($html)
+        ->toContain('data-hero-pagination')
+        ->toContain('data-hero-dot="0"')
+        ->toContain('data-hero-dot="3"')
+        ->toContain('object-contain')
+        ->toContain('<a href="'.route('shop', ['category' => $category->slug]).'" aria-label="Open selected destination"')
+        ->toContain('<a href="'.route('products.show', ['product' => $product->slug]).'" aria-label="Open selected destination"')
+        ->toContain('<a href="'.route('products.show', ['product' => $product->slug, 'variant' => $variant->id]).'" aria-label="Open selected destination"')
+        ->toContain('<a href="'.route('home').'" aria-label="Open homepage"');
+});
+
+it('rejects an external hero image destination without saving the image', function () {
+    Storage::fake('public');
+    $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()))
+        ->from(route('admin.settings'))
+        ->post(route('admin.settings.hero-banners.store'), [
+            'image' => UploadedFile::fake()->image('external-hero.png'),
+            'target' => 'https://external.example',
+        ])
+        ->assertSessionHasErrors('target');
+
+    $this->assertDatabaseCount('hero_banners', 0);
+    Storage::disk('public')->assertDirectoryEmpty('hero-banners');
 });
 
 it('applies the configured password minimum to customer registration', function () {

@@ -12,7 +12,7 @@
     data-product-name="{{ $product->name }}"
     data-product-price="{{ (float) $product->price }}"
     data-product-emoji="🛍️"
-    class="group relative shrink-0 overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
+    class="group relative shrink-0 overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none max-sm:flex max-sm:flex-col"
 >
     <a
         href="{{ route('products.show', ['product' => $product->slug]) }}"
@@ -36,26 +36,22 @@
         @endif
     </a>
 
-    <div class="px-3 pt-3 sm:px-4 sm:pt-4">
-        <h3 class="line-clamp-2 text-lg font-normal leading-6 text-[#173b32] sm:text-xl">
+    <div class="px-3 pt-3 sm:px-4 sm:pt-4 max-sm:flex-1">
+        <h3 class="line-clamp-2 text-sm font-normal leading-5 text-[#173b32] sm:text-base">
             <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="transition-colors hover:text-[#145943] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943]">
                 {{ $product->name }}
             </a>
         </h3>
 
-        @if ($product->price !== null || $product->compare_at_price !== null)
-            <div class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-1">
-                @if ($product->price !== null)
-                    <span class="text-base font-extrabold text-[#145943] sm:text-lg">৳{{ number_format((float) $product->price, 2) }}</span>
-                @endif
-                @if ($product->compare_at_price !== null)
-                    <span class="text-xs text-[#9aa19c] line-through sm:text-sm">৳{{ number_format((float) $product->compare_at_price, 2) }}</span>
-                @endif
-            </div>
-        @endif
+        @include('storefront.partials.product-price', [
+            'product' => $product,
+            'containerClass' => 'flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-1',
+            'priceClass' => 'text-base font-extrabold text-[#145943] sm:text-lg',
+            'comparePriceClass' => 'text-xs text-[#9aa19c] line-through sm:text-sm',
+        ])
     </div>
 
-    <div class="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
+    <div class="mt-auto px-3 pb-2 pt-2 sm:px-4 sm:pb-4 sm:pt-2">
         @if (! $canPurchase)
             <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-bold text-[#738078]">
                 Out of stock

@@ -6,8 +6,10 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductAttribute;
 use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\ProductVariantService;
+use App\Services\SiteSettings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,6 +17,53 @@ it('loads the home page', function () {
     $response = $this->get(route('home'));
 
     $response->assertOk();
+});
+
+it('highlights the active storefront page in the navbar', function () {
+    $this->get(route('shop'))
+        ->assertSee('href="'.route('shop').'"', false)
+        ->assertSee('aria-label="Shop"', false)
+        ->assertSee('aria-current="page"', false);
+});
+
+it('shows the saved About Us article and WhatsApp contact in the storefront', function () {
+    $settingsUser = User::factory()->create();
+    app(SiteSettings::class)->update([
+        'about_us_article' => 'Quality food, delivered with care.',
+        'whatsapp_number' => '+880 1712-345678',
+        'whatsapp_url' => null,
+    ], $settingsUser->id);
+
+    $this->get(route('about'))
+        ->assertOk()
+        ->assertSee('Quality food, delivered with care.');
+
+    $this->get(route('home'))
+        ->assertSee('href="'.route('about').'"', false)
+        ->assertSee('href="'.route('shop').'"', false)
+        ->assertSee('aria-label="Shop"', false)
+        ->assertSee('href="tel:8801712345678"', false)
+        ->assertSee('href="https://wa.me/8801712345678"', false)
+        ->assertSee('Call Us')
+        ->assertDontSee('aria-label="Mobile navigation"', false)
+        ->assertDontSee('Wishlist')
+        ->assertSee('+880 1712-345678');
+});
+
+it('opens profile and logout options from the signed-in profile icon', function () {
+    $user = User::factory()->create([
+        'name' => 'Storefront Shopper',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('home'));
+
+    $response->assertSee('href="'.route('account.profile').'"', false)
+        ->assertSee('aria-label="Open profile and logout menu"', false)
+        ->assertSee('aria-label="Avatar for Storefront Shopper"', false)
+        ->assertSee('action="'.route('logout').'"', false)
+        ->assertSee('>Profile</span>', false)
+        ->assertSee('>Logout</span>', false)
+        ->assertDontSee('My Orders');
 });
 
 it('shows five home category rows by skipping categories without active products', function () {
@@ -94,6 +143,61 @@ it('shows new arrivals and selected products in Just For You with a non-empty fa
         ->assertViewHas('justForYouProducts', fn ($products) => $products->first()?->is($newArrival));
 });
 
+it('shows the active variant price range on home and shop product cards', function () {
+    $product = Product::create([
+        'name' => 'Price Range Shirt',
+        'slug' => 'price-range-shirt',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    $size = ProductAttribute::create([
+        'name' => 'Size',
+        'slug' => 'price-range-size',
+        'is_active' => true,
+    ]);
+    $product->productAttributes()->attach($size);
+    $small = $size->values()->create([
+        'value' => 'Small',
+        'slug' => 'price-range-small',
+        'is_active' => true,
+    ]);
+    $large = $size->values()->create([
+        'value' => 'Large',
+        'slug' => 'price-range-large',
+        'is_active' => true,
+    ]);
+    $inactive = $size->values()->create([
+        'value' => 'Inactive',
+        'slug' => 'price-range-inactive',
+        'is_active' => true,
+    ]);
+    $variantService = app(ProductVariantService::class);
+    $variantService->createVariant($product, [
+        'sku' => 'PRICE-RANGE-SHIRT-SMALL',
+        'attribute_value_ids' => [$small->id],
+        'price' => 245,
+    ]);
+    $variantService->createVariant($product, [
+        'sku' => 'PRICE-RANGE-SHIRT-LARGE',
+        'attribute_value_ids' => [$large->id],
+        'price' => 395,
+    ]);
+    $variantService->createVariant($product, [
+        'sku' => 'PRICE-RANGE-SHIRT-INACTIVE',
+        'attribute_value_ids' => [$inactive->id],
+        'price' => 950,
+        'is_active' => false,
+    ]);
+
+    $this->get(route('home'))
+        ->assertSee('৳245.00 – ৳395.00')
+        ->assertDontSee('৳950.00');
+
+    $this->get(route('shop'))
+        ->assertSee('৳245.00 – ৳395.00')
+        ->assertDontSee('৳950.00');
+});
+
 it('shows only approved customer reviews before the footer', function () {
     $product = Product::create([
         'name' => 'Review Homepage Product',
@@ -109,6 +213,17 @@ it('shows only approved customer reviews before the footer', function () {
         'body' => 'Approved review for the homepage.',
         'is_approved' => true,
     ]);
+    User::factory()->create([
+        'email' => 'approved@example.com',
+        'profile_photo_path' => 'profile-photos/approved-customer.jpg',
+    ]);
+    $product->reviews()->create([
+        'name' => 'Avatar Customer',
+        'email' => 'avatar@example.com',
+        'rating' => 4,
+        'body' => 'A full review body that should remain visible without truncation.',
+        'is_approved' => true,
+    ]);
     $product->reviews()->create([
         'name' => 'Waiting Customer',
         'email' => 'waiting@example.com',
@@ -118,8 +233,19 @@ it('shows only approved customer reviews before the footer', function () {
 
     $this->get(route('home'))
         ->assertSeeInOrder(['id="just-for-you"', 'id="customer-reviews"', '<footer'], false)
+        ->assertDontSee('Customer feedback')
+        ->assertDontSee('Customer Reviews')
         ->assertSee('Approved Customer')
         ->assertSee('Approved review for the homepage.')
+        ->assertSee('Approved Customer profile photo')
+        ->assertSee('role="img" aria-label="Avatar for Avatar Customer"', false)
+        ->assertSee('A full review body that should remain visible without truncation.')
+        ->assertSee('Review for')
+        ->assertSee('Review Homepage Product')
+        ->assertSee('data-home-review-track', false)
+        ->assertSee('data-home-review-pagination', false)
+        ->assertSee('data-carousel-item', false)
+        ->assertDontSee('<time', false)
         ->assertDontSee('Waiting Customer')
         ->assertDontSee('This review is still waiting.');
 });
@@ -149,6 +275,8 @@ it('paginates shop products and preserves search and sort on category links', fu
 
     $response
         ->assertSee('name="per_page"', false)
+        ->assertSee('aria-checked="true" data-shop-option="oldest"', false)
+        ->assertSee('aria-checked="true" data-shop-option="16"', false)
         ->assertSee('page=2', false)
         ->assertSee('q=Pagination', false)
         ->assertSee('/shop/pagination-category?sort=oldest&amp;per_page=16&amp;q=Pagination', false);
@@ -159,6 +287,50 @@ it('paginates shop products and preserves search and sort on category links', fu
         'per_page' => '16',
         'page' => 2,
     ]))->assertSee('Pagination Product 17');
+});
+
+it('shows all products after leaving a category with a lower maximum price', function () {
+    $lowPriceCategory = Category::create([
+        'name' => 'Low Price Category',
+        'slug' => 'low-price-category',
+        'is_active' => true,
+    ]);
+    $highPriceCategory = Category::create([
+        'name' => 'High Price Category',
+        'slug' => 'high-price-category',
+        'is_active' => true,
+    ]);
+    Product::create([
+        'category_id' => $lowPriceCategory->id,
+        'name' => 'Low Price Product',
+        'slug' => 'low-price-product',
+        'price' => 80,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    Product::create([
+        'category_id' => $highPriceCategory->id,
+        'name' => 'High Price Product',
+        'slug' => 'high-price-product',
+        'price' => 500,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+
+    $categoryResponse = $this->get(route('shop', [
+        'category' => $lowPriceCategory->slug,
+        'sort' => 'price_asc',
+        'max_price' => 80,
+    ]));
+
+    $categoryResponse
+        ->assertOk()
+        ->assertSee('href="'.route('shop', ['sort' => 'price_asc']).'"', false)
+        ->assertDontSee('<input type="hidden" name="max_price" value="80">', false);
+
+    $this->get(route('shop'))
+        ->assertSee('Low Price Product')
+        ->assertSee('High Price Product');
 });
 
 it('returns up to eight active products for storefront search suggestions', function () {
@@ -366,6 +538,65 @@ it('sorts shop products according to the selected order', function (?string $sor
     'price high to low' => ['price_desc', ['Middle Product', 'Old Product', 'New Product']],
 ]);
 
+it('sorts variable products by their active variant prices', function (string $sort, array $expectedNames) {
+    $category = Category::create([
+        'name' => 'Variable Price Sorting',
+        'slug' => 'variable-price-sorting',
+        'is_active' => true,
+    ]);
+    $variableProduct = Product::create([
+        'category_id' => $category->id,
+        'name' => 'Variable Price Product',
+        'slug' => 'variable-price-product',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    ProductVariant::create([
+        'product_id' => $variableProduct->id,
+        'name' => 'Active variant',
+        'sku' => 'VARIABLE-SORT-ACTIVE',
+        'combination_hash' => hash('sha256', 'variable-sort-active'),
+        'price' => 500,
+        'is_active' => true,
+    ]);
+    ProductVariant::create([
+        'product_id' => $variableProduct->id,
+        'name' => 'Inactive low variant',
+        'sku' => 'VARIABLE-SORT-INACTIVE',
+        'combination_hash' => hash('sha256', 'variable-sort-inactive'),
+        'price' => 10,
+        'is_active' => false,
+    ]);
+    Product::create([
+        'category_id' => $category->id,
+        'name' => 'Simple Price Product',
+        'slug' => 'simple-price-product',
+        'price' => 250,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+
+    $this->get(route('shop', ['sort' => $sort]))
+        ->assertSeeTextInOrder($expectedNames);
+})->with([
+    'lowest first' => ['price_asc', ['Simple Price Product', 'Variable Price Product']],
+    'highest first' => ['price_desc', ['Variable Price Product', 'Simple Price Product']],
+]);
+
+it('falls back safely when shop query filters have malformed values', function () {
+    $this->get(route('shop', [
+        'q' => ['unexpected'],
+        'sort' => ['unsupported'],
+        'per_page' => ['500'],
+        'flag' => ['unsupported'],
+        'min_price' => ['not-a-price'],
+        'max_price' => ['not-a-price'],
+    ]))
+        ->assertOk()
+        ->assertSee('Default Sorting')
+        ->assertSee('Default');
+});
+
 it('shows the shop-by category, price, and product-variant filters on the shop page', function () {
     $category = Category::create([
         'name' => 'Fresh Fruits',
@@ -392,10 +623,120 @@ it('shows the shop-by category, price, and product-variant filters on the shop p
     $response->assertOk();
     $response->assertSee('Category');
     $response->assertSee('Price Range');
+    $response->assertSee('data-price-filter-apply hidden', false);
+    $response->assertSee('Apply price filter');
     $response->assertSee('Product Variants');
     $response->assertDontSee('Brands');
     $response->assertDontSee('Apply Filter');
     $response->assertDontSee('Reset');
+});
+
+it('limits variant filter options to products in the selected category', function () {
+    $freshFruits = Category::create([
+        'name' => 'Fresh Fruits',
+        'slug' => 'variant-filter-fruits',
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+    $vegetables = Category::create([
+        'name' => 'Vegetables',
+        'slug' => 'variant-filter-vegetables',
+        'is_active' => true,
+        'sort_order' => 2,
+    ]);
+    $mango = Product::create([
+        'category_id' => $freshFruits->id,
+        'name' => 'Variant Filter Mango',
+        'slug' => 'variant-filter-mango',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    $potato = Product::create([
+        'category_id' => $vegetables->id,
+        'name' => 'Variant Filter Potato',
+        'slug' => 'variant-filter-potato',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    ProductVariant::create([
+        'product_id' => $mango->id,
+        'name' => 'Mango Size Option',
+        'sku' => 'VARIANT-FILTER-MANGO',
+        'combination_hash' => hash('sha256', 'variant-filter-mango'),
+        'price' => 100,
+        'is_active' => true,
+    ]);
+    ProductVariant::create([
+        'product_id' => $potato->id,
+        'name' => 'Potato Size Option',
+        'sku' => 'VARIANT-FILTER-POTATO',
+        'combination_hash' => hash('sha256', 'variant-filter-potato'),
+        'price' => 80,
+        'is_active' => true,
+    ]);
+
+    $this->get(route('shop', ['category' => $freshFruits->slug]))
+        ->assertSee('Mango Size Option')
+        ->assertDontSee('Potato Size Option');
+});
+
+it('keeps variable products visible when the full default price range is submitted', function () {
+    $televisions = Category::create([
+        'name' => 'TV',
+        'slug' => 'variable-tv-category',
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+    $otherCategory = Category::create([
+        'name' => 'Other Products',
+        'slug' => 'variable-tv-other',
+        'is_active' => true,
+        'sort_order' => 2,
+    ]);
+    $television = Product::create([
+        'category_id' => $televisions->id,
+        'name' => 'Variant Television',
+        'slug' => 'variant-television',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    Product::create([
+        'category_id' => $otherCategory->id,
+        'name' => 'High Priced Simple Product',
+        'slug' => 'high-priced-simple-product',
+        'type' => 'simple',
+        'price' => 300050,
+        'is_active' => true,
+    ]);
+    ProductVariant::create([
+        'product_id' => $television->id,
+        'name' => 'Television Size Option',
+        'sku' => 'VARIABLE-TV-OPTION',
+        'combination_hash' => hash('sha256', 'variable-tv-option'),
+        'price' => 22000,
+        'is_active' => true,
+        'is_out_of_stock' => false,
+    ]);
+
+    $this->get(route('shop', ['category' => $televisions->slug]))
+        ->assertSee('Variant Television')
+        ->assertSee('max="22000"', false);
+
+    $this->get(route('shop', [
+        'category' => $televisions->slug,
+        'min_price' => 0,
+        'max_price' => 300050,
+    ]))
+        ->assertSee('Variant Television')
+        ->assertSee('max="22000"', false);
+
+    $this->get(route('shop', [
+        'category' => $televisions->slug,
+        'min_price' => 21000,
+        'max_price' => 22000,
+    ]))
+        ->assertSee('Variant Television')
+        ->assertSee('max="22000"', false);
 });
 
 it('applies a min-price filter without forcing an impossible max range', function () {
@@ -423,6 +764,40 @@ it('applies a min-price filter without forcing an impossible max range', functio
 
     $response->assertOk();
     $response->assertSee('Fresh Mango');
+});
+
+it('accepts manually entered prices that are not multiples of ten', function () {
+    $category = Category::create([
+        'name' => 'Exact Price Filter',
+        'slug' => 'exact-price-filter',
+        'is_active' => true,
+    ]);
+    Product::create([
+        'category_id' => $category->id,
+        'name' => 'Exact 425 Product',
+        'slug' => 'exact-425-product',
+        'price' => 425,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    Product::create([
+        'category_id' => $category->id,
+        'name' => 'Above 425 Product',
+        'slug' => 'above-425-product',
+        'price' => 450,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+
+    $this->get(route('shop', [
+        'category' => $category->slug,
+        'min_price' => 425,
+        'max_price' => 425,
+    ]))
+        ->assertOk()
+        ->assertSee('step="0.01"', false)
+        ->assertSee('Exact 425 Product')
+        ->assertDontSee('Above 425 Product');
 });
 
 it('stores a product in the database cart', function () {
@@ -825,14 +1200,106 @@ it('shows the system owner dashboard with permissions and maintenance overview',
 it('loads the checkout page', function () {
     config()->set('payments.mobile_wallets.bkash.merchant_number', '01700000001');
     config()->set('payments.mobile_wallets.nagad.merchant_number', '01800000002');
+    config()->set('payments.mobile_wallets.rocket.merchant_number', '01900000003');
 
     $response = $this->get(route('checkout'));
 
     $response->assertOk();
-    $response->assertSee('Cash on Delivery');
+    $response->assertSee('ক্যাশ অন ডেলিভারি');
     $response->assertSee('bKash');
     $response->assertSee('Nagad');
+    $response->assertSee('Rocket');
+    $response->assertSee('data-wallet-logo="rocket"', false);
+    $response->assertSee('images/payments/bkash.png');
+    $response->assertSee('images/payments/nagad.png');
+    $response->assertSee('images/payments/rocket.png');
+    $response->assertSee('data-copy-payment-number="01900000003"', false);
+    $response->assertSee('নির্বাচিত মার্চেন্ট নম্বরে ঠিক ৳0.00 পাঠান।');
+    $response->assertSee('01800000002');
+    $response->assertDontSee('৳ 01800000002');
     $response->assertSee('data-payment-details', false);
+});
+
+it('uses the configured delivery fee in checkout and the saved order', function () {
+    $settingsUser = User::factory()->create();
+    app(SiteSettings::class)->update([
+        'delivery_fee_inside_dhaka' => '45.50',
+        'delivery_fee_outside_dhaka' => '85.50',
+    ], $settingsUser->id);
+
+    $product = Product::create([
+        'name' => 'Delivery Fee Product',
+        'slug' => 'delivery-fee-product',
+        'price' => 120,
+        'stock' => 5,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $cart = Cart::query()->create(['session_id' => session()->getId()]);
+    $cart->items()->create([
+        'product_id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->price,
+        'quantity' => 1,
+    ]);
+    session()->put('cart_id', $cart->id);
+
+    $this->get(route('checkout'))
+        ->assertSee('৳85.50')
+        ->assertSee('৳205.50');
+
+    $this->post(route('checkout.store'), [
+        'customer_name' => 'Delivery Fee Customer',
+        'phone' => '01710000008',
+        'address' => 'House 8, Test Street',
+        'city' => 'Dhaka',
+        'payment_method' => 'cod',
+    ])->assertRedirect();
+
+    $order = Order::query()->where('phone', '01710000008')->firstOrFail();
+    expect((float) $order->delivery_fee)->toBe(45.5)
+        ->and((float) $order->total)->toBe(165.5);
+});
+
+it('uses the outside Dhaka delivery fee for cities beyond Dhaka', function () {
+    $settingsUser = User::factory()->create();
+    app(SiteSettings::class)->update([
+        'delivery_fee_inside_dhaka' => '45.50',
+        'delivery_fee_outside_dhaka' => '85.50',
+    ], $settingsUser->id);
+
+    $product = Product::create([
+        'name' => 'Outside Dhaka Delivery Product',
+        'slug' => 'outside-dhaka-delivery-product',
+        'price' => 120,
+        'stock' => 5,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $cart = Cart::query()->create(['session_id' => session()->getId()]);
+    $cart->items()->create([
+        'product_id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->price,
+        'quantity' => 1,
+    ]);
+    session()->put('cart_id', $cart->id);
+
+    $this->get(route('checkout'))
+        ->assertSee('৳85.50')
+        ->assertSee('৳205.50');
+
+    $this->post(route('checkout.store'), [
+        'customer_name' => 'Outside Dhaka Delivery Customer',
+        'phone' => '01710000009',
+        'address' => 'House 9, Test Street',
+        'city' => 'Chattogram',
+        'payment_method' => 'cod',
+    ])->assertRedirect();
+
+    $order = Order::query()->where('phone', '01710000009')->firstOrFail();
+    expect((float) $order->delivery_fee)->toBe(85.5)
+        ->and((float) $order->total)->toBe(205.5);
 });
 
 it('rejects online checkout until a payment gateway is configured', function () {
@@ -842,6 +1309,25 @@ it('rejects online checkout until a payment gateway is configured', function () 
         'address' => 'House 8, Test Street',
         'city' => 'Dhaka',
         'payment_method' => 'online',
+    ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('payment_method');
+
+    $this->assertDatabaseCount('orders', 0);
+});
+
+it('rejects Rocket checkout until a merchant number is configured', function () {
+    config()->set('payments.mobile_wallets.rocket.merchant_number', null);
+
+    $this->post(route('checkout.store'), [
+        'customer_name' => 'Unconfigured Rocket Customer',
+        'phone' => '01710000008',
+        'address' => 'House 8, Test Street',
+        'city' => 'Dhaka',
+        'payment_method' => 'rocket',
+        'payment_sender_phone' => '01710000008',
+        'payment_transaction_id' => 'ROCKET-UNCONFIGURED-1004',
+        'payment_proof' => UploadedFile::fake()->image('rocket-receipt.jpg'),
     ])
         ->assertRedirect()
         ->assertSessionHasErrors('payment_method');
@@ -883,7 +1369,7 @@ it('creates a pending bKash order with private receipt details', function () {
 
     $order = Order::query()->where('payment_transaction_id', 'BKASH-TXN-1001')->firstOrFail();
 
-    $response->assertRedirect();
+    $response->assertRedirect()->assertSessionHasNoErrors();
     expect($order->payment_status)->toBe('pending')
         ->and((float) $order->payment_amount)->toBe(180.0)
         ->and($order->payment_method)->toBe('bkash');
@@ -896,18 +1382,68 @@ it('creates a pending bKash order with private receipt details', function () {
     Storage::disk('local')->assertExists($order->payment_proof_path);
 });
 
+it('creates a pending Rocket order with private receipt details', function () {
+    config()->set('payments.mobile_wallets.rocket.merchant_number', '01900000003');
+    Storage::fake('local');
+
+    $product = Product::create([
+        'name' => 'Rocket Payment Product',
+        'slug' => 'rocket-payment-product',
+        'price' => 120,
+        'stock' => 5,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $cart = Cart::query()->create(['session_id' => session()->getId()]);
+    session()->put('cart_id', $cart->id);
+    $cart->items()->create([
+        'product_id' => $product->id,
+        'name' => $product->name,
+        'price' => $product->price,
+        'quantity' => 1,
+    ]);
+
+    $response = $this->post(route('checkout.store'), [
+        'customer_name' => 'Rocket Wallet Customer',
+        'phone' => '01712345678',
+        'address' => 'House 19, Test Street',
+        'city' => 'Dhaka',
+        'payment_method' => 'rocket',
+        'payment_sender_phone' => '01711112223',
+        'payment_transaction_id' => 'ROCKET-TXN-1003',
+        'payment_proof' => UploadedFile::fake()->image('rocket-receipt.jpg'),
+    ]);
+
+    $response->assertRedirect()->assertSessionHasNoErrors();
+    $order = Order::query()->where('payment_transaction_id', 'ROCKET-TXN-1003')->firstOrFail();
+
+    expect($order->payment_status)->toBe('pending')
+        ->and((float) $order->payment_amount)->toBe(180.0)
+        ->and($order->payment_method)->toBe('rocket');
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+        'payment_sender_phone' => '01711112223',
+        'payment_transaction_id' => 'ROCKET-TXN-1003',
+        'payment_amount' => 180,
+    ]);
+    Storage::disk('local')->assertExists($order->payment_proof_path);
+});
+
 it('requires transaction details and a receipt for mobile wallet checkout', function () {
     config()->set('payments.mobile_wallets.nagad.merchant_number', '01800000002');
+    config()->set('payments.mobile_wallets.rocket.merchant_number', '01900000003');
 
-    $this->post(route('checkout.store'), [
-        'customer_name' => 'Incomplete Payment Customer',
-        'phone' => '01710000008',
-        'address' => 'House 8, Test Street',
-        'city' => 'Dhaka',
-        'payment_method' => 'nagad',
-    ])
-        ->assertRedirect()
-        ->assertSessionHasErrors(['payment_sender_phone', 'payment_transaction_id', 'payment_proof']);
+    foreach (['nagad', 'rocket'] as $provider) {
+        $this->post(route('checkout.store'), [
+            'customer_name' => 'Incomplete Payment Customer',
+            'phone' => '01710000008',
+            'address' => 'House 8, Test Street',
+            'city' => 'Dhaka',
+            'payment_method' => $provider,
+        ])
+            ->assertRedirect()
+            ->assertSessionHasErrors(['payment_sender_phone', 'payment_transaction_id', 'payment_proof']);
+    }
 
     $this->assertDatabaseCount('orders', 0);
 });

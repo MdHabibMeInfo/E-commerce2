@@ -265,7 +265,6 @@
 
             <section id="product-details" class="mt-10 border-y border-[#e3e2d9] py-8 sm:py-10">
                 <div class="max-w-4xl">
-                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Product information</p>
                     <h2 class="mt-2 text-2xl font-extrabold text-[#145943]">Product Details</h2>
 
                     @if ($product->short_description)
@@ -287,7 +286,6 @@
 
                 <div class="flex flex-col justify-between gap-5 border-b border-[#e3e2d9] pb-5 sm:flex-row sm:items-end">
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#a48335]">Customer feedback</p>
                         <h2 class="mt-2 text-2xl font-extrabold text-[#145943]">Customer Reviews</h2>
                     </div>
                     <div class="flex items-center gap-3">
@@ -310,7 +308,6 @@
                                 <div class="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <h3 class="font-bold text-[#173b32]">{{ $review->name }}</h3>
-                                        <time class="mt-1 block text-xs text-[#77837c]" datetime="{{ $review->created_at->toDateString() }}">{{ $review->created_at->diffForHumans() }}</time>
                                     </div>
                                     <div class="flex text-lg leading-none" aria-label="{{ $review->rating }} out of 5 stars">
                                         @for ($star = 1; $star <= 5; $star++)
@@ -422,6 +419,31 @@
 
         </div>
     </section>
+
+    @if ($relatedProducts->isNotEmpty())
+        <section id="related-products" class="bg-[#fbfaf4]">
+            <div class="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between gap-3 border-b border-[#e7e2d4] pb-3">
+                    <h2 class="text-xl font-extrabold text-[#26352f] sm:text-2xl">Related Products</h2>
+                    <a href="{{ route('shop') }}" class="inline-flex shrink-0 items-center gap-2 text-sm font-bold text-[#145943] transition hover:text-[#a48335]">
+                        More Products
+                        <span aria-hidden="true">&rarr;</span>
+                    </a>
+                </div>
+
+                <div class="relative mt-4">
+                    <div class="overflow-hidden">
+                        <div data-related-product-track class="flex gap-3 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4" aria-label="Related products">
+                            @foreach ($relatedProducts as $relatedProduct)
+                                @include('storefront.partials.home-product-card', ['product' => $relatedProduct])
+                            @endforeach
+                        </div>
+                    </div>
+                    <div data-related-product-pagination class="flex items-center justify-center gap-2.5 pt-4" role="group" aria-label="Related product pages"></div>
+                </div>
+            </div>
+        </section>
+    @endif
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {

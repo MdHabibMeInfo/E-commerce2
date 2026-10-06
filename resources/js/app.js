@@ -92,13 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const heroTargetSearch = document.querySelector('[data-hero-target-search]');
-
-    if (heroTargetSearch) {
-        const heroTargetValue = document.querySelector('[data-hero-target-value]');
-        const heroTargetResults = document.querySelector('[data-hero-target-results]');
-        const heroTargetSelected = document.querySelector('[data-hero-target-selected]');
-        const clearHeroTarget = document.querySelector('[data-clear-hero-target]');
+    document.querySelectorAll('[data-hero-target-search]').forEach((heroTargetSearch) => {
+        const targetForm = heroTargetSearch.closest('form');
+        const heroTargetValue = targetForm.querySelector('[data-hero-target-value]');
+        const heroTargetResults = targetForm.querySelector('[data-hero-target-results]');
+        const heroTargetSelected = targetForm.querySelector('[data-hero-target-selected]');
+        const clearHeroTarget = targetForm.querySelector('[data-clear-hero-target]');
         let heroTargetTimer = null;
         let heroTargetRequest = null;
         let activeHeroTargetIndex = -1;
@@ -157,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         heroTargetSearch.addEventListener('input', () => {
             heroTargetValue.value = '';
-            heroTargetSelected.textContent = 'No destination selected; clicking the image returns home.';
+            heroTargetSelected.textContent = 'No destination selected; clicking the image opens the homepage.';
             window.clearTimeout(heroTargetTimer);
             heroTargetRequest?.abort();
 
@@ -238,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearHeroTarget.addEventListener('click', () => {
             heroTargetValue.value = '';
             heroTargetSearch.value = '';
-            heroTargetSelected.textContent = 'No destination selected; clicking the image returns home.';
+            heroTargetSelected.textContent = 'No destination selected; clicking the image opens the homepage.';
             closeHeroTargetResults();
             heroTargetResults.replaceChildren();
             heroTargetSearch.focus();
@@ -250,32 +249,193 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeHeroTargetResults();
             }
         });
-    }
+    });
+
+    document.querySelectorAll('[data-hero-banner-upload]').forEach((imageInput) => {
+        const uploadContainer = imageInput.closest('[data-hero-banner-upload-container]');
+        const form = imageInput.closest('form');
+        const preview = form?.querySelector('[data-hero-banner-preview]');
+        const previewWrap = form?.querySelector('[data-hero-banner-preview-wrap]');
+        const previewName = form?.querySelector('[data-hero-banner-preview-name]');
+        const uploadName = uploadContainer?.querySelector('[data-hero-banner-upload-name]');
+        const defaultUploadName = uploadName?.textContent;
+        let previewUrl = null;
+
+        if (!preview || !previewWrap || !previewName || !uploadName) {
+            return;
+        }
+
+        imageInput.addEventListener('change', () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = null;
+            }
+
+            const image = imageInput.files?.[0];
+
+            if (!image || !image.type.startsWith('image/')) {
+                previewWrap.hidden = true;
+                preview.removeAttribute('src');
+                previewName.textContent = '';
+                uploadName.textContent = defaultUploadName;
+
+                return;
+            }
+
+            previewUrl = URL.createObjectURL(image);
+            preview.src = previewUrl;
+            previewName.textContent = image.name;
+            uploadName.textContent = image.name;
+            previewWrap.hidden = false;
+        });
+    });
+
+    document.querySelectorAll('[data-profile-photo-input]').forEach((imageInput) => {
+        const field = imageInput.closest('[data-profile-photo-field]');
+        const preview = field?.querySelector('[data-profile-photo-preview]');
+        let previewUrl = null;
+
+        if (!preview) {
+            return;
+        }
+
+        imageInput.addEventListener('change', () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = null;
+            }
+
+            const image = imageInput.files?.[0];
+            const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (!image || !acceptedTypes.includes(image.type)) {
+                preview.hidden = true;
+                preview.removeAttribute('src');
+
+                return;
+            }
+
+            previewUrl = URL.createObjectURL(image);
+            preview.src = previewUrl;
+            preview.hidden = false;
+        });
+    });
 
     const checkoutForm = document.querySelector('[data-checkout-form]');
 
     if (checkoutForm) {
         const paymentInputs = Array.from(checkoutForm.querySelectorAll('[data-payment-method]'));
+        const paymentMethodInputs = Array.from(checkoutForm.querySelectorAll('input[name="payment_method"]'));
         const paymentDetails = checkoutForm.querySelector('[data-payment-details]');
         const paymentFields = Array.from(checkoutForm.querySelectorAll('[data-payment-required]'));
         const walletInstructions = Array.from(checkoutForm.querySelectorAll('[data-wallet-instructions]'));
+        const accountNumberLabel = checkoutForm.querySelector('[data-payment-field-label="account"]');
+        const transactionIdLabel = checkoutForm.querySelector('[data-payment-field-label="transaction"]');
+        const copyPaymentButtons = Array.from(checkoutForm.querySelectorAll('[data-copy-payment-number]'));
+        const cityInput = checkoutForm.querySelector('[data-delivery-city]');
+        const deliveryFeeLabel = document.querySelector('[data-delivery-fee-label]');
+        const deliveryFeeAmount = document.querySelector('[data-delivery-fee-amount]');
+        const orderTotal = document.querySelector('[data-order-total]');
+        const paymentProofInput = checkoutForm.querySelector('[data-payment-proof-input]');
+        const paymentProofPicker = checkoutForm.querySelector('[data-payment-proof-picker]');
+        const paymentProofPreview = checkoutForm.querySelector('[data-payment-proof-preview]');
+        const paymentProofImage = checkoutForm.querySelector('[data-payment-proof-image]');
+        const paymentProofName = checkoutForm.querySelector('[data-payment-proof-name]');
+        const removePaymentProof = checkoutForm.querySelector('[data-payment-proof-remove]');
+        let paymentProofPreviewUrl = null;
+
+        paymentProofInput.addEventListener('change', () => {
+            const file = paymentProofInput.files?.[0];
+            if (!file) return;
+
+
+            if (paymentProofPreviewUrl) URL.revokeObjectURL(paymentProofPreviewUrl);
+            paymentProofPreviewUrl = URL.createObjectURL(file);
+            paymentProofImage.src = paymentProofPreviewUrl;
+            paymentProofName.textContent = file.name;
+            paymentProofPicker.hidden = true;
+            paymentProofPreview.hidden = false;
+        });
+
+        removePaymentProof.addEventListener('click', () => {
+            paymentProofInput.value = '';
+
+            if (paymentProofPreviewUrl) {
+                URL.revokeObjectURL(paymentProofPreviewUrl);
+                paymentProofPreviewUrl = null;
+            }
+
+            paymentProofImage.removeAttribute('src');
+            paymentProofName.textContent = '';
+            paymentProofPreview.hidden = true;
+            paymentProofPicker.hidden = false;
+        });
 
         const updatePaymentFields = () => {
-            const selectedMethod = checkoutForm.querySelector('input[name="payment_method"]:checked')?.value;
-            const isWalletPayment = selectedMethod === 'bkash' || selectedMethod === 'nagad';
+            const selectedInput = checkoutForm.querySelector('input[name="payment_method"]:checked');
+            const selectedMethod = selectedInput?.value;
+            const isWalletPayment = paymentInputs.some((input) => input.value === selectedMethod);
+            const providerLabel = selectedInput?.dataset.paymentLabel || 'Wallet';
 
             paymentDetails.hidden = !isWalletPayment;
             paymentDetails.inert = !isWalletPayment;
+            paymentDetails.style.borderColor = isWalletPayment ? selectedInput.dataset.paymentAccent : '';
             paymentFields.forEach((field) => {
                 field.required = isWalletPayment;
             });
             walletInstructions.forEach((instructions) => {
                 instructions.hidden = instructions.dataset.walletInstructions !== selectedMethod;
             });
+            paymentInputs.forEach((input) => {
+                input.style.setProperty('accent-color', input.dataset.paymentAccent, 'important');
+                const option = input.closest('[data-payment-option]');
+
+                if (option) {
+                    option.style.borderColor = input.checked ? input.dataset.paymentAccent : '';
+                }
+            });
+            accountNumberLabel.textContent = `আপনার ${providerLabel} অ্যাকাউন্ট নম্বর`;
+            transactionIdLabel.textContent = `আপনার ${providerLabel} ট্রানজ্যাকশন আইডি`;
         };
 
-        paymentInputs.forEach((input) => input.addEventListener('change', updatePaymentFields));
+        paymentMethodInputs.forEach((input) => input.addEventListener('change', updatePaymentFields));
         updatePaymentFields();
+
+        const updateDeliveryFee = () => {
+            const city = cityInput.value.trim();
+            const isInsideDhaka = /^(dhaka|ঢাকা)/i.test(city);
+            const fee = Number(isInsideDhaka ? deliveryFeeAmount.dataset.insideFee : deliveryFeeAmount.dataset.outsideFee);
+            const subtotal = Number(orderTotal.dataset.subtotal);
+            const discount = Number(orderTotal.dataset.discount);
+            const formatCurrency = (amount) => `৳${new Intl.NumberFormat('en-BD', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(amount)}`;
+
+            deliveryFeeLabel.textContent = isInsideDhaka ? 'ডেলিভারি চার্জ (ঢাকার ভেতরে)' : 'ডেলিভারি চার্জ (ঢাকার বাইরে)';
+            deliveryFeeAmount.textContent = formatCurrency(fee);
+            orderTotal.textContent = formatCurrency(subtotal + fee - discount);
+        };
+
+        cityInput.addEventListener('input', updateDeliveryFee);
+        updateDeliveryFee();
+
+        copyPaymentButtons.forEach((button) => {
+            button.addEventListener('click', async () => {
+                const label = button.querySelector('[data-copy-label]');
+
+                try {
+                    await navigator.clipboard.writeText(button.dataset.copyPaymentNumber || '');
+                    label.textContent = 'কপি হয়েছে';
+                } catch {
+                    label.textContent = 'কপি করা যায়নি';
+                }
+
+                window.setTimeout(() => {
+                    label.textContent = 'কপি';
+                }, 1500);
+            });
+        });
     }
 
     const buildSuggestionsUrl = (baseUrl, search) => {
@@ -864,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartUi = document.createElement('div');
     cartUi.innerHTML = `
         <button type="button" data-floating-cart aria-label="Open shopping cart" aria-expanded="false"
-            class="fixed right-0 top-[58%] z-[80] flex w-[68px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-xl border border-[#e7e4d8] bg-white text-center shadow-lg transition-transform hover:-translate-x-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943] sm:w-[76px]">
+            class="fixed right-0 top-[58%] z-[80] hidden w-[68px] -translate-y-1/2 flex-col items-center overflow-hidden rounded-l-xl border border-[#e7e4d8] bg-white text-center transition-transform hover:-translate-x-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943] sm:w-[76px] lg:flex">
             <span class="flex w-full flex-col items-center bg-[#145943] px-2 py-2.5 text-white">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
                     <path d="M5 8h14l1 13H4L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>
@@ -875,12 +1035,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </button>
 
         <button type="button" data-scroll-to-top aria-label="Back to top" aria-hidden="true" tabindex="-1" inert
-            class="fixed bottom-6 right-6 z-[79] grid h-12 w-12 translate-y-2 place-items-center rounded-full opacity-0 transition-all duration-300 ease-out pointer-events-none motion-reduce:transition-none">
+            class="fixed bottom-6 right-6 z-[79] hidden h-12 w-12 translate-y-2 place-items-center rounded-full opacity-0 transition-all duration-300 ease-out pointer-events-none motion-reduce:transition-none lg:grid">
             <svg class="pointer-events-none absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                 <circle cx="24" cy="24" r="22" stroke="#d1d5ce" stroke-width="2" />
                 <circle data-scroll-progress cx="24" cy="24" r="22" stroke="#145943" stroke-width="2" stroke-linecap="round" stroke-dasharray="138.23" stroke-dashoffset="138.23" />
             </svg>
-            <span class="grid h-9 w-9 place-items-center rounded-full bg-[#145943] text-white shadow-sm transition-transform duration-200 hover:scale-105" aria-hidden="true">
+            <span class="grid h-9 w-9 place-items-center rounded-full bg-[#145943] text-white transition-transform duration-200 hover:scale-105" aria-hidden="true">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="m5 14 7-7 7 7" />
                 </svg>
@@ -890,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div data-cart-overlay class="fixed inset-0 z-[89] hidden bg-[#102a22]/45 opacity-0 transition-opacity duration-200" aria-hidden="true"></div>
 
         <aside data-cart-drawer aria-label="Shopping cart" aria-modal="true" role="dialog"
-            class="fixed inset-y-0 right-0 z-[90] flex w-full max-w-[420px] translate-x-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out" aria-hidden="true">
+            class="fixed inset-y-0 right-0 z-[90] flex w-full max-w-none translate-x-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out lg:max-w-[420px]" aria-hidden="true">
             <div class="flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
                 <h2 class="text-sm font-bold tracking-wider text-gray-900 uppercase">SHOPPING CART</h2>
                 <button type="button" data-close-cart aria-label="Close cart" class="group flex items-center gap-1 text-xs font-semibold text-gray-500 transition hover:text-gray-900">
@@ -1418,9 +1578,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const syncPriceRangeInputs = () => {
         const sliderMin = document.querySelector('[data-price-range="min"]');
         const sliderMax = document.querySelector('[data-price-range="max"]');
+        const activeTrack = document.querySelector('[data-price-range-track]');
         const minInput = document.getElementById('min-price-input');
         const maxInput = document.getElementById('max-price-input');
         const filterForm = document.getElementById('shop-filter-form');
+        const applyPriceFilterButton = filterForm?.querySelector('[data-price-filter-apply]');
 
         if (!sliderMin || !sliderMax || !minInput || !maxInput || !filterForm) {
             return;
@@ -1457,6 +1619,15 @@ document.addEventListener('DOMContentLoaded', () => {
             sliderMax.value = safeMax;
             minInput.value = safeMin;
             maxInput.value = safeMax;
+
+            if (activeTrack) {
+                const priceRange = maxLimit - minLimit;
+                const minPercent = priceRange > 0 ? ((safeMin - minLimit) / priceRange) * 100 : 0;
+                const maxPercent = priceRange > 0 ? ((safeMax - minLimit) / priceRange) * 100 : 100;
+
+                activeTrack.style.left = `${minPercent}%`;
+                activeTrack.style.width = `${Math.max(0, maxPercent - minPercent)}%`;
+            }
         };
 
         sliderMin.addEventListener('input', updateValues);
@@ -1464,19 +1635,13 @@ document.addEventListener('DOMContentLoaded', () => {
         sliderMin.addEventListener('change', submitFilterForm);
         sliderMax.addEventListener('change', submitFilterForm);
 
-        minInput.addEventListener('input', () => {
-            const next = clampPrice(Number(minInput.value || 0), Number(sliderMin.min || 0), Number(sliderMax.value || 0));
-            sliderMin.value = next;
-            minInput.value = next;
+        [minInput, maxInput].forEach((input) => {
+            input.addEventListener('input', () => {
+                if (applyPriceFilterButton) {
+                    applyPriceFilterButton.hidden = false;
+                }
+            });
         });
-        maxInput.addEventListener('input', () => {
-            const next = clampPrice(Number(maxInput.value || 0), Number(sliderMin.value || 0), Number(sliderMax.max || 0));
-            sliderMax.value = next;
-            maxInput.value = next;
-        });
-
-        minInput.addEventListener('change', submitFilterForm);
-        maxInput.addEventListener('change', submitFilterForm);
 
         filterForm.querySelectorAll('input[name="variants[]"]').forEach((checkbox) => {
             checkbox.addEventListener('change', submitFilterForm);
@@ -1488,24 +1653,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroCarousel = document.querySelector('[data-hero-carousel]');
     const heroTrack = heroCarousel?.querySelector('[data-hero-track]');
     const heroSlides = heroTrack ? Array.from(heroTrack.querySelectorAll('[data-hero-slide]')) : [];
-    const heroDots = heroCarousel ? Array.from(heroCarousel.querySelectorAll('[data-hero-dot]')) : [];
     const heroPrev = heroCarousel?.querySelector('[data-hero-prev]');
     const heroNext = heroCarousel?.querySelector('[data-hero-next]');
+    const heroDots = Array.from(document.querySelectorAll('[data-hero-dot]'));
 
     if (heroCarousel && heroTrack && heroSlides.length > 1) {
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         let activeHeroIndex = 0;
+        let heroDirection = 1;
+        let touchStartX = null;
         let autoplayTimer = null;
         let heroHovered = false;
         let heroFocused = false;
-        let touchStartX = null;
-
-        const stopAutoplay = () => {
-            if (autoplayTimer) {
-                window.clearInterval(autoplayTimer);
-                autoplayTimer = null;
-            }
-        };
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         const showHeroSlide = (index) => {
             activeHeroIndex = (index + heroSlides.length) % heroSlides.length;
@@ -1519,36 +1678,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
             heroDots.forEach((dot, dotIndex) => {
                 const isActive = dotIndex === activeHeroIndex;
-                dot.classList.toggle('w-8', isActive);
-                dot.classList.toggle('w-2.5', !isActive);
-                dot.classList.toggle('bg-[#145943]', isActive);
-                dot.classList.toggle('bg-[#c6c8b9]', !isActive);
+                const indicator = dot.querySelector('span');
                 dot.setAttribute('aria-current', String(isActive));
+                indicator?.classList.toggle('w-6', isActive);
+                indicator?.classList.toggle('w-2.5', !isActive);
+                indicator?.classList.toggle('bg-[#145943]', isActive);
+                indicator?.classList.toggle('bg-[#c6c8b9]', !isActive);
             });
+        };
+
+        const stopAutoplay = () => {
+            window.clearInterval(autoplayTimer);
+            autoplayTimer = null;
         };
 
         const startAutoplay = () => {
             stopAutoplay();
-            if (reduceMotion || heroHovered || heroFocused) return;
+
+            if (reduceMotion || heroHovered || heroFocused) {
+                return;
+            }
 
             autoplayTimer = window.setInterval(() => {
-                showHeroSlide(activeHeroIndex + 1);
+                const nextIndex = activeHeroIndex + heroDirection;
+
+                if (nextIndex < 0 || nextIndex >= heroSlides.length) {
+                    heroDirection *= -1;
+                }
+
+                showHeroSlide(activeHeroIndex + heroDirection);
             }, 5000);
         };
 
         heroPrev?.addEventListener('click', () => {
+            heroDirection = -1;
             showHeroSlide(activeHeroIndex - 1);
             startAutoplay();
         });
 
         heroNext?.addEventListener('click', () => {
+            heroDirection = 1;
             showHeroSlide(activeHeroIndex + 1);
             startAutoplay();
         });
 
-        heroDots.forEach((dot, index) => {
+        heroDots.forEach((dot, dotIndex) => {
             dot.addEventListener('click', () => {
-                showHeroSlide(index);
+                heroDirection = dotIndex >= activeHeroIndex ? 1 : -1;
+                showHeroSlide(dotIndex);
                 startAutoplay();
             });
         });
@@ -1585,7 +1762,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const distance = touchEndX - touchStartX;
             if (Math.abs(distance) > 45) {
-                showHeroSlide(activeHeroIndex + (distance < 0 ? 1 : -1));
+                heroDirection = distance < 0 ? 1 : -1;
+                showHeroSlide(activeHeroIndex + heroDirection);
                 startAutoplay();
             }
             touchStartX = null;
@@ -1595,6 +1773,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     syncPriceRangeInputs();
+
+    document.querySelectorAll('[data-filter-accordion-toggle]').forEach((toggle) => {
+        const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+        const icon = toggle.querySelector('[data-filter-accordion-icon]');
+
+        if (!panel || !icon) {
+            return;
+        }
+
+        toggle.addEventListener('click', () => {
+            const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+            const nextExpanded = !isExpanded;
+            const sectionName = toggle.querySelector('span')?.textContent.trim() || 'Filter';
+
+            toggle.setAttribute('aria-expanded', String(nextExpanded));
+            toggle.setAttribute('aria-label', `${nextExpanded ? 'Collapse' : 'Expand'} ${sectionName} filters`);
+            panel.setAttribute('aria-hidden', String(!nextExpanded));
+            panel.toggleAttribute('inert', !nextExpanded);
+            panel.classList.toggle('is-collapsed', !nextExpanded);
+            icon.textContent = nextExpanded ? '−' : '+';
+        });
+    });
+
+    const shopSelects = Array.from(document.querySelectorAll('[data-shop-select]'));
+
+    shopSelects.forEach((shopSelect) => {
+        const shopForm = shopSelect.closest('form');
+        const field = shopForm?.querySelector(`[name="${shopSelect.dataset.shopSelect}"]`);
+        const summary = shopSelect.querySelector('summary');
+        const label = shopSelect.querySelector('[data-shop-select-label]');
+
+        if (!shopForm || !field || !summary || !label) {
+            return;
+        }
+
+        summary.addEventListener('click', () => {
+            if (!shopSelect.open) {
+                shopSelects.forEach((otherSelect) => {
+                    if (otherSelect !== shopSelect) {
+                        otherSelect.open = false;
+                    }
+                });
+            }
+        });
+
+        shopSelect.addEventListener('toggle', () => {
+            if (shopSelect.open) {
+                shopSelects.forEach((otherSelect) => {
+                    if (otherSelect !== shopSelect) {
+                        otherSelect.open = false;
+                    }
+                });
+            }
+        });
+
+        shopSelect.querySelectorAll('[data-shop-option]').forEach((option) => {
+            option.addEventListener('click', () => {
+                field.value = option.dataset.shopOption;
+                label.textContent = option.textContent.trim();
+                summary.setAttribute('aria-label', `${shopSelect.dataset.shopSelect === 'sort' ? 'Sort products' : 'Products per page'}: ${label.textContent}`);
+                shopSelect.open = false;
+                shopForm.requestSubmit();
+            });
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        shopSelects.forEach((shopSelect) => {
+            if (shopSelect.open && !shopSelect.contains(event.target)) {
+                shopSelect.open = false;
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        const openShopSelect = shopSelects.find((shopSelect) => shopSelect.open);
+
+        if (openShopSelect) {
+            openShopSelect.open = false;
+            openShopSelect.querySelector('summary')?.focus();
+        }
+    });
 
     const shopFilterToggle = document.querySelector('[data-shop-filter-toggle]');
     const shopFilterSidebar = document.getElementById('shop-filter-sidebar');
@@ -1667,6 +1931,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         toggle.addEventListener('click', () => {
+            document.querySelectorAll('header details[open]').forEach((details) => {
+                details.open = false;
+            });
             setMenuState(toggle.getAttribute('aria-expanded') !== 'true');
         });
 
@@ -1690,7 +1957,9 @@ document.addEventListener('DOMContentLoaded', () => {
         maxVisible,
         mobileMinCardWidth = null,
         mobileMaxVisible = null,
+        maxCardWidth = null,
         centerWhenFits = false,
+        cardWidthInset = 0,
         initialDirection = 1,
         reversePauseMs = 2300,
         paginationLabel = 'products',
@@ -1779,7 +2048,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const cardMaxVisible = isMobile && mobileMaxVisible ? mobileMaxVisible : maxVisible;
             const gap = gapSize();
             const visible = Math.max(1, Math.min(cardMaxVisible, Math.floor((width + gap) / (cardMinWidth + gap))));
-            const cardWidth = Math.max(1, (width - gap * (visible - 1)) / visible);
+            const calculatedCardWidth = Math.max(1, (width - cardWidthInset - gap * (visible - 1)) / visible);
+            const cardWidth = maxCardWidth ? Math.min(calculatedCardWidth, maxCardWidth) : calculatedCardWidth;
 
             items.forEach((item) => {
                 item.style.flex = `0 0 ${cardWidth}px`;
@@ -1894,6 +2164,8 @@ document.addEventListener('DOMContentLoaded', () => {
         maxVisible: 8,
         mobileMinCardWidth: 64,
         mobileMaxVisible: 3,
+        maxCardWidth: 128,
+        cardWidthInset: 1,
         centerWhenFits: true,
     });
 
@@ -1919,6 +2191,32 @@ document.addEventListener('DOMContentLoaded', () => {
         initialDirection: 1,
         reversePauseMs: 2300,
         paginationLabel: 'Just For You',
+    });
+
+    setupCarousel({
+        trackSelector: '[data-home-review-track]',
+        paginationSelector: '[data-home-review-pagination]',
+        minCardWidth: 250,
+        maxVisible: 3,
+        mobileMinCardWidth: 260,
+        mobileMaxVisible: 1,
+        cardWidthInset: 1,
+        initialDirection: 1,
+        reversePauseMs: 1800,
+        paginationLabel: 'customer reviews',
+    });
+
+    setupCarousel({
+        trackSelector: '[data-related-product-track]',
+        paginationSelector: '[data-related-product-pagination]',
+        minCardWidth: 180,
+        maxVisible: 5,
+        mobileMinCardWidth: 140,
+        mobileMaxVisible: 2,
+        cardWidthInset: 4,
+        initialDirection: 1,
+        reversePauseMs: 2300,
+        paginationLabel: 'related products',
     });
 
     document.querySelectorAll('[data-category-product-track]').forEach((track) => {

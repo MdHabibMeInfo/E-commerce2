@@ -22,8 +22,6 @@ class CheckoutController extends Controller
 {
     public function index(Request $request, SiteSettings $settings): View
     {
-        $this->ensureStorefrontCustomer($request);
-
         $cart = $this->resolveCart($request);
         $items = $cart->items()->with([
             'product.primaryImage',
@@ -42,7 +40,20 @@ class CheckoutController extends Controller
         }
 
         $subtotal = $items->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
-        $deliveryFee = $items->isNotEmpty() ? 60.00 : 0.00;
+        $legacyDeliveryFee = $settings->get('delivery_fee');
+        $deliveryFeeInsideDhakaDefault = $legacyDeliveryFee
+            ?? config('storefront.delivery_fee_inside_dhaka', config('storefront.delivery_fee', 60.00));
+        $deliveryFeeOutsideDhakaDefault = $legacyDeliveryFee
+            ?? config('storefront.delivery_fee_outside_dhaka', config('storefront.delivery_fee', 60.00));
+        $deliveryFeeInsideDhaka = $items->isNotEmpty()
+            ? (float) $settings->get('delivery_fee_inside_dhaka', $deliveryFeeInsideDhakaDefault)
+            : 0.00;
+        $deliveryFeeOutsideDhaka = $items->isNotEmpty()
+            ? (float) $settings->get('delivery_fee_outside_dhaka', $deliveryFeeOutsideDhakaDefault)
+            : 0.00;
+        $deliveryFee = $items->isNotEmpty()
+            ? $this->deliveryFeeForCity((string) old('city', ''), $settings)
+            : 0.00;
         $discount = 0.00;
         $total = $subtotal + $deliveryFee - $discount;
 
@@ -54,13 +65,11 @@ class CheckoutController extends Controller
             );
         }
 
-        return view('storefront.checkout', compact('cart', 'items', 'subtotal', 'deliveryFee', 'discount', 'total', 'paymentAccounts'));
+        return view('storefront.checkout', compact('cart', 'items', 'subtotal', 'deliveryFee', 'deliveryFeeInsideDhaka', 'deliveryFeeOutsideDhaka', 'discount', 'total', 'paymentAccounts'));
     }
 
     public function store(Request $request, SiteSettings $settings): RedirectResponse
     {
-        $this->ensureStorefrontCustomer($request);
-
         $customer = $request->user();
         $phoneRules = ['required', 'string', 'max:20'];
 
@@ -74,18 +83,18 @@ class CheckoutController extends Controller
             'address' => ['required', 'string', 'max:500'],
             'city' => ['required', 'string', 'max:120'],
             'area' => ['nullable', 'string', 'max:120'],
-            'payment_method' => ['required', Rule::in(['cod', 'bkash', 'nagad'])],
-            'payment_sender_phone' => ['nullable', 'required_if:payment_method,bkash,nagad', 'string', 'max:20'],
+            'payment_method' => ['required', Rule::in(['cod', 'bkash', 'nagad', 'rocket'])],
+            'payment_sender_phone' => ['nullable', 'required_if:payment_method,bkash,nagad,rocket', 'string', 'max:20'],
             'payment_transaction_id' => [
                 'nullable',
-                'required_if:payment_method,bkash,nagad',
+                'required_if:payment_method,bkash,nagad,rocket',
                 'string',
                 'max:100',
                 Rule::unique('orders', 'payment_transaction_id')->where(
                     fn ($query) => $query->where('payment_method', $request->input('payment_method')),
                 ),
             ],
-            'payment_proof' => ['nullable', 'required_if:payment_method,bkash,nagad', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'payment_proof' => ['nullable', 'required_if:payment_method,bkash,nagad,rocket', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -103,6 +112,7 @@ class CheckoutController extends Controller
         $cart = $this->resolveCart($request);
         $paymentProofPath = null;
         $paymentProofDisk = config('payments.proof_disk', 'local');
+        $deliveryFee = $this->deliveryFeeForCity($validated['city'], $settings);
 
         if ($paymentMethod !== 'cod') {
             $paymentProofPath = $request->file('payment_proof')->store('payment-proofs', $paymentProofDisk);
@@ -115,7 +125,7 @@ class CheckoutController extends Controller
         }
 
         try {
-            $order = DB::transaction(function () use ($cart, $customer, $request, $validated, $paymentMethod, $paymentProofPath): Order {
+            $order = DB::transaction(function () use ($cart, $customer, $request, $validated, $paymentMethod, $paymentProofPath, $deliveryFee): Order {
                 $lockedCart = Cart::query()->lockForUpdate()->findOrFail($cart->id);
                 $items = $lockedCart->items()->orderBy('id')->get();
 
@@ -197,7 +207,6 @@ class CheckoutController extends Controller
                     ])->save();
                 }
 
-                $deliveryFee = 60.00;
                 $discount = 0.00;
                 $total = $subtotal + $deliveryFee - $discount;
                 $order = Order::create([
@@ -258,6 +267,19 @@ class CheckoutController extends Controller
         return view('storefront.checkout-success', compact('order'));
     }
 
+    private function deliveryFeeForCity(string $city, SiteSettings $settings): float
+    {
+        $trimmedCity = trim($city);
+        $normalizedCity = strtolower($trimmedCity);
+        $isInsideDhaka = str_starts_with($normalizedCity, 'dhaka') || str_starts_with($trimmedCity, 'ঢাকা');
+        $settingKey = $isInsideDhaka ? 'delivery_fee_inside_dhaka' : 'delivery_fee_outside_dhaka';
+        $configKey = $isInsideDhaka ? 'storefront.delivery_fee_inside_dhaka' : 'storefront.delivery_fee_outside_dhaka';
+        $legacyDeliveryFee = $settings->get('delivery_fee');
+        $defaultDeliveryFee = $legacyDeliveryFee ?? config($configKey, config('storefront.delivery_fee', 60.00));
+
+        return (float) $settings->get($settingKey, $defaultDeliveryFee);
+    }
+
     protected function resolveCart(Request $request): Cart
     {
         $cartId = $request->session()->get('cart_id');
@@ -291,14 +313,5 @@ class CheckoutController extends Controller
         $request->session()->put('cart_id', $cart->id);
 
         return $cart;
-    }
-
-    private function ensureStorefrontCustomer(Request $request): void
-    {
-        abort_if(
-            $request->user()?->account_type === 'admin',
-            403,
-            'Management accounts cannot place customer orders.',
-        );
     }
 }

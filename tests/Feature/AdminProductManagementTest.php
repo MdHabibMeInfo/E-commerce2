@@ -110,6 +110,83 @@ it('approves reviews for public display and scopes moderation to their product',
         ->assertNotFound();
 });
 
+it('surfaces new reviews in the admin dashboard and notification inbox', function () {
+    $product = Product::create([
+        'name' => 'Fresh Review Product',
+        'slug' => 'fresh-review-product',
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $review = $product->reviews()->create([
+        'name' => 'Amina Rahman',
+        'email' => 'amina@example.com',
+        'rating' => 4,
+        'body' => 'The quality was excellent and delivery was quick.',
+        'images' => [],
+    ]);
+
+    $this->get(route('admin'))
+        ->assertSee('Reviews to review')
+        ->assertSee('1 waiting for a publishing decision')
+        ->assertSee($review->body);
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertExactJson(['count' => 1]);
+
+    $this->get(route('admin.notifications'))
+        ->assertSee('New customer review')
+        ->assertSee('Amina Rahman')
+        ->assertSee(route('admin.reviews.show', $review), false);
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertExactJson(['count' => 0]);
+
+    $this->get(route('admin.reviews.show', $review))
+        ->assertSee('amina@example.com')
+        ->assertSee($review->body)
+        ->assertSee('Moderation decision');
+});
+
+it('publishes or rejects a pending review and prevents repeated decisions', function () {
+    $product = Product::create([
+        'name' => 'Moderated Review Product',
+        'slug' => 'moderated-review-product',
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    $publishedReview = $product->reviews()->create([
+        'name' => 'Published Reviewer',
+        'email' => 'published@example.com',
+        'rating' => 5,
+        'body' => 'This review should appear publicly.',
+        'images' => [],
+    ]);
+    $rejectedReview = $product->reviews()->create([
+        'name' => 'Rejected Reviewer',
+        'email' => 'rejected@example.com',
+        'rating' => 1,
+        'body' => 'This review should remain private.',
+        'images' => [],
+    ]);
+
+    $this->patch(route('admin.reviews.update', $publishedReview), ['decision' => 'publish'])
+        ->assertRedirect(route('admin.reviews.show', $publishedReview));
+    $this->patch(route('admin.reviews.update', $rejectedReview), ['decision' => 'reject'])
+        ->assertRedirect(route('admin.reviews.show', $rejectedReview));
+
+    expect($publishedReview->fresh()->is_approved)->toBeTrue();
+    expect($publishedReview->fresh()->rejected_at)->toBeNull();
+    expect($rejectedReview->fresh()->is_approved)->toBeFalse();
+    expect($rejectedReview->fresh()->rejected_at)->not->toBeNull();
+
+    $this->patch(route('admin.reviews.update', $publishedReview), ['decision' => 'reject'])
+        ->assertConflict();
+
+    $this->get(route('products.show', $product->slug))
+        ->assertSee('This review should appear publicly.')
+        ->assertDontSee('This review should remain private.');
+});
+
 it('allows the owner to select products for the Just For You homepage row', function () {
     $this->get(route('admin.products.create'))
         ->assertSee('name="is_featured"', false)

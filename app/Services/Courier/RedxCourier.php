@@ -4,7 +4,6 @@ namespace App\Services\Courier;
 
 use App\Models\CourierShipment;
 use App\Models\Order;
-use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
@@ -42,6 +41,19 @@ class RedxCourier implements CourierInterface
     public function supportsTrackingApi(): bool
     {
         return true;
+    }
+
+    public function supportsInvoiceReconciliation(): bool
+    {
+        return false;
+    }
+
+    public function reconcileShipment(Order $order, CourierShipment $shipment): array
+    {
+        return [
+            'success' => false,
+            'message' => 'REDX invoice-based shipment reconciliation is not verified by the current API integration.',
+        ];
     }
 
     public function createShipment(Order $order): array
@@ -202,7 +214,7 @@ class RedxCourier implements CourierInterface
         return $tracking;
     }
 
-    public function getCustomerHistory(User $user): array
+    public function getCustomerHistory(string $phone): array
     {
         return [
             'available' => false,

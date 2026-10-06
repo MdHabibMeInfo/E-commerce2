@@ -426,7 +426,7 @@
                         <p class="mt-2 whitespace-pre-line text-sm leading-6 text-[#59675f]">{{ $review->body }}</p>
                     </div>
 
-                    @can('products.update')
+                    @can('reviews.moderate')
                         <form method="POST" action="{{ route('admin.products.reviews.approval', [$product, $review->id]) }}" class="shrink-0">
                             @csrf
                             @method('PATCH')

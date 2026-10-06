@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductAttribute;
 use App\Models\ProductImage;
+use App\Models\ProductReview;
 use App\Models\ProductVariant;
 use App\Models\SecurityEvent;
 use App\Models\User;
@@ -51,9 +52,14 @@ class AdminController extends Controller
             'orders' => Order::query()->count(),
             'users' => User::query()->count(),
             'revenue' => Order::query()->sum('total') ?? 0,
+            'pending_reviews' => $currentUser?->can('reviews.view') ? ProductReview::pending()->count() : 0,
         ];
+        $canViewReviews = $currentUser?->can('reviews.view') ?? false;
+        $pendingReviews = $canViewReviews
+            ? ProductReview::pending()->with('product:id,name,slug')->latest()->limit(5)->get()
+            : collect();
 
-        return view('admin.index', compact('currentUser', 'roleNames', 'permissions', 'stats'));
+        return view('admin.index', compact('currentUser', 'roleNames', 'permissions', 'stats', 'canViewReviews', 'pendingReviews'));
     }
 
     public function categoriesIndex(Request $request): View
@@ -429,8 +435,9 @@ class AdminController extends Controller
             'variants',
             'productAttributes',
         ]);
+        $productReviews = $product->reviews()->latest()->paginate(10);
 
-        return view('admin.products.show', compact('product'));
+        return view('admin.products.show', compact('product', 'productReviews'));
     }
 
     public function trashedProducts(Request $request): View
@@ -489,6 +496,7 @@ class AdminController extends Controller
             'alt_text' => ['nullable', 'string', 'max:255'],
             'is_primary' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
+            'is_featured' => ['sometimes', 'boolean'],
         ]);
 
         $validated['slug'] = $validated['slug'] ?? Str::slug($validated['name']);
@@ -538,6 +546,7 @@ class AdminController extends Controller
             'alt_text' => ['nullable', 'string', 'max:255'],
             'is_primary' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
+            'is_featured' => ['sometimes', 'boolean'],
         ]);
 
         if ($request->filled('compare_at_price') && $request->input('compare_at_price') <= ($request->input('price') ?? $product->price)) {
@@ -562,6 +571,19 @@ class AdminController extends Controller
         }
 
         return redirect()->route('admin.products.index')->with('success', 'Product updated successfully.');
+    }
+
+    public function updateProductAvailability(Request $request, Product $product): RedirectResponse
+    {
+        $validated = $request->validate([
+            'is_out_of_stock' => ['required', 'boolean'],
+        ]);
+
+        $product->update([
+            'is_out_of_stock' => (bool) $validated['is_out_of_stock'],
+        ]);
+
+        return redirect()->route('admin.products.index')->with('success', 'Product availability updated successfully.');
     }
 
     public function uploadProductImages(
@@ -823,9 +845,16 @@ class AdminController extends Controller
     public function profile(): View
     {
         $profileUser = auth()->user();
+        $activeOrders = $profileUser?->orders()
+            ->whereNotIn('status', ['delivered', 'cancelled', 'returned'])
+            ->with('shipments')
+            ->latest()
+            ->limit(5)
+            ->get() ?? collect();
 
         return view('admin.profile', [
             'profileUser' => $profileUser,
+            'activeOrders' => $activeOrders,
             'profilePhotoUrl' => $profileUser?->profile_photo_path
                 ? Storage::disk('public')->url($profileUser->profile_photo_path)
                 : null,
@@ -899,26 +928,66 @@ class AdminController extends Controller
 
     public function notifications(Request $request): View
     {
-        $notifications = Order::query()
-            ->latest()
-            ->limit(10)
-            ->get(['id', 'order_number', 'customer_name', 'total', 'status', 'created_at']);
-        $request->session()->put('admin_notifications_last_seen_order_id', (int) (Order::query()->max('id') ?? 0));
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $canViewOrders = $user?->can('orders.view') ?? false;
+        $canViewReviews = $user?->can('reviews.view') ?? false;
+        abort_unless($canViewOrders || $canViewReviews, 403);
 
-        return view('admin.notifications', compact('notifications'));
+        $notifications = $canViewOrders
+            ? Order::query()->latest()->limit(10)->get(['id', 'order_number', 'customer_name', 'total', 'status', 'created_at'])
+            : collect();
+        $reviewNotifications = $canViewReviews
+            ? ProductReview::query()->with('product:id,name,slug')->latest()->limit(10)->get()
+            : collect();
+
+        if ($canViewOrders) {
+            $user->forceFill([
+                'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
+            ])->save();
+        }
+        if ($canViewReviews) {
+            $user->forceFill([
+                'admin_notifications_last_seen_review_id' => (int) (ProductReview::query()->max('id') ?? 0),
+            ])->save();
+        }
+
+        return view('admin.notifications', compact('notifications', 'reviewNotifications'));
     }
 
     public function unreadNotifications(Request $request): JsonResponse
     {
-        $query = Order::query();
-        $lastSeenOrderId = $request->session()->get('admin_notifications_last_seen_order_id');
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $canViewOrders = $user?->can('orders.view') ?? false;
+        $canViewReviews = $user?->can('reviews.view') ?? false;
+        abort_unless($canViewOrders || $canViewReviews, 403);
+        $count = 0;
 
-        if ($lastSeenOrderId !== null) {
-            $query->where('id', '>', (int) $lastSeenOrderId);
+        if ($canViewOrders) {
+            $orders = Order::query();
+            $lastSeenOrderId = $user->admin_notifications_last_seen_order_id;
+
+            if ($lastSeenOrderId !== null) {
+                $orders->where('id', '>', (int) $lastSeenOrderId);
+            }
+
+            $count += $orders->count();
+        }
+
+        if ($canViewReviews) {
+            $reviews = ProductReview::query();
+            $lastSeenReviewId = $user->admin_notifications_last_seen_review_id;
+
+            if ($lastSeenReviewId !== null) {
+                $reviews->where('id', '>', (int) $lastSeenReviewId);
+            }
+
+            $count += $reviews->count();
         }
 
         return response()->json([
-            'count' => $query->count(),
+            'count' => $count,
         ]);
     }
 
@@ -937,7 +1006,7 @@ class AdminController extends Controller
     public function orders(): View
     {
         $orders = Order::query()
-            ->with('items')
+            ->with(['items', 'shipments'])
             ->latest()
             ->get();
 

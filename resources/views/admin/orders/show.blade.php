@@ -126,6 +126,13 @@
                         </form>
                     @elseif (in_array($shipment->status, ['creating', 'unknown'], true))
                         <p class="mt-4 text-xs font-semibold text-amber-900">Check the courier merchant portal before retrying this shipment.</p>
+                        @if ($canReconcileShipment)
+                            <form method="POST" action="{{ route('admin.orders.shipments.reconcile', $order) }}" class="mt-3">
+                                @csrf
+                                <input type="hidden" name="courier_code" value="steadfast">
+                                <button type="submit" class="w-full rounded-xl border border-amber-700 px-4 py-3 text-sm font-bold text-amber-900 hover:bg-amber-50">Reconcile by invoice</button>
+                            </form>
+                        @endif
                     @endif
                 @elseif ($availableCouriers === [])
                     <p class="mt-5 text-sm text-[#738078]">No verified courier integration is enabled for this store.</p>
@@ -147,11 +154,24 @@
 
             <div class="rounded-[22px] border border-[#e4e3d8] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-extrabold text-[#145943]">Customer Courier History</h2>
-                <div class="mt-5 space-y-2 text-sm text-[#4d5c56]">
-                    <p>Total shipments: Not available from courier API</p>
-                    <p>Delivered: Not available from courier API</p>
-                    <p>Success ratio: Not available from courier API</p>
-                </div>
+                <form method="POST" action="{{ route('admin.orders.courier-history', $order) }}" class="mt-5 space-y-4">
+                    @csrf
+                    <input type="hidden" name="courier_code" value="steadfast">
+                    <button type="submit" class="w-full rounded-xl border border-[#145943] px-4 py-3 text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Check Steadfast customer history</button>
+                </form>
+
+                @if (is_array(session('courierHistory')))
+                    @php($history = session('courierHistory'))
+                    <div class="mt-5 space-y-2 text-sm text-[#4d5c56]" role="status">
+                        @if ($history['error'] || ! $history['available'])
+                            <p class="rounded-[4px] border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">{{ $history['message'] ?? 'Customer delivery history is unavailable from this courier.' }}</p>
+                        @else
+                            <p>Total courier parcels: {{ $history['total'] ?? 'N/A' }}</p>
+                            <p>Delivered parcels: {{ $history['delivered'] ?? 'N/A' }}</p>
+                            <p>Success ratio: {{ $history['success_ratio'] !== null ? number_format($history['success_ratio'], 2).'%' : 'N/A' }}</p>
+                        @endif
+                    </div>
+                @endif
             </div>
         </aside>
     </div>

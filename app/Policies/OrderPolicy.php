@@ -9,12 +9,12 @@ class OrderPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('orders.view') || $user->can('access-admin');
+        return $user->can('orders.view');
     }
 
     public function view(User $user, Order $order): bool
     {
-        if ($user->can('access-admin')) {
+        if ($user->can('access-admin') && $user->can('orders.view')) {
             return true;
         }
 

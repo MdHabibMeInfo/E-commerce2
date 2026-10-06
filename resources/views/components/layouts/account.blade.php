@@ -1,8 +1,16 @@
 <x-layouts.app>
     <x-slot:title>{{ $title ?? 'My Account | '.config('app.name') }}</x-slot:title>
 
-    <section class="min-h-[calc(100vh-80px)] bg-[#f7f7ef]">
-        <div class="mx-auto min-h-[calc(100vh-80px)] max-w-[1440px] xl:grid xl:grid-cols-[248px_minmax(0,1fr)]">
+    @php
+        $isManagementAccountRoute = auth()->user()?->can('access-admin')
+            && request()->routeIs('account.orders*', 'account.security*');
+    @endphp
+
+    <section class="{{ $isManagementAccountRoute ? 'bg-[#fbfaf4]' : 'min-h-[calc(100vh-80px)] bg-[#f7f7ef]' }}">
+        <div class="{{ $isManagementAccountRoute ? 'mx-auto grid min-h-[calc(100vh-80px)] max-w-[100vw] grid-cols-1 px-0 xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-0' : 'mx-auto min-h-[calc(100vh-80px)] max-w-[1440px] xl:grid xl:grid-cols-[248px_minmax(0,1fr)]' }}">
+            @if ($isManagementAccountRoute)
+                @include('admin.partials.sidebar')
+            @else
             <aside class="border-b border-[#dedfcf] bg-[#f0f2e8] px-4 py-5 sm:px-6 xl:sticky xl:top-0 xl:h-[calc(100vh-80px)] xl:border-b-0 xl:border-r xl:border-[#dedfcf] xl:px-5">
                 <div class="flex items-center gap-3 border-b border-[#dfe3cf] pb-5">
                     @if (auth()->user()?->profile_photo_path)
@@ -43,8 +51,9 @@
                     <span>Continue shopping</span>
                 </a>
             </aside>
+            @endif
 
-            <main class="min-w-0 p-4 sm:p-6 xl:p-8">
+            <main class="{{ $isManagementAccountRoute ? 'min-w-0 space-y-6 p-5 sm:p-6 xl:p-8 xl:pt-7' : 'min-w-0 p-4 sm:p-6 xl:p-8' }}">
                 {{ $slot }}
             </main>
         </div>

@@ -4,7 +4,6 @@ namespace App\Services\Courier;
 
 use App\Models\CourierShipment;
 use App\Models\Order;
-use App\Models\User;
 
 interface CourierInterface
 {
@@ -18,11 +17,15 @@ interface CourierInterface
 
     public function supportsTrackingApi(): bool;
 
+    public function supportsInvoiceReconciliation(): bool;
+
     public function createShipment(Order $order): array;
+
+    public function reconcileShipment(Order $order, CourierShipment $shipment): array;
 
     public function trackShipment(CourierShipment $shipment): array;
 
-    public function getCustomerHistory(User $user): array;
+    public function getCustomerHistory(string $phone): array;
 
     public function trackingUrl(CourierShipment $shipment): ?string;
 }

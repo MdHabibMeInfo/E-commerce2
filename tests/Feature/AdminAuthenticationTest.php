@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Order;
 use App\Models\User;
 use App\Notifications\LoginNotification;
 use App\Notifications\PasswordResetNotification;
@@ -273,9 +274,24 @@ it('limits admin roles to their assigned resources', function () {
     $this->actingAs(completeManagementTwoFactorForTest($user))
         ->get(route('admin.products.index'))
         ->assertOk()
-        ->assertDontSee('Admin notifications');
+        ->assertDontSee('Admin notifications')
+        ->assertDontSee(route('admin.orders'), false);
 
     $this->get(route('admin.orders'))->assertForbidden();
+    $this->get(route('admin.profile'))
+        ->assertOk()
+        ->assertSee(route('account.orders'), false)
+        ->assertDontSee(route('admin.orders'), false);
+
+    $ownOrder = Order::factory()->create(['user_id' => $user->id]);
+    $otherOrder = Order::factory()->create();
+
+    $this->get(route('account.orders.show', $ownOrder))
+        ->assertOk()
+        ->assertSee($ownOrder->order_number);
+
+    $this->get(route('account.orders.show', $otherOrder))
+        ->assertForbidden();
 });
 
 it('allows active staff with a custom role to access the admin dashboard', function () {

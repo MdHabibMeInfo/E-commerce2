@@ -76,8 +76,11 @@ class OrderController extends Controller
 
         $order->load('items', 'shipments', 'user', 'paymentReviewer');
         $availableCouriers = $courierManager->availableCouriers();
+        $shipment = $order->shipments->last();
+        $canReconcileShipment = $shipment?->status === 'unknown'
+            && $courierManager->supportsInvoiceReconciliation($shipment->courier_code);
 
-        return view('admin.orders.show', compact('order', 'availableCouriers'));
+        return view('admin.orders.show', compact('order', 'availableCouriers', 'canReconcileShipment'));
     }
 
     public function paymentProof(Order $order): StreamedResponse
@@ -152,5 +155,36 @@ class OrderController extends Controller
         }
 
         return back()->with('success', $response['message']);
+    }
+
+    public function reconcileShipment(Request $request, Order $order, CourierManager $courierManager): RedirectResponse
+    {
+        $this->authorize('createShipment', $order);
+
+        $validated = $request->validate([
+            'courier_code' => ['required', Rule::in(['steadfast'])],
+        ]);
+
+        $response = $courierManager->reconcileShipment($order, $validated['courier_code']);
+
+        if (! ($response['success'] ?? false)) {
+            return back()->withErrors(['courier' => $response['message'] ?? 'Shipment reconciliation failed.']);
+        }
+
+        return back()->with('success', $response['message']);
+    }
+
+    public function checkCustomerCourierHistory(Request $request, Order $order, CourierManager $courierManager): RedirectResponse
+    {
+        $this->authorize('view', $order);
+
+        $validated = $request->validate([
+            'courier_code' => ['required', Rule::in(['redx', 'pathao', 'steadfast'])],
+        ]);
+
+        return back()->with('courierHistory', $courierManager->customerHistory(
+            $validated['courier_code'],
+            (string) $order->phone,
+        ));
     }
 }

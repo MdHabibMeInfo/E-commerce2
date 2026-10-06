@@ -44,6 +44,14 @@ it('shows the product details and saved reviews without exposing reviewer email'
     $product = createReviewTestProduct([
         'description' => "Sourced from local farms.\nPacked with care.\n{$unsafeDescription}",
     ]);
+    Product::create([
+        'category_id' => $product->category_id,
+        'name' => 'Related Review Test Product',
+        'slug' => 'related-review-test-product',
+        'type' => 'simple',
+        'price' => 100,
+        'is_active' => true,
+    ]);
     $product->reviews()->create([
         'name' => $unsafeReviewerName,
         'email' => 'private@example.com',
@@ -63,6 +71,13 @@ it('shows the product details and saved reviews without exposing reviewer email'
     $response = $this->get(route('products.show', ['product' => $product->slug]));
 
     $response->assertSee('Product Details');
+    $response->assertSee('Customer Reviews');
+    $response->assertDontSee('Product information');
+    $response->assertDontSee('Customer feedback');
+    $response->assertSee('Related Products');
+    $response->assertSee('Related Review Test Product');
+    $response->assertSee('data-related-product-track', false);
+    $response->assertSeeInOrder(['id="customer-reviews"', 'id="related-products"', '<footer'], false);
     $response->assertSee('Sourced from local farms.');
     $response->assertSee('Packed with care.');
     $response->assertSee('4.0');
@@ -77,6 +92,7 @@ it('shows the product details and saved reviews without exposing reviewer email'
     $response->assertDontSee('Karim Hasan');
     $response->assertSee('Write a review');
     $response->assertSee('name="images[]"', false);
+    $response->assertDontSee('<time', false);
     $response->assertDontSee('private@example.com');
 });
 

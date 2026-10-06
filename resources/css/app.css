@@ -5,7 +5,7 @@
 @source '../views/**/*.blade.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Open Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 :root {
@@ -17,6 +17,11 @@
 
 html {
     scroll-behavior: smooth;
+    scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+    display: none;
 }
 
 body {
@@ -49,6 +54,14 @@ input {
 
 ::selection {
     background: var(--brand-100);
+}
+
+[data-payment-method] {
+    accent-color: var(--wallet-accent);
+}
+
+[data-payment-option]:focus-within {
+    border-color: var(--wallet-accent);
 }
 
 /* Interactive storefront effects */
@@ -177,8 +190,8 @@ input {
     margin-top: -6px;
     border-radius: 999px;
     border: 2px solid #fff;
-    background: #f58216;
-    box-shadow: 0 0 0 2px rgba(245, 130, 22, 0.2);
+    background: var(--brand-900);
+    box-shadow: 0 0 0 2px rgba(20, 89, 67, 0.2);
     cursor: pointer;
 }
 
@@ -188,15 +201,33 @@ input {
     height: 18px;
     border: 2px solid #fff;
     border-radius: 999px;
-    background: #f58216;
-    box-shadow: 0 0 0 2px rgba(245, 130, 22, 0.2);
+    background: var(--brand-900);
+    box-shadow: 0 0 0 2px rgba(20, 89, 67, 0.2);
     cursor: pointer;
+}
+
+.price-range-active-track {
+    transition: left 140ms ease-out, width 140ms ease-out;
+}
+
+.filter-accordion-panel {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition: grid-template-rows 300ms ease-in-out, opacity 300ms ease-in-out;
+}
+
+.filter-accordion-panel.is-collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .product-image-zoom,
     .category-image-zoom,
-    .scroll-smooth {
+    .scroll-smooth,
+    .price-range-active-track,
+    .filter-accordion-panel {
         transition: none;
         scroll-behavior: auto;
     }
