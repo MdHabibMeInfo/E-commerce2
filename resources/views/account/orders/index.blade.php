@@ -67,6 +67,9 @@
                     </div>
                 @endforeach
             </div>
+            @if ($orders->hasPages())
+                <div class="mt-5">{{ $orders->links() }}</div>
+            @endif
         @endif
     </div>
 </x-layouts.account>

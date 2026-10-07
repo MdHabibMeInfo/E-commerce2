@@ -54,11 +54,12 @@ class CreateAdminUser extends Command
         $user->forceFill([
             'account_type' => 'admin',
             'is_system_owner' => true,
+            'system_owner_slot' => 1,
             'status' => 'active',
         ])->save();
         app(PermissionSeeder::class)->run();
         $user->syncPermissions(Permission::query()->where('guard_name', 'web')->get());
-        // $user->sendEmailVerificationNotification();
+        $user->sendEmailVerificationNotification();
 
         $this->info('System owner account created.');
 

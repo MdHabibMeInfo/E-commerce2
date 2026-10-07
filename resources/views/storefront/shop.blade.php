@@ -8,7 +8,7 @@
     </x-slot:metaDescription>
 
     <x-slot:canonicalUrl>
-        {{ route('shop') }}
+        {{ $activeCategory ? route('shop', ['category' => $activeCategory->slug]) : route('shop') }}
     </x-slot:canonicalUrl>
 
     <section class="bg-[#fbfaf4]">
@@ -244,7 +244,7 @@
                             <p class="mt-2 text-sm text-[#738078]">Try another keyword or select different filters to browse more items.</p>
                         </div>
                     @else
-                        <div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div class="grid grid-cols-2 items-start gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
                             @foreach ($products as $product)
                                 @php
                                     $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
@@ -253,12 +253,12 @@
                                 @endphp
 
                                 <article
-                                    class="group flex h-full flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
+                                    class="group flex self-start flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
                                     data-product-card
                                     data-product-name="{{ $product->name }}"
                                     data-product-price="{{ (float) $product->price }}"
                                 >
-                                    <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex h-full flex-col">
+                                    <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex flex-col">
                                         <div class="relative overflow-hidden bg-white">
                                             @if ($primaryImage)
                                                 <div class="aspect-square overflow-hidden">
@@ -278,7 +278,7 @@
                                         </div>
 
                                         <div class="flex flex-col px-3 pt-3 sm:px-4 sm:pt-4 max-sm:flex-1">
-                                            <div class="space-y-0">
+                                            <div class="flex min-h-0 flex-col justify-start gap-1">
                                                 <h2 class="text-lg font-normal leading-6 text-[#173b32] line-clamp-2 sm:text-xl">
                                                     {{ $product->name }}
                                                 </h2>

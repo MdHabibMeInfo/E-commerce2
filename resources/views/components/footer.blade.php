@@ -27,10 +27,11 @@
             <div>
                 <h2 class="text-sm font-bold uppercase tracking-wider text-[#e2c775]">Information</h2>
                 <div class="mt-4 grid gap-3 text-sm text-white/70">
-                    <a href="#" class="transition hover:text-white">About Us</a>
+                    <a href="{{ route('about') }}" class="transition hover:text-white">About Us</a>
                     <a href="#" class="transition hover:text-white">Contact</a>
                     <a href="#" class="transition hover:text-white">Privacy Policy</a>
                     <a href="#" class="transition hover:text-white">Terms &amp; Conditions</a>
+                    <button type="button" data-meta-consent-open hidden class="text-left transition hover:text-white">Privacy settings</button>
                 </div>
             </div>
 

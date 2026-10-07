@@ -59,6 +59,7 @@ function createSystemOwnerUser(array $attributes = []): User
     $user->forceFill([
         'account_type' => 'admin',
         'is_system_owner' => true,
+        'system_owner_slot' => 1,
         'status' => 'active',
     ])->save();
     $ownerRole = Role::query()

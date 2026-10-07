@@ -19,7 +19,8 @@ class OrderController extends Controller
         $orders = $request->user()->orders()
             ->with('items', 'shipments')
             ->latest()
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
 
         return view('account.orders.index', compact('orders'));
     }
@@ -39,7 +40,7 @@ class OrderController extends Controller
     {
         $this->authorize('view', $order);
 
-        $order->load('items', 'shipments', 'user');
+        $order->load('items', 'shipments', 'user', 'coupon');
         $shipment = $order->shipments->last();
         $courier = $shipment ? $courierManager->resolve($shipment->courier_code) : null;
         $tracking = $courier?->supportsTrackingApi()

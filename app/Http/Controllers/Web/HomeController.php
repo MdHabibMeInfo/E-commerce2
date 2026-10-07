@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\HeroBanner;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Services\CouponService;
 use App\Services\SiteSettings;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +21,7 @@ class HomeController extends Controller
         ]);
     }
 
-    public function index(SiteSettings $settings): View
+    public function index(SiteSettings $settings, CouponService $promotions): View
     {
         $topSellingProducts = Product::query()
             ->where('is_active', true)
@@ -102,6 +103,14 @@ class HomeController extends Controller
         if ($justForYouProducts->isEmpty()) {
             $justForYouProducts = $newArrivals->take(8);
         }
+
+        $promotions->attachCatalogOffers(
+            $topSellingProducts
+                ->concat($newArrivals)
+                ->concat($justForYouProducts)
+                ->concat($categoryRows->flatMap(fn (Category $category) => $category->products))
+                ->unique('id'),
+        );
 
         $approvedReviews = ProductReview::query()
             ->where('is_approved', true)

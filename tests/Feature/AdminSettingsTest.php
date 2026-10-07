@@ -42,6 +42,7 @@ it('lets a settings editor update branding but denies sensitive settings', funct
         ->assertDontSee('security_admin_2fa_required', false)
         ->assertDontSee('name="about_us_article"', false)
         ->assertDontSee('name="whatsapp_number"', false)
+        ->assertDontSee('name="security_admin_2fa_required"', false)
         ->assertDontSee('bkash_merchant_number', false);
 
     $this->patch(route('admin.settings.branding.update'), [
@@ -125,7 +126,8 @@ it('lets the system owner update encrypted payment and security settings', funct
         ->assertSee('name="about_us_article"', false)
         ->assertSee('name="whatsapp_number"', false)
         ->assertSee('name="delivery_fee_inside_dhaka"', false)
-        ->assertSee('name="delivery_fee_outside_dhaka"', false);
+        ->assertSee('name="delivery_fee_outside_dhaka"', false)
+        ->assertSee('Authenticator verification is always required for management accounts.');
 
     $this->patch(route('admin.settings.security.update'), [
         'bkash_merchant_number' => '01700000000',
@@ -136,7 +138,6 @@ it('lets the system owner update encrypted payment and security settings', funct
         'about_us_article' => 'Our story starts with a promise of quality.',
         'whatsapp_number' => '8801712345678',
         'whatsapp_url' => 'https://wa.me/8801712345678',
-        'security_admin_2fa_required' => '1',
         'security_login_attempts' => 7,
         'security_login_lockout_minutes' => 15,
         'security_password_min_length' => 16,
@@ -325,7 +326,7 @@ it('allows a settings editor to add update order and delete hero images', functi
         ->assertSee(Storage::disk('public')->url($firstPath))
         ->assertSee('class="h-full w-full object-contain"', false)
         ->assertDontSee('Fresh · Natural · Organic')
-        ->assertDontSee('data-hero-pagination', false);
+        ->assertSee('data-hero-pagination', false);
     expect(strpos($response->getContent(), Storage::disk('public')->url($secondPath)))
         ->toBeLessThan(strpos($response->getContent(), Storage::disk('public')->url($firstPath)));
 
@@ -477,17 +478,17 @@ it('applies the configured lockout after the allowed failed admin logins', funct
     expect(session('errors')->getBag('default')->first('email'))->toContain('Too many login attempts');
 });
 
-it('lets the system owner disable the admin authenticator requirement', function () {
+it('always requires an authenticator for management access', function () {
     $owner = createSystemOwnerUser(['email' => 'two-factor-policy@example.com']);
-    app(SiteSettings::class)->update([
-        'security_admin_2fa_required' => '0',
-    ], $owner->id);
+    SiteSetting::query()->updateOrCreate(
+        ['key' => 'security_admin_2fa_required'],
+        ['value' => Crypt::encryptString('0')],
+    );
     Notification::fake();
 
-    $this->post(route('login.store'), [
-        'email' => $owner->email,
-        'password' => 'password',
-    ])->assertRedirect(route('home'));
-
-    $this->get(route('admin'))->assertOk();
+    $this->actingAs($owner)
+        ->get(route('admin'))
+        ->assertRedirect(route('admin.two-factor.setup'));
+    $this->get(route('account.profile'))
+        ->assertRedirect(route('admin.two-factor.setup'));
 });

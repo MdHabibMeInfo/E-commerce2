@@ -23,6 +23,7 @@ class Product extends Model
         'description',
         'price',
         'compare_at_price',
+        'stock',
         'type',
         'is_active',
         'is_out_of_stock',

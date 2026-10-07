@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\CouponService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function show(Request $request, string $product): View
+    public function show(Request $request, CouponService $promotions, string $product): View
     {
         $product = Product::query()
             ->where('slug', $product)
@@ -47,6 +48,7 @@ class ProductController extends Controller
             ->latest()
             ->limit(10)
             ->get();
+        $promotions->attachCatalogOffers(collect([$product])->concat($relatedProducts));
 
         return view('storefront.products.show', [
             'product' => $product,

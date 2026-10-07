@@ -2,12 +2,14 @@
 
 use App\Models\Cart;
 use App\Models\Category;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductAttribute;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Services\CouponService;
 use App\Services\ProductVariantService;
 use App\Services\SiteSettings;
 use Illuminate\Http\UploadedFile;
@@ -42,7 +44,7 @@ it('shows the saved About Us article and WhatsApp contact in the storefront', fu
         ->assertSee('href="'.route('about').'"', false)
         ->assertSee('href="'.route('shop').'"', false)
         ->assertSee('aria-label="Shop"', false)
-        ->assertSee('href="tel:8801712345678"', false)
+        ->assertSee('href="tel:+8801712345678"', false)
         ->assertSee('href="https://wa.me/8801712345678"', false)
         ->assertSee('Call Us')
         ->assertDontSee('aria-label="Mobile navigation"', false)
@@ -499,6 +501,15 @@ it('loads the shop page with products', function () {
     $response->assertSee('Sort by Oldest');
     $response->assertSee('Price Low to High');
     $response->assertSee('Price High to Low');
+
+    $categoryUrl = route('shop', ['category' => $category->slug]);
+    $categoryResponse = $this->get(route('shop', ['category' => $category->slug, 'sort' => 'latest']))
+        ->assertOk();
+
+    expect(preg_match(
+        '/<link\s+rel="canonical"\s+href="'.preg_quote($categoryUrl, '/').'"\s*>/',
+        $categoryResponse->getContent(),
+    ))->toBe(1);
 });
 
 it('sorts shop products according to the selected order', function (?string $sort, array $expectedNames) {
@@ -832,6 +843,160 @@ it('stores a product in the database cart', function () {
         'product_id' => $product->id,
         'quantity' => 2,
     ]);
+});
+
+it('returns active variant promotion savings for the matching cart line only', function () {
+    $product = Product::create([
+        'name' => 'Promoted variable product',
+        'slug' => 'promoted-variable-product',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    $discountedVariant = ProductVariant::create([
+        'product_id' => $product->id,
+        'name' => 'Large',
+        'sku' => 'PROMO-LARGE',
+        'combination_hash' => hash('sha256', 'large'),
+        'price' => 200,
+        'stock' => 10,
+        'is_active' => true,
+    ]);
+    $regularVariant = ProductVariant::create([
+        'product_id' => $product->id,
+        'name' => 'Small',
+        'sku' => 'PROMO-SMALL',
+        'combination_hash' => hash('sha256', 'small'),
+        'price' => 100,
+        'stock' => 10,
+        'is_active' => true,
+    ]);
+    Coupon::query()->create([
+        'code' => null,
+        'is_automatic' => true,
+        'target_type' => 'variant',
+        'target_id' => $discountedVariant->id,
+        'discount_type' => 'percentage',
+        'discount_value' => 20,
+        'minimum_subtotal' => 0,
+        'is_active' => true,
+    ]);
+    $cart = Cart::query()->create(['session_id' => session()->getId()]);
+    foreach ([[$discountedVariant, 2], [$regularVariant, 1]] as [$variant, $quantity]) {
+        $cart->items()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'variant_name' => $variant->name,
+            'line_key' => 'variant:'.$variant->id,
+            'name' => $product->name,
+            'price' => $variant->price,
+            'quantity' => $quantity,
+        ]);
+    }
+    session()->put('cart_id', $cart->id);
+
+    $this->getJson('/api/cart')
+        ->assertOk()
+        ->assertJsonPath('items.0.promotion_discount', 80)
+        ->assertJsonPath('items.0.promotion_name', 'Automatic offer')
+        ->assertJsonPath('items.1.promotion_discount', 0)
+        ->assertJsonPath('items.1.promotion_name', null);
+});
+
+it('shows a targeted product campaign on shop and product detail prices', function () {
+    $product = Product::create([
+        'name' => 'Campaign display product',
+        'slug' => 'campaign-display-product',
+        'price' => 100,
+        'stock' => 10,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    Coupon::query()->create([
+        'code' => null,
+        'is_automatic' => true,
+        'target_type' => 'product',
+        'target_id' => $product->id,
+        'discount_type' => 'percentage',
+        'discount_value' => 20,
+        'maximum_discount' => 30,
+        'minimum_subtotal' => 300,
+        'is_active' => true,
+    ]);
+
+    $this->get(route('shop'))
+        ->assertOk()
+        ->assertSee('৳80.00')
+        ->assertSee('20% OFF · UP TO ৳30.00 OFF')
+        ->assertSee('text-green-800', false)
+        ->assertDontSee('Automatic offer')
+        ->assertSee('On orders ৳300.00+');
+    $this->get(route('products.show', ['product' => $product->slug]))
+        ->assertOk()
+        ->assertSee('৳80.00')
+        ->assertSee('20% OFF · UP TO ৳30.00 OFF')
+        ->assertDontSee('Automatic offer');
+});
+
+it('highlights an uncapped fixed amount and shows the coupon needed to get it', function () {
+    $product = Product::create([
+        'name' => 'Fixed discount display',
+        'slug' => 'fixed-discount-display',
+        'price' => 300,
+        'stock' => 10,
+        'type' => 'simple',
+        'is_active' => true,
+    ]);
+    Coupon::query()->create([
+        'code' => 'SAVE40',
+        'target_type' => 'product',
+        'target_id' => $product->id,
+        'discount_type' => 'fixed',
+        'discount_value' => 40,
+        'minimum_subtotal' => 0,
+        'is_active' => true,
+    ]);
+
+    $this->get(route('shop'))
+        ->assertOk()
+        ->assertSee('৳260.00')
+        ->assertSee('৳40.00 OFF')
+        ->assertSee('Use code SAVE40');
+});
+
+it('shows the discounted price for an eligible variant on product detail', function () {
+    $product = Product::create([
+        'name' => 'Variant campaign display',
+        'slug' => 'variant-campaign-display',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+    $variant = ProductVariant::create([
+        'product_id' => $product->id,
+        'name' => 'One litre',
+        'sku' => 'VARIANT-DISPLAY-1L',
+        'combination_hash' => hash('sha256', 'variant-display-1l'),
+        'price' => 200,
+        'stock' => 10,
+        'is_active' => true,
+    ]);
+    Coupon::query()->create([
+        'code' => 'LITRE15',
+        'target_type' => 'variant',
+        'target_id' => $variant->id,
+        'discount_type' => 'percentage',
+        'discount_value' => 12.5,
+        'minimum_subtotal' => 0,
+        'is_active' => true,
+    ]);
+    $loadedProduct = Product::query()->with('variants')->findOrFail($product->id);
+    app(CouponService::class)->attachCatalogOffers(collect([$loadedProduct]));
+    expect($loadedProduct->variants->first()->catalog_offer['price'])->toBe(175.0);
+
+    $this->get(route('products.show', ['product' => $product->slug]))
+        ->assertOk()
+        ->assertSee('data-promotion-price="175"', false)
+        ->assertSee('data-promotion-badge="12.5% OFF"', false)
+        ->assertSee('Use code LITRE15');
 });
 
 it('requires a variant when adding a variable product to the cart', function () {
@@ -1205,7 +1370,7 @@ it('loads the checkout page', function () {
     $response = $this->get(route('checkout'));
 
     $response->assertOk();
-    $response->assertSee('ক্যাশ অন ডেলিভারি');
+    $response->assertSee('Cash on delivery');
     $response->assertSee('bKash');
     $response->assertSee('Nagad');
     $response->assertSee('Rocket');
@@ -1214,7 +1379,7 @@ it('loads the checkout page', function () {
     $response->assertSee('images/payments/nagad.png');
     $response->assertSee('images/payments/rocket.png');
     $response->assertSee('data-copy-payment-number="01900000003"', false);
-    $response->assertSee('নির্বাচিত মার্চেন্ট নম্বরে ঠিক ৳0.00 পাঠান।');
+    $response->assertSee('Send exactly ৳0.00 to the selected merchant number');
     $response->assertSee('01800000002');
     $response->assertDontSee('৳ 01800000002');
     $response->assertSee('data-payment-details', false);

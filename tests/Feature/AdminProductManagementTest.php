@@ -4,6 +4,7 @@ use App\Models\AttributeValue;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductAttribute;
+use App\Services\ProductVariantService;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
@@ -309,11 +310,91 @@ it('manages variant assignment and lifecycle from the product detail page', func
 
     $this->delete(route('admin.products.variants.destroy', [$product, $variant]))
         ->assertRedirect(route('admin.products.show', $product));
-    $this->assertSoftDeleted('product_variants', ['id' => $variant->id]);
+    $this->assertDatabaseMissing('product_variants', ['id' => $variant->id]);
 
-    $this->post(route('admin.products.variants.restore', [$product, $variant]))
-        ->assertRedirect(route('admin.products.show', $product));
-    $this->assertDatabaseHas('product_variants', ['id' => $variant->id, 'deleted_at' => null]);
+    $newVariant = app(ProductVariantService::class)->createVariant($product, [
+        'name' => 'Blue / Medium',
+        'sku' => 'VARIANT-LIFECYCLE-BLUE-M',
+        'attribute_value_ids' => [$value->id],
+        'price' => 28,
+        'is_active' => true,
+    ]);
+
+    $this->assertDatabaseHas('product_variants', ['id' => $newVariant->id, 'sku' => 'VARIANT-LIFECYCLE-BLUE-M']);
+});
+
+it('rejects duplicate SKU updates for product variants', function () {
+    $product = Product::create([
+        'name' => 'Duplicate SKU Product',
+        'slug' => 'duplicate-sku-product',
+        'type' => 'variable',
+        'is_active' => true,
+    ]);
+
+    $color = ProductAttribute::create([
+        'name' => 'Color',
+        'slug' => 'color',
+        'is_active' => true,
+    ]);
+    $size = ProductAttribute::create([
+        'name' => 'Size',
+        'slug' => 'size',
+        'is_active' => true,
+    ]);
+    $product->productAttributes()->attach([$color->id, $size->id]);
+
+    $red = AttributeValue::create([
+        'product_attribute_id' => $color->id,
+        'value' => 'Red',
+        'slug' => 'red',
+        'is_active' => true,
+    ]);
+    $blue = AttributeValue::create([
+        'product_attribute_id' => $color->id,
+        'value' => 'Blue',
+        'slug' => 'blue',
+        'is_active' => true,
+    ]);
+    $small = AttributeValue::create([
+        'product_attribute_id' => $size->id,
+        'value' => 'Small',
+        'slug' => 'small',
+        'is_active' => true,
+    ]);
+    $large = AttributeValue::create([
+        'product_attribute_id' => $size->id,
+        'value' => 'Large',
+        'slug' => 'large',
+        'is_active' => true,
+    ]);
+
+    $firstVariant = $product->variants()->create([
+        'name' => 'Red / Small',
+        'sku' => 'DUP-SKU-RED-SMALL',
+        'combination_hash' => hash('sha256', implode(':', [$red->id, $small->id])),
+        'price' => 25,
+        'is_active' => true,
+    ]);
+    $firstVariant->attributeValues()->attach([$red->id, $small->id]);
+
+    $secondVariant = $product->variants()->create([
+        'name' => 'Blue / Large',
+        'sku' => 'DUP-SKU-BLUE-LARGE',
+        'combination_hash' => hash('sha256', implode(':', [$blue->id, $large->id])),
+        'price' => 30,
+        'is_active' => true,
+    ]);
+    $secondVariant->attributeValues()->attach([$blue->id, $large->id]);
+
+    $this->from(route('admin.products.show', $product))
+        ->put(route('admin.products.variants.update', [$product, $firstVariant]), [
+            'name' => 'Red / Small',
+            'sku' => 'DUP-SKU-BLUE-LARGE',
+            'attribute_value_ids' => [$red->id, $small->id],
+            'price' => 27,
+            'is_active' => true,
+        ])
+        ->assertSessionHasErrors('sku');
 });
 
 it('paginates products so all catalog records remain accessible', function () {

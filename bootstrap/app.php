@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->encryptCookies(except: [
+            '_fbp',
+            '_fbc',
+            'meta_marketing_consent',
+        ]);
+
         $middleware->alias([
             'management.verified' => RequireManagementEmailVerification::class,
             'management.2fa' => RequireManagementTwoFactor::class,

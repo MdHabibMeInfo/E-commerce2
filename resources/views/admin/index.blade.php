@@ -5,42 +5,98 @@
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
                 <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#a48335]">Dashboard</p>
-                <h1 class="mt-2 text-3xl font-extrabold text-[#145943]">System Owner Overview</h1>
+                <h1 class="mt-2 text-3xl font-extrabold text-[#145943]">{{ $currentUser?->is_system_owner ? 'System Owner Overview' : 'Management Dashboard' }}</h1>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                <span class="rounded-full bg-[#edf2e4] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#145943]">Online</span>
-                <a href="{{ route('admin.products.index') }}" class="rounded-xl bg-[#145943] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#a48335]">Manage Products</a>
-                <a href="{{ route('admin.orders') }}" class="rounded-xl border border-[#dfe3cf] bg-white px-4 py-2 text-sm font-bold text-[#145943] transition hover:bg-[#f7f4ee]">Orders</a>
+                <span class="rounded-full bg-[#edf2e4] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#145943]">Access verified</span>
+                @can('products.view')
+                    <a href="{{ route('admin.products.index') }}" class="rounded-xl bg-[#145943] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#a48335]">Manage Products</a>
+                @endcan
+                @can('orders.view')
+                    <a href="{{ route('admin.orders') }}" class="rounded-xl border border-[#dfe3cf] bg-white px-4 py-2 text-sm font-bold text-[#145943] transition hover:bg-[#f7f4ee]">Orders</a>
+                @endcan
             </div>
         </div>
     </header>
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-[20px] bg-[#145943] p-5 text-white shadow-sm">
-            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Products</p>
-            <h3 class="mt-3 text-3xl font-extrabold">{{ $stats['products'] }}</h3>
-            <p class="mt-3 text-sm text-white/80">Active catalog items</p>
-        </div>
-
-        <div class="rounded-[20px] bg-[#5a6f70] p-5 text-white shadow-sm">
-            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Orders</p>
-            <h3 class="mt-3 text-3xl font-extrabold">{{ $stats['orders'] }}</h3>
-            <p class="mt-3 text-sm text-white/80">Total orders in system</p>
-        </div>
-
-        <div class="rounded-[20px] bg-[#a48335] p-5 text-white shadow-sm">
-            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Users</p>
-            <h3 class="mt-3 text-3xl font-extrabold">{{ $stats['users'] }}</h3>
-            <p class="mt-3 text-sm text-white/80">Logged-in and managed users</p>
-        </div>
-
-        <div class="rounded-[20px] bg-[#d4721d] p-5 text-white shadow-sm">
-            <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Revenue</p>
-            <h3 class="mt-3 text-3xl font-extrabold">৳{{ number_format((float) $stats['revenue'], 2) }}</h3>
-            <p class="mt-3 text-sm text-white/80">Gross order value</p>
-        </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        @if ($stats['products'] !== null)
+            <div class="rounded-[4px] bg-[#145943] p-5 text-white">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-white/75">Active products</p>
+                <p class="mt-2 text-3xl font-extrabold">{{ number_format($stats['products']) }}</p>
+            </div>
+        @endif
+        @if ($stats['orders'] !== null)
+            <div class="rounded-[4px] bg-[#5a6f70] p-5 text-white">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-white/75">All orders</p>
+                <p class="mt-2 text-3xl font-extrabold">{{ number_format($stats['orders']) }}</p>
+            </div>
+            <div class="rounded-[4px] bg-[#a15b1d] p-5 text-white">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-white/75">Orders to process</p>
+                <p class="mt-2 text-3xl font-extrabold">{{ number_format($stats['pending_orders']) }}</p>
+            </div>
+            <div class="rounded-[4px] bg-[#d4721d] p-5 text-white">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-white/75">Payments confirmed</p>
+                <p class="mt-2 text-3xl font-extrabold">৳{{ number_format((float) $stats['revenue'], 2) }}</p>
+            </div>
+        @endif
+        @if ($stats['customers'] !== null)
+            <div class="rounded-[4px] bg-[#a48335] p-5 text-white">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-white/75">Active customers</p>
+                <p class="mt-2 text-3xl font-extrabold">{{ number_format($stats['customers']) }}</p>
+            </div>
+        @endif
+        @if ($stats['active_coupons'] !== null)
+            <div class="rounded-[4px] bg-[#3f6860] p-5 text-white">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-white/75">Active promotions</p>
+                <p class="mt-2 text-3xl font-extrabold">{{ number_format($stats['active_coupons']) }}</p>
+            </div>
+        @endif
     </div>
+
+    @if ($canViewOrders)
+        <div class="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
+            <section class="overflow-hidden border border-[#e5e2d9] bg-white">
+                <div class="flex items-center justify-between border-b border-[#e5e2d9] px-5 py-4">
+                    <div><h2 class="text-lg font-bold text-[#173b32]">Recent orders</h2><p class="mt-1 text-xs text-[#738078]">Latest eight orders</p></div>
+                    <a href="{{ route('admin.orders') }}" class="text-sm font-bold text-[#145943]">View all</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead class="bg-[#f7f4ee] text-[#145943]"><tr><th class="px-4 py-3 font-bold">Order</th><th class="px-4 py-3 font-bold">Customer</th><th class="px-4 py-3 font-bold">Total</th><th class="px-4 py-3 font-bold">Payment</th><th class="px-4 py-3 font-bold">Status</th></tr></thead>
+                        <tbody>
+                            @forelse ($recentOrders as $order)
+                                <tr class="border-t border-[#e5e2d9]"><td class="px-4 py-3"><a href="{{ route('admin.orders.show', $order) }}" class="font-bold text-[#145943]">{{ $order->order_number }}</a><p class="text-xs text-[#738078]">{{ $order->created_at->diffForHumans() }}</p></td><td class="px-4 py-3">{{ $order->customer_name }}</td><td class="px-4 py-3">৳{{ number_format((float) $order->total, 2) }}</td><td class="px-4 py-3">{{ ucfirst($order->payment_status) }}</td><td class="px-4 py-3">{{ ucfirst($order->status) }}</td></tr>
+                            @empty
+                                <tr><td colspan="5" class="px-4 py-8 text-center text-[#738078]">No orders yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="border border-[#e5e2d9] bg-white p-5">
+                <h2 class="text-lg font-bold text-[#173b32]">Payments confirmed · 7 days</h2>
+                <ol class="mt-4 space-y-3">
+                    @foreach ($salesTrend as $day)
+                        <li class="flex items-center justify-between gap-3 text-sm"><span class="text-[#66736d]">{{ $day['label'] }} <span class="text-xs">{{ \Illuminate\Support\Carbon::parse($day['date'])->format('d M') }}</span></span><span class="font-bold text-[#145943]">৳{{ number_format($day['revenue'], 2) }}</span></li>
+                    @endforeach
+                </ol>
+            </section>
+        </div>
+    @endif
+
+    @if ($canViewProducts && $lowStockProducts->isNotEmpty())
+        <section class="border border-[#e5e2d9] bg-white">
+            <div class="flex items-center justify-between border-b border-[#e5e2d9] px-5 py-4"><h2 class="text-lg font-bold text-[#173b32]">Availability alerts</h2><a href="{{ route('admin.products.index', ['status' => 'inactive']) }}" class="text-sm font-bold text-[#145943]">Manage catalog</a></div>
+            <ul class="divide-y divide-[#ece8dc]">
+                @foreach ($lowStockProducts as $product)
+                    <li class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"><a href="{{ route('admin.products.show', $product) }}" class="font-semibold text-[#145943]">{{ $product->name }}</a><span class="font-bold {{ $product->is_out_of_stock ? 'text-red-700' : 'text-[#a15b1d]' }}">{{ $product->is_out_of_stock ? 'Out of stock' : $product->stock.' remaining' }}</span></li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 
     @if ($canViewReviews)
         <section class="overflow-hidden rounded-[4px] border border-[#e5e2d9] bg-white">
@@ -87,25 +143,29 @@
         <div class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
             <h2 class="text-xl font-extrabold text-[#145943]">Maintainable Actions</h2>
             <div class="mt-4 space-y-3 text-sm">
-                <a href="{{ route('admin.products.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">
-                    Manage Products
-                </a>
-                <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
-                    Manage Orders
-                </div>
-                @canany(['roles.view', 'roles.create', 'roles.update'])
+                @if ($canViewProducts)
+                    <a href="{{ route('admin.products.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Manage Products</a>
+                @endif
+                @if ($canViewOrders)
+                    <a href="{{ route('admin.orders') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Manage Orders</a>
+                @endif
+                @if ($canViewCustomers)
+                    <a href="{{ route('admin.customers.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Manage Customers</a>
+                @endif
+                @if ($canViewCoupons)
+                    <a href="{{ route('admin.coupons.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Manage Promotions</a>
+                @endif
+                @if ($currentUser?->is_system_owner)
                     <a href="{{ route('admin.roles.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">
                         Manage Roles & Permissions
                     </a>
-                @endcanany
-                @canany(['users.view', 'users.create', 'users.update'])
                     <a href="{{ route('admin.users.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">
                         Manage Staff Accounts
                     </a>
+                @endif
+                @canany(['settings.view', 'settings.update'])
+                    <a href="{{ route('admin.settings') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Site Settings</a>
                 @endcanany
-                <div class="rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32]">
-                    Site Settings & Security
-                </div>
             </div>
         </div>
     </div>
@@ -126,11 +186,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="border-t border-[#e5e2d9]">
-                        <td class="px-4 py-3 font-semibold text-[#173b32]">{{ $roleNames[0] ?? 'System Owner' }}</td>
-                        <td class="px-4 py-3">Full control</td>
-                        <td class="px-4 py-3">Platform, users, orders, settings, security</td>
-                    </tr>
+                    @forelse ($roleNames as $roleName)
+                        <tr class="border-t border-[#e5e2d9]">
+                            <td class="px-4 py-3 font-semibold text-[#173b32]">{{ $roleName }}</td>
+                            <td class="px-4 py-3">{{ $currentUser?->is_system_owner ? 'System owner' : 'Assigned role' }}</td>
+                            <td class="px-4 py-3">{{ $currentUser?->is_system_owner ? 'All platform capabilities' : count($permissions).' granted permissions' }}</td>
+                        </tr>
+                    @empty
+                        <tr class="border-t border-[#e5e2d9]"><td colspan="3" class="px-4 py-3 text-[#738078]">No management role assigned.</td></tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>

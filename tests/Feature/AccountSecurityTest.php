@@ -349,6 +349,17 @@ it('requires verified email before management API requests', function () {
         ->assertJson(['message' => 'Management access requires a verified email address.']);
 });
 
+it('requires management MFA before accessing account pages', function () {
+    $user = createSystemOwnerUser();
+
+    $this->actingAs($user)
+        ->get(route('account.orders'))
+        ->assertRedirect(route('admin.two-factor.setup'));
+
+    $this->get(route('account.security'))
+        ->assertRedirect(route('admin.two-factor.setup'));
+});
+
 it('records failed authenticator attempts without granting management access', function () {
     $user = createSystemOwnerUser();
     $user->forceFill([

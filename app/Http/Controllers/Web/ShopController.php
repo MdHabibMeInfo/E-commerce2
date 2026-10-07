@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\CouponService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -59,7 +60,7 @@ class ShopController extends Controller
         return response()->json($suggestions);
     }
 
-    public function index(Request $request, ?string $category = null): View
+    public function index(Request $request, CouponService $promotions, ?string $category = null): View
     {
         $activeCategory = null;
 
@@ -274,6 +275,7 @@ class ShopController extends Controller
         };
 
         $products = $productsQuery->paginate($perPage)->withQueryString();
+        $promotions->attachCatalogOffers($products->getCollection());
 
         $categories = Category::query()
             ->where('is_active', true)

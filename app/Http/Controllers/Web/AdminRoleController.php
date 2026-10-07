@@ -3,19 +3,38 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Notifications\SecurityAlertNotification;
 use App\Services\SecurityEventService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class AdminRoleController extends Controller
 {
-    public function index(): View
+    private const OWNER_ONLY_PERMISSIONS = [
+        'audit-logs.view',
+        'roles.assign',
+        'roles.create',
+        'roles.delete',
+        'roles.update',
+        'roles.view',
+        'security.manage',
+        'users.create',
+        'users.delete',
+        'users.suspend',
+        'users.update',
+        'users.view',
+    ];
+
+    public function index(Request $request): View
     {
+        $this->authorizeOwner($request);
+
         $roles = Role::query()
             ->where('guard_name', 'web')
             ->with('permissions')
@@ -24,6 +43,7 @@ class AdminRoleController extends Controller
             ->get();
         $permissions = Permission::query()
             ->where('guard_name', 'web')
+            ->whereNotIn('name', self::OWNER_ONLY_PERMISSIONS)
             ->orderBy('name')
             ->get();
 
@@ -43,7 +63,11 @@ class AdminRoleController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')->where('guard_name', 'web')],
             'permissions' => ['sometimes', 'array'],
-            'permissions.*' => ['integer', Rule::exists('permissions', 'id')->where('guard_name', 'web')],
+            'permissions.*' => [
+                'integer',
+                Rule::exists('permissions', 'id')->where('guard_name', 'web'),
+                Rule::notIn($this->ownerOnlyPermissionIds()),
+            ],
         ]);
 
         $role = Role::query()->create([
@@ -68,7 +92,11 @@ class AdminRoleController extends Controller
 
         $validated = $request->validate([
             'permissions' => ['sometimes', 'array'],
-            'permissions.*' => ['integer', Rule::exists('permissions', 'id')->where('guard_name', 'web')],
+            'permissions.*' => [
+                'integer',
+                Rule::exists('permissions', 'id')->where('guard_name', 'web'),
+                Rule::notIn($this->ownerOnlyPermissionIds()),
+            ],
         ]);
 
         $previousPermissionIds = $role->permissions()->pluck('permissions.id')->all();
@@ -80,6 +108,7 @@ class AdminRoleController extends Controller
             'added_permission_ids' => array_values(array_diff($permissionIds, $previousPermissionIds)),
             'removed_permission_ids' => array_values(array_diff($previousPermissionIds, $permissionIds)),
         ]);
+        $this->notifyRoleMembers($role, 'Management role permissions changed', 'Permissions assigned to your management role were changed.');
         $this->notifyOwner($request, 'Management permissions changed', 'Permissions assigned to a management role were changed.');
 
         return redirect()->route('admin.roles.index')->with('success', 'Role permissions updated.');
@@ -113,6 +142,7 @@ class AdminRoleController extends Controller
             'old_name' => $oldName,
             'new_name' => $role->name,
         ]);
+        $this->notifyRoleMembers($role, 'Management role updated', 'The name of your management role was changed.');
         $this->notifyOwner($request, 'Management role renamed', 'A management role name was changed.');
 
         return redirect()->route('admin.roles.index')->with('success', 'Role updated successfully.');
@@ -126,10 +156,16 @@ class AdminRoleController extends Controller
 
         $role->is_active = $validated['is_active'];
         $role->save();
+
+        if (! $role->is_active) {
+            $this->revokeRoleMemberSessions($role);
+        }
+
         $events->record($request, $request->user(), $role->is_active ? 'role_activated' : 'role_deactivated', [
             'role_id' => $role->getKey(),
             'role_name' => $role->name,
         ]);
+        $this->notifyRoleMembers($role, 'Management role status changed', 'Your management role was '.($role->is_active ? 'activated' : 'deactivated').'.');
         $this->notifyOwner($request, 'Management role status changed', 'A management role was activated or deactivated.');
 
         return redirect()->route('admin.roles.index')->with('success', 'Role status updated.');
@@ -153,7 +189,8 @@ class AdminRoleController extends Controller
 
     private function authorizeOwner(Request $request): void
     {
-        abort_unless($request->user()?->is_system_owner, 403);
+        $user = $request->user();
+        abort_unless($user instanceof User && $user->is_system_owner && $user->status === 'active', 403);
     }
 
     private function ensureEditableRole(Role $role): void
@@ -164,5 +201,33 @@ class AdminRoleController extends Controller
     private function notifyOwner(Request $request, string $subject, string $message): void
     {
         $request->user()->notify(new SecurityAlertNotification($subject, $message));
+    }
+
+    /** @return list<int> */
+    private function ownerOnlyPermissionIds(): array
+    {
+        return Permission::query()
+            ->where('guard_name', 'web')
+            ->whereIn('name', self::OWNER_ONLY_PERMISSIONS)
+            ->pluck('id')
+            ->all();
+    }
+
+    private function notifyRoleMembers(Role $role, string $subject, string $message): void
+    {
+        foreach ($role->users as $user) {
+            $user->notify(new SecurityAlertNotification($subject, $message));
+        }
+    }
+
+    private function revokeRoleMemberSessions(Role $role): void
+    {
+        foreach ($role->users as $user) {
+            $user->tokens()->delete();
+
+            if (config('session.driver') === 'database') {
+                DB::table(config('session.table'))->where('user_id', $user->getKey())->delete();
+            }
+        }
     }
 }

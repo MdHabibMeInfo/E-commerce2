@@ -1,4 +1,119 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const metaPixelId = document.body.dataset.metaPixelId;
+    const metaConsentBanner = document.querySelector('[data-meta-consent-banner]');
+    const metaConsentButtons = Array.from(document.querySelectorAll('[data-meta-consent-choice]'));
+    const metaConsentSettings = document.querySelector('[data-meta-consent-open]');
+
+    if (metaPixelId && metaConsentBanner) {
+        let metaPixelInitialized = false;
+        const setConsentBannerVisibility = (visible) => metaConsentBanner.classList.toggle('hidden', !visible);
+
+        const readMarketingConsent = () => document.cookie
+            .split('; ')
+            .find((cookie) => cookie.startsWith('meta_marketing_consent='))
+            ?.split('=')[1] ?? null;
+
+        const writeMarketingConsent = (choice) => {
+            const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+            document.cookie = `meta_marketing_consent=${choice}; Max-Age=15552000; Path=/; SameSite=Lax${secure}`;
+        };
+
+        const trackPurchase = () => {
+            const purchase = window.metaPurchaseEvent;
+
+            if (!purchase?.event_id || !window.fbq) {
+                return;
+            }
+
+            const storageKey = `meta-purchase:${purchase.event_id}`;
+            let alreadySent = false;
+
+            try {
+                alreadySent = Boolean(window.sessionStorage.getItem(storageKey));
+            } catch {
+                alreadySent = false;
+            }
+
+            if (alreadySent) {
+                return;
+            }
+
+            const { event_id: eventId, ...parameters } = purchase;
+            window.fbq('track', 'Purchase', parameters, { eventID: eventId });
+
+            try {
+                window.sessionStorage.setItem(storageKey, 'sent');
+            } catch {
+                return;
+            }
+        };
+
+        const initializeMetaPixel = () => {
+            if (metaPixelInitialized) {
+                trackPurchase();
+                return;
+            }
+
+            if (!window.fbq) {
+                const fbq = function () {
+                    if (fbq.callMethod) {
+                        fbq.callMethod.apply(fbq, arguments);
+                    } else {
+                        fbq.queue.push(arguments);
+                    }
+                };
+
+                fbq.queue = [];
+                fbq.loaded = true;
+                fbq.version = '2.0';
+                window.fbq = fbq;
+                window._fbq = fbq;
+
+                const script = document.createElement('script');
+                script.async = true;
+                script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+                document.head.append(script);
+            }
+
+            window.fbq('init', metaPixelId);
+            window.fbq('track', 'PageView');
+            metaPixelInitialized = true;
+            trackPurchase();
+        };
+
+        const setMarketingConsent = (choice) => {
+            writeMarketingConsent(choice);
+            setConsentBannerVisibility(false);
+
+            if (choice === 'granted') {
+                initializeMetaPixel();
+                return;
+            }
+
+            document.cookie = `_fbp=; Max-Age=0; Path=/; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
+            document.cookie = `_fbc=; Max-Age=0; Path=/; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
+        };
+
+        metaConsentSettings.hidden = false;
+        metaConsentSettings.addEventListener('click', () => {
+            setConsentBannerVisibility(true);
+            metaConsentBanner.querySelector('[data-meta-consent-choice="granted"]')?.focus();
+        });
+
+        metaConsentButtons.forEach((button) => {
+            button.addEventListener('click', () => setMarketingConsent(button.dataset.metaConsentChoice));
+        });
+
+        const currentConsent = readMarketingConsent();
+
+        if (currentConsent === 'granted') {
+            setConsentBannerVisibility(false);
+            initializeMetaPixel();
+        } else if (currentConsent !== 'denied') {
+            setConsentBannerVisibility(true);
+        }
+    }
+
     const brandingForm = document.querySelector('[data-branding-settings-form]');
 
     if (brandingForm) {
@@ -98,6 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const heroTargetResults = targetForm.querySelector('[data-hero-target-results]');
         const heroTargetSelected = targetForm.querySelector('[data-hero-target-selected]');
         const clearHeroTarget = targetForm.querySelector('[data-clear-hero-target]');
+        const emptyTargetMessage = heroTargetSearch.dataset.emptyMessage || 'No destination selected; clicking the image opens the homepage.';
+        const emptyTargetValue = heroTargetSearch.dataset.emptyValue || '';
         let heroTargetTimer = null;
         let heroTargetRequest = null;
         let activeHeroTargetIndex = -1;
@@ -156,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         heroTargetSearch.addEventListener('input', () => {
             heroTargetValue.value = '';
-            heroTargetSelected.textContent = 'No destination selected; clicking the image opens the homepage.';
+            heroTargetSelected.textContent = emptyTargetMessage;
             window.clearTimeout(heroTargetTimer);
             heroTargetRequest?.abort();
 
@@ -165,6 +282,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (search.length < 2) {
                 closeHeroTargetResults();
                 heroTargetResults.replaceChildren();
+
+                if (search.length === 0) {
+                    heroTargetValue.value = emptyTargetValue;
+                }
 
                 return;
             }
@@ -235,9 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         clearHeroTarget.addEventListener('click', () => {
-            heroTargetValue.value = '';
+            heroTargetValue.value = emptyTargetValue;
             heroTargetSearch.value = '';
-            heroTargetSelected.textContent = 'No destination selected; clicking the image opens the homepage.';
+            heroTargetSelected.textContent = emptyTargetMessage;
             closeHeroTargetResults();
             heroTargetResults.replaceChildren();
             heroTargetSearch.focus();
@@ -321,6 +442,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const manualCourierLookupLinks = Array.from(document.querySelectorAll('[data-manual-courier-lookup]'));
+    const manualLookupStatus = document.querySelector('[data-manual-lookup-status]');
+
+    manualCourierLookupLinks.forEach((link) => {
+        link.addEventListener('click', async () => {
+            const phone = link.dataset.customerPhone || '';
+            const courierName = link.dataset.courierName || 'Courier';
+
+            try {
+                await navigator.clipboard.writeText(phone);
+                manualLookupStatus.textContent = `Customer number copied. Paste it into the ${courierName} merchant portal search.`;
+            } catch {
+                manualLookupStatus.textContent = `Could not copy automatically. Copy the customer's phone number from the order details, then search it in the ${courierName} merchant portal.`;
+            }
+        });
+    });
+
     const checkoutForm = document.querySelector('[data-checkout-form]');
 
     if (checkoutForm) {
@@ -336,6 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deliveryFeeLabel = document.querySelector('[data-delivery-fee-label]');
         const deliveryFeeAmount = document.querySelector('[data-delivery-fee-amount]');
         const orderTotal = document.querySelector('[data-order-total]');
+        const deliveryDiscountAmount = document.querySelector('[data-delivery-discount-amount]');
         const paymentProofInput = checkoutForm.querySelector('[data-payment-proof-input]');
         const paymentProofPicker = checkoutForm.querySelector('[data-payment-proof-picker]');
         const paymentProofPreview = checkoutForm.querySelector('[data-payment-proof-preview]');
@@ -394,8 +533,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     option.style.borderColor = input.checked ? input.dataset.paymentAccent : '';
                 }
             });
-            accountNumberLabel.textContent = `আপনার ${providerLabel} অ্যাকাউন্ট নম্বর`;
-            transactionIdLabel.textContent = `আপনার ${providerLabel} ট্রানজ্যাকশন আইডি`;
+            accountNumberLabel.textContent = `Your ${providerLabel} account number`;
+            transactionIdLabel.textContent = `Your ${providerLabel} transaction ID`;
         };
 
         paymentMethodInputs.forEach((input) => input.addEventListener('change', updatePaymentFields));
@@ -405,6 +544,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const city = cityInput.value.trim();
             const isInsideDhaka = /^(dhaka|ঢাকা)/i.test(city);
             const fee = Number(isInsideDhaka ? deliveryFeeAmount.dataset.insideFee : deliveryFeeAmount.dataset.outsideFee);
+            const deliveryDiscount = Number(isInsideDhaka
+                ? deliveryDiscountAmount?.dataset.insideDiscount || 0
+                : deliveryDiscountAmount?.dataset.outsideDiscount || 0);
             const subtotal = Number(orderTotal.dataset.subtotal);
             const discount = Number(orderTotal.dataset.discount);
             const formatCurrency = (amount) => `৳${new Intl.NumberFormat('en-BD', {
@@ -412,8 +554,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 maximumFractionDigits: 2,
             }).format(amount)}`;
 
-            deliveryFeeLabel.textContent = isInsideDhaka ? 'ডেলিভারি চার্জ (ঢাকার ভেতরে)' : 'ডেলিভারি চার্জ (ঢাকার বাইরে)';
+            deliveryFeeLabel.textContent = 'Delivery charge';
             deliveryFeeAmount.textContent = formatCurrency(fee);
+            if (deliveryDiscountAmount) {
+                deliveryDiscountAmount.textContent = `-${formatCurrency(deliveryDiscount)}`;
+            }
             orderTotal.textContent = formatCurrency(subtotal + fee - discount);
         };
 
@@ -426,13 +571,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     await navigator.clipboard.writeText(button.dataset.copyPaymentNumber || '');
-                    label.textContent = 'কপি হয়েছে';
+                    label.textContent = 'Copied';
                 } catch {
-                    label.textContent = 'কপি করা যায়নি';
+                    label.textContent = 'Could not copy';
                 }
 
                 window.setTimeout(() => {
-                    label.textContent = 'কপি';
+                    label.textContent = 'Copy';
                 }, 1500);
             });
         });
@@ -1017,6 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ...item,
         qty: Number(item.qty ?? item.quantity ?? 0),
         price: Number(item.price ?? 0),
+        promotion_discount: Number(item.promotion_discount ?? 0),
         image_url: item.image_url || item.image || '',
         emoji: item.emoji || '🛍️',
     });
@@ -1062,8 +1208,16 @@ document.addEventListener('DOMContentLoaded', () => {
             <div data-cart-items class="flex-1 space-y-3 overflow-y-auto px-5 py-4 divide-y divide-gray-100"></div>
 
             <div class="border-t border-gray-200 bg-white p-5">
+                <div class="mb-2 flex items-center justify-between text-xs text-gray-500">
+                    <span>Subtotal</span>
+                    <span data-cart-subtotal-amount>৳0.00</span>
+                </div>
+                <div data-cart-savings-row hidden class="mb-2 flex items-center justify-between text-xs font-semibold text-emerald-700">
+                    <span>Product offer savings</span>
+                    <span data-cart-savings-amount>-৳0.00</span>
+                </div>
                 <div class="mb-4 flex items-center justify-between text-sm">
-                    <span class="font-medium text-gray-700">Total:</span>
+                    <span class="font-medium text-gray-700">Items total:</span>
                     <strong data-cart-total-amount class="text-base font-bold text-gray-900">৳0.00</strong>
                 </div>
                 <button type="button" data-cart-checkout class="w-full rounded-xl bg-[#145943] py-3.5 text-center text-sm font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-[#d96e16] active:scale-[0.99]">
@@ -1238,7 +1392,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderCart = () => {
         const quantity = cart.reduce((sum, item) => sum + Number(item.qty ?? item.quantity ?? 0), 0);
-        const total = cart.reduce((sum, item) => sum + Number(item.price ?? 0) * Number(item.qty ?? item.quantity ?? 0), 0);
+        const subtotal = cart.reduce((sum, item) => sum + Number(item.price ?? 0) * Number(item.qty ?? item.quantity ?? 0), 0);
+        const savings = cart.reduce((sum, item) => sum + Number(item.promotion_discount ?? 0), 0);
+        const total = Math.max(0, subtotal - savings);
 
         cartUi.querySelector('[data-cart-count]').textContent = `${quantity} ${quantity === 1 ? 'Item' : 'Items'}`;
         cartUi.querySelector('[data-cart-total]').textContent = money(total);
@@ -1246,6 +1402,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (totalAmountEl) {
             totalAmountEl.textContent = money(total);
         }
+        cartUi.querySelector('[data-cart-subtotal-amount]').textContent = money(subtotal);
+        cartUi.querySelector('[data-cart-savings-row]').hidden = savings <= 0;
+        cartUi.querySelector('[data-cart-savings-amount]').textContent = `-${money(savings)}`;
 
         document.querySelectorAll('[data-cart-count-badge]').forEach((badge) => {
             badge.textContent = String(quantity);
@@ -1364,7 +1523,21 @@ document.addEventListener('DOMContentLoaded', () => {
             priceCalc.className = 'text-xs font-semibold text-gray-700 whitespace-nowrap';
             const itemPrice = Number(item.price || 0);
             const itemSubtotal = itemPrice * currentQuantity;
-            priceCalc.textContent = `× ${money(itemPrice)} = ${money(itemSubtotal)}`;
+            const promotionDiscount = Number(item.promotion_discount || 0);
+            if (promotionDiscount > 0) {
+                const original = document.createElement('span');
+                original.className = 'mr-1 text-gray-400 line-through';
+                original.textContent = money(itemSubtotal);
+                const discounted = document.createElement('span');
+                discounted.className = 'font-bold text-[#145943]';
+                discounted.textContent = money(Math.max(0, itemSubtotal - promotionDiscount));
+                const offer = document.createElement('span');
+                offer.className = 'block w-full text-[11px] font-semibold text-[#a48335]';
+                offer.textContent = `${item.promotion_name || 'Offer'} · Save ${money(promotionDiscount)}`;
+                priceCalc.append(original, discounted, offer);
+            } else {
+                priceCalc.textContent = `× ${money(itemPrice)} = ${money(itemSubtotal)}`;
+            }
 
             bottomRow.append(qtyBox, priceCalc);
             detail.append(name);
@@ -1513,6 +1686,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const status = document.querySelector('[data-variant-selection-status]');
         const priceDisplay = document.querySelector('[data-variant-price-display]');
         const compareDisplay = document.querySelector('[data-variant-compare-display]');
+        const offerDisplay = document.querySelector('[data-variant-offer-display]');
+        const offerTerms = document.querySelector('[data-variant-offer-terms]');
 
         document.querySelectorAll('[data-product-variant-purchase]').forEach((button) => {
             button.dataset.productVariantId = isAvailable ? variantId : '';
@@ -1521,14 +1696,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (isAvailable) {
-            priceDisplay.textContent = money(selectedOption.dataset.price);
-            const compareAtPrice = Number(selectedOption.dataset.compareAtPrice || 0);
+            const promotionPrice = Number(selectedOption.dataset.promotionPrice || 0);
+            const basePrice = Number(selectedOption.dataset.price);
+            const hasPromotion = promotionPrice > 0 && promotionPrice < basePrice;
+            priceDisplay.textContent = money(hasPromotion ? promotionPrice : basePrice);
+            const compareAtPrice = hasPromotion ? basePrice : Number(selectedOption.dataset.compareAtPrice || 0);
             compareDisplay.textContent = compareAtPrice > 0 ? money(compareAtPrice) : '';
             compareDisplay.classList.toggle('hidden', compareAtPrice <= 0);
+            const promotionBadge = (selectedOption.dataset.promotionBadge || '').trim();
+            const showOffer = hasPromotion && Boolean(promotionBadge);
+            offerDisplay.textContent = showOffer ? promotionBadge : '';
+            offerDisplay.classList.toggle('inline-flex', showOffer);
+            offerDisplay.classList.toggle('hidden', !showOffer);
+
+            const termsText = hasPromotion
+                ? [
+                    selectedOption.dataset.promotionCode ? `Use code ${selectedOption.dataset.promotionCode}` : '',
+                    selectedOption.dataset.promotionCondition || '',
+                ].filter(Boolean).join(' · ')
+                : '';
+            offerTerms.textContent = termsText;
+            offerTerms.classList.toggle('hidden', !termsText);
             status.textContent = 'Available';
         } else {
             compareDisplay.textContent = '';
             compareDisplay.classList.add('hidden');
+            offerDisplay.textContent = '';
+            offerDisplay.classList.add('hidden');
+            offerTerms.textContent = '';
             status.textContent = variantId ? 'This option is unavailable.' : 'Select an available option to continue.';
         }
     });
@@ -1915,6 +2110,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    document.querySelectorAll('header details').forEach((dropdown) => {
+        let openedByHover = false;
+        let hoverCloseTimer = null;
+
+        dropdown.addEventListener('pointerenter', (event) => {
+            if (event.pointerType !== 'mouse' || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+                return;
+            }
+
+            window.clearTimeout(hoverCloseTimer);
+            hoverCloseTimer = null;
+            openedByHover = true;
+            dropdown.open = true;
+        });
+
+        dropdown.addEventListener('pointerleave', () => {
+            if (!openedByHover) {
+                return;
+            }
+
+            hoverCloseTimer = window.setTimeout(() => {
+                dropdown.open = false;
+                openedByHover = false;
+                hoverCloseTimer = null;
+            }, 350);
+        });
+
+        dropdown.querySelector(':scope > summary')?.addEventListener('click', (event) => {
+            if (openedByHover) {
+                event.preventDefault();
+            }
+        });
+    });
 
     const toggle = document.querySelector('[data-mobile-menu-toggle]');
     const menu = document.querySelector('[data-mobile-menu]');

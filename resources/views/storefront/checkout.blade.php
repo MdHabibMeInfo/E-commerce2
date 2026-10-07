@@ -96,15 +96,42 @@
                             </div>
                         </div>
 
+                        <section class="border-t border-[#e4e3d8] pt-6">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h2 class="text-lg font-bold text-[#145943]">Discount code</h2>
+                                    @if ($appliedCouponCode)
+                                        <p class="mt-1 text-sm text-green-700">{{ $appliedCouponCode }} is applied. {{ $freeDelivery ? 'Free delivery' : 'Discount: ৳'.number_format((float) $couponDiscount, 2) }}</p>
+                                    @elseif ($promotionLabel)
+                                        <p class="mt-1 text-sm text-green-700">{{ $promotionLabel }} applied. {{ $freeDelivery ? 'Free delivery' : 'Discount: ৳'.number_format((float) $couponDiscount, 2) }}</p>
+                                    @endif
+                                    @if (session('coupon_status'))
+                                        <p class="mt-1 text-sm text-green-700">{{ session('coupon_status') }}</p>
+                                    @endif
+                                    @if ($couponError)
+                                        <p class="mt-1 text-sm text-red-700">{{ $couponError }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <label class="sr-only" for="checkout-coupon-code">Coupon code</label>
+                                <input id="checkout-coupon-code" type="text" name="coupon_code" value="{{ old('coupon_code', $appliedCouponCode) }}" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="Enter coupon code" class="h-11 min-w-0 flex-1 rounded-xl border border-[#e3e0d6] bg-[#faf9f5] px-3 text-sm uppercase outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
+                                <button type="submit" formaction="{{ route('checkout.coupon.apply') }}" formmethod="POST" formnovalidate class="h-11 rounded-xl border border-[#145943] px-4 text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Apply code</button>
+                                @if ($appliedCouponCode)
+                                    <button type="submit" formaction="{{ route('checkout.coupon.remove') }}" formmethod="POST" formnovalidate class="h-11 rounded-xl border border-[#dfe3cf] px-4 text-sm font-bold text-[#66736d] hover:bg-[#f5f4ec]">Remove</button>
+                                @endif
+                            </div>
+                        </section>
+
                         <div>
-                            <h2 class="text-lg font-bold text-[#145943]">পেমেন্ট পদ্ধতি</h2>
+                            <h2 class="text-lg font-bold text-[#145943]">Payment Method</h2>
                             <div class="mt-4 space-y-3">
                                 <label class="flex cursor-pointer items-center justify-between rounded-2xl border border-[#dfe3cf] bg-[#f8f9f2] p-4">
                                     <div class="flex items-center gap-3">
                                         <input type="radio" name="payment_method" value="cod" {{ old('payment_method', 'cod') === 'cod' ? 'checked' : '' }} class="h-4 w-4 accent-[#145943]">
                                         <div>
-                                                <p class="font-semibold text-[#173b32]">ক্যাশ অন ডেলিভারি</p>
-                                                    <p class="text-xs text-[#738078]">পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।</p>
+                                            <p class="font-semibold text-[#173b32]">Cash on delivery</p>
+                                            <p class="text-xs text-[#738078]">Pay when you receive your order.</p>
                                         </div>
                                     </div>
                                     <span class="text-sm font-bold text-[#145943]">Default</span>
@@ -128,7 +155,7 @@
                                             <span>
                                                 <span class="block font-semibold text-[#173b32]">{{ $paymentAccount['label'] }}</span>
                                                 <span class="block text-xs text-[#738078]">
-                                                    {{ blank($paymentAccount['merchant_number']) ? 'এখনো চালু হয়নি' : 'নিরাপদে মোবাইল ব্যাংকিংয়ে পেমেন্ট করুন।' }}
+                                                    {{ blank($paymentAccount['merchant_number']) ? 'Not available yet' : 'Pay securely using mobile banking.' }}
                                                 </span>
                                             </span>
                                         </span>
@@ -140,48 +167,48 @@
                             </div>
                             <div data-payment-details hidden inert class="mt-4 space-y-4 rounded-2xl border border-[#dfe3cf] bg-[#f8f9f2] p-4 sm:p-5">
                                 <div>
-                                    <h3 class="font-bold text-[#173b32]">মোবাইল পেমেন্টের নির্দেশনা</h3>
-                                    <p class="mt-1 text-sm text-[#66736d]">নির্বাচিত মার্চেন্ট নম্বরে ঠিক ৳{{ number_format((float) $total, 2) }} পাঠান। এরপর নিচে লেনদেনের তথ্য দিন।</p>
+                                    <h3 class="font-bold text-[#173b32]">Mobile payment instructions</h3>
+                                    <p class="mt-1 text-sm text-[#66736d]">Send exactly ৳{{ number_format((float) $total, 2) }} to the selected merchant number, then enter the transaction details below.</p>
                                 </div>
                                 @foreach ($paymentAccounts as $provider => $paymentAccount)
                                     <div data-wallet-instructions="{{ $provider }}" hidden>
-                                        <span class="block text-sm font-medium text-[#4d5c56]">{{ $paymentAccount['label'] }} মার্চেন্ট নম্বর</span>
+                                        <span class="block text-sm font-medium text-[#4d5c56]">{{ $paymentAccount['label'] }} merchant number</span>
                                         <div class="mt-2 flex items-center justify-between gap-3 rounded-xl border border-[#e3e0d6] bg-white px-3 py-2.5">
                                             <span class="font-bold text-[#173b32]">{{ $paymentAccount['merchant_number'] }}</span>
-                                            <button type="button" data-copy-payment-number="{{ $paymentAccount['merchant_number'] }}" aria-label="{{ $paymentAccount['label'] }} মার্চেন্ট নম্বর কপি করুন" class="inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold text-white transition hover:opacity-90" style="background-color: {{ $paymentAccount['accent'] }}">
+                                            <button type="button" data-copy-payment-number="{{ $paymentAccount['merchant_number'] }}" aria-label="Copy {{ $paymentAccount['label'] }} merchant number" class="inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold text-white transition hover:opacity-90" style="background-color: {{ $paymentAccount['accent'] }}">
                                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" /></svg>
-                                                <span data-copy-label>কপি</span>
+                                                <span data-copy-label>Copy</span>
                                             </button>
                                         </div>
                                     </div>
                                 @endforeach
                                 <div class="grid gap-4 sm:grid-cols-2">
                                     <label class="block text-sm font-medium text-[#4d5c56]">
-                                        <span data-payment-field-label="account">আপনার {{ $paymentAccounts[old('payment_method')]['label'] ?? 'ওয়ালেট' }} অ্যাকাউন্ট নম্বর</span>
+                                        <span data-payment-field-label="account">Your {{ $paymentAccounts[old('payment_method')]['label'] ?? 'wallet' }} account number</span>
                                         <input type="tel" name="payment_sender_phone" value="{{ old('payment_sender_phone') }}" autocomplete="tel" maxlength="20" data-payment-required class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-white px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
                                     </label>
                                     <label class="block text-sm font-medium text-[#4d5c56]">
-                                        <span data-payment-field-label="transaction">আপনার {{ $paymentAccounts[old('payment_method')]['label'] ?? 'ওয়ালেট' }} ট্রানজ্যাকশন আইডি</span>
+                                        <span data-payment-field-label="transaction">Your {{ $paymentAccounts[old('payment_method')]['label'] ?? 'wallet' }} transaction ID</span>
                                         <input type="text" name="payment_transaction_id" value="{{ old('payment_transaction_id') }}" maxlength="100" autocomplete="off" data-payment-required class="mt-2 h-11 w-full rounded-xl border border-[#e3e0d6] bg-white px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
                                     </label>
                                 </div>
                                 <div>
-                                    <span class="block text-sm font-medium text-[#4d5c56]">পেমেন্ট রসিদের ছবি</span>
+                                    <span class="block text-sm font-medium text-[#4d5c56]">Payment receipt image</span>
                                     <div data-payment-proof-picker class="mt-2">
                                         <label for="payment-proof-input" class="relative flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-[#cfd8cc] bg-white px-4 py-5 text-center transition-colors hover:border-[#145943] hover:bg-[#f8f9f2] focus-within:ring-4 focus-within:ring-[#145943]/10">
                                             <svg class="h-7 w-7 text-[#145943]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3" /></svg>
-                                            <span class="text-sm font-bold text-[#173b32]">রসিদের ছবি নির্বাচন করুন</span>
-                                            <span class="text-xs text-[#738078]">JPG, PNG অথবা WebP · সর্বোচ্চ ৫ MB</span>
+                                            <span class="text-sm font-bold text-[#173b32]">Choose a receipt image</span>
+                                            <span class="text-xs text-[#738078]">JPG, PNG, or WebP · Max 5 MB</span>
                                             <input id="payment-proof-input" type="file" name="payment_proof" accept="image/jpeg,image/png,image/webp" data-payment-required data-payment-proof-input class="absolute inset-0 h-full w-full cursor-pointer opacity-0">
                                         </label>
                                     </div>
                                     <div data-payment-proof-preview hidden class="mt-3 flex items-center gap-3 rounded-xl border border-[#dfe3cf] bg-white p-3">
                                         <img data-payment-proof-image alt="" class="h-16 w-16 shrink-0 rounded-lg border border-[#e8e6db] object-cover">
                                         <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-semibold text-[#173b32]">রসিদ নির্বাচন করা হয়েছে</p>
+                                            <p class="text-sm font-semibold text-[#173b32]">Receipt selected</p>
                                             <p data-payment-proof-name class="truncate text-xs text-[#738078]"></p>
                                         </div>
-                                        <button type="button" data-payment-proof-remove class="shrink-0 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-50">ছবি বাতিল করুন</button>
+                                        <button type="button" data-payment-proof-remove class="shrink-0 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-50">Remove image</button>
                                     </div>
                                 </div>
                             </div>
@@ -250,8 +277,11 @@
 
                     <div class="mt-6 space-y-3 border-t border-[#e4e3d8] pt-5 text-sm text-[#4d5c56]">
                         <div class="flex items-center justify-between"><span>Subtotal</span><span>৳{{ number_format((float) $subtotal, 2) }}</span></div>
-                        <div class="flex items-center justify-between gap-4"><span data-delivery-fee-label>ডেলিভারি চার্জ (ঢাকার বাইরে)</span><span data-delivery-fee-amount data-inside-fee="{{ number_format((float) $deliveryFeeInsideDhaka, 2, '.', '') }}" data-outside-fee="{{ number_format((float) $deliveryFeeOutsideDhaka, 2, '.', '') }}">৳{{ number_format((float) $deliveryFee, 2) }}</span></div>
-                        <div class="flex items-center justify-between"><span>Discount</span><span>-৳{{ number_format((float) $discount, 2) }}</span></div>
+                        <div class="flex items-center justify-between gap-4"><span data-delivery-fee-label>Delivery charge</span><span data-delivery-fee-amount data-inside-fee="{{ number_format((float) $deliveryFeeInsideDhaka, 2, '.', '') }}" data-outside-fee="{{ number_format((float) $deliveryFeeOutsideDhaka, 2, '.', '') }}">৳{{ number_format((float) $deliveryFee, 2) }}</span></div>
+                        @if ($freeDelivery)
+                            <div class="flex items-center justify-between gap-4"><span>Delivery offer</span><span data-delivery-discount-amount data-inside-discount="{{ number_format((float) $deliveryDiscountInsideDhaka, 2, '.', '') }}" data-outside-discount="{{ number_format((float) $deliveryDiscountOutsideDhaka, 2, '.', '') }}">-৳{{ number_format((float) $deliveryDiscount, 2) }}</span></div>
+                        @endif
+                        <div class="flex items-center justify-between"><span>Discount{{ $promotionLabel ? ' ('.$promotionLabel.')' : '' }}</span><span>-৳{{ number_format((float) $discount, 2) }}</span></div>
                     </div>
 
                     <div class="mt-5 flex items-center justify-between border-t border-[#e4e3d8] pt-5">

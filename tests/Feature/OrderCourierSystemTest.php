@@ -197,6 +197,10 @@ it('keeps Pathao unavailable until all merchant booking settings are configured'
     config()->set('couriers.couriers.pathao.enabled', true);
     config()->set('couriers.couriers.pathao.api_url', 'https://api-hermes.pathao.com');
     config()->set('couriers.couriers.pathao.client_id', 'configured-client-id');
+    config()->set('couriers.couriers.pathao.client_secret', null);
+    config()->set('couriers.couriers.pathao.username', null);
+    config()->set('couriers.couriers.pathao.password', null);
+    config()->set('couriers.couriers.pathao.store_id', null);
 
     $availableCodes = array_map(
         fn ($courier) => $courier->code(),
@@ -842,6 +846,9 @@ it('shows the Steadfast delivery ratio on the order page before a shipment is ac
 
 it('shows provider-specific history unavailability without making unsupported API calls', function (string $courierCode, string $expectedMessage) {
     Http::preventStrayRequests();
+    config()->set('couriers.couriers.steadfast.enabled', false);
+    config()->set('couriers.couriers.steadfast.api_key', null);
+    config()->set('couriers.couriers.steadfast.secret_key', null);
     $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
     $order = Order::factory()->create(['phone' => '01710000014']);
 
@@ -865,6 +872,20 @@ it('shows provider-specific history unavailability without making unsupported AP
     'pathao' => ['pathao', 'Pathao API'],
     'steadfast' => ['steadfast', 'not active or is missing valid merchant API credentials'],
 ]);
+
+it('renders manual Pathao and REDX fraud-check links with the order phone', function () {
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $order = Order::factory()->create(['phone' => '01710000014']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.orders.show', $order))
+        ->assertSee('Copy number & open Pathao')
+        ->assertSee('Copy number & open REDX')
+        ->assertSee('href="https://merchant.pathao.com/"', false)
+        ->assertSee('href="https://redx.com.bd/login/"', false)
+        ->assertSee('data-courier-name="Pathao" data-customer-phone="01710000014"', false)
+        ->assertSee('data-courier-name="REDX" data-customer-phone="01710000014"', false);
+});
 
 it('returns a safe customer-history error when a supported provider call throws', function () {
     Log::spy();

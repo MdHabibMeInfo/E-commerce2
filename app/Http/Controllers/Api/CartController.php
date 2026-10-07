@@ -7,20 +7,21 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\CouponService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, CouponService $promotions)
     {
         $cart = $this->resolveCart($request);
 
-        return response()->json($this->payload($cart));
+        return response()->json($this->payload($cart, $promotions, $request));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CouponService $promotions)
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
@@ -66,10 +67,10 @@ class CartController extends Controller
             }
         });
 
-        return response()->json($this->payload($cart));
+        return response()->json($this->payload($cart, $promotions, $request));
     }
 
-    public function update(Request $request, CartItem $cartItem)
+    public function update(Request $request, CartItem $cartItem, CouponService $promotions)
     {
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:0'],
@@ -82,7 +83,7 @@ class CartController extends Controller
         if ($validated['quantity'] <= 0) {
             $cartItem->delete();
 
-            return response()->json($this->payload($cartItem->cart));
+            return response()->json($this->payload($cartItem->cart, $promotions, $request));
         }
 
         DB::transaction(function () use ($cartItem, $validated): void {
@@ -97,10 +98,10 @@ class CartController extends Controller
             ]);
         });
 
-        return response()->json($this->payload($cart));
+        return response()->json($this->payload($cart, $promotions, $request));
     }
 
-    public function destroy(Request $request, CartItem $cartItem)
+    public function destroy(Request $request, CartItem $cartItem, CouponService $promotions)
     {
         $cart = $this->resolveCart($request);
 
@@ -109,7 +110,7 @@ class CartController extends Controller
         $cart = $cartItem->cart;
         $cartItem->delete();
 
-        return response()->json($this->payload($cart));
+        return response()->json($this->payload($cart, $promotions, $request));
     }
 
     protected function resolveCart(Request $request): Cart
@@ -214,15 +215,49 @@ class CartController extends Controller
         ];
     }
 
-    protected function payload(?Cart $cart): array
+    protected function payload(?Cart $cart, CouponService $promotions, Request $request): array
     {
-        $items = $cart?->items()->with([
+        $cartItems = $cart?->items()->with([
             'product.primaryImage',
             'product.images',
             'productVariant.attributeValues.productAttribute',
-        ])->get()->map(function (CartItem $item) {
+        ])->get() ?? collect();
+        $promotionLines = $cartItems->map(function (CartItem $item): array {
+            $price = (float) ($item->productVariant?->price ?? $item->product?->price ?? $item->price);
+
+            return [
+                'cart_item_id' => (int) $item->id,
+                'product_id' => (int) $item->product_id,
+                'category_id' => $item->product?->category_id ? (int) $item->product->category_id : null,
+                'product_variant_id' => $item->product_variant_id ? (int) $item->product_variant_id : null,
+                'amount' => $price * (int) $item->quantity,
+            ];
+        })->all();
+        $subtotal = (float) collect($promotionLines)->sum('amount');
+        $couponCode = (string) $request->session()->get('checkout.coupon_code', '');
+        $promotion = null;
+
+        try {
+            if ($couponCode !== '') {
+                $customerKey = (string) $request->session()->get('checkout.coupon_customer_key', '');
+                if ($customerKey !== '') {
+                    $promotion = $promotions->calculateForCart($couponCode, $promotionLines, $subtotal, 0, $customerKey);
+                }
+            } else {
+                $customer = $request->user();
+                $customerKey = $customer?->phone
+                    ? $promotions->customerKey($customer, $customer->phone)
+                    : null;
+                $promotion = $promotions->calculateAutomaticForCart($promotionLines, $subtotal, 0, $customerKey);
+            }
+        } catch (ValidationException) {
+            $promotion = null;
+        }
+
+        $items = $cartItems->map(function (CartItem $item) use ($promotion) {
             $product = $item->product;
             $primaryImage = $product?->primaryImage ?? $product?->images?->firstWhere('is_primary', true) ?? $product?->images?->first();
+            $promotionDiscount = (float) ($promotion['line_discounts'][$item->id] ?? 0);
 
             return [
                 'id' => $item->id,
@@ -230,13 +265,15 @@ class CartController extends Controller
                 'product_variant_id' => $item->product_variant_id,
                 'variant_name' => $item->variant_name,
                 'name' => $item->name,
-                'price' => (float) $item->price,
+                'price' => (float) ($item->productVariant?->price ?? $product?->price ?? $item->price),
+                'promotion_discount' => $promotionDiscount,
+                'promotion_name' => $promotionDiscount > 0 ? ($promotion['coupon']->code ?: 'Automatic offer') : null,
                 'quantity' => (int) $item->quantity,
                 'qty' => (int) $item->quantity,
                 'subtotal' => (float) $item->price * (int) $item->quantity,
                 'image_url' => $primaryImage ? '/storage/'.ltrim($primaryImage->image_path, '/') : null,
             ];
-        })->values()->all() ?? [];
+        })->values()->all();
 
         $quantity = array_sum(array_map(fn ($item) => (int) ($item['quantity'] ?? 0), $items));
         $total = array_sum(array_map(fn ($item) => (float) ($item['subtotal'] ?? 0), $items));

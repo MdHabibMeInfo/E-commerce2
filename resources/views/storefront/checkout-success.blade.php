@@ -11,6 +11,12 @@
         {{ route('home') }}
     </x-slot:canonicalUrl>
 
+    @if (is_array(session('metaPurchaseEvent')))
+        <script>
+            window.metaPurchaseEvent = {{ \Illuminate\Support\Js::from(session('metaPurchaseEvent')) }};
+        </script>
+    @endif
+
     <x-slot:head>
         <meta name="robots" content="noindex, nofollow">
     </x-slot:head>

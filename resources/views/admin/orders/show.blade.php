@@ -26,6 +26,8 @@
                     <div><p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Order status</p><p class="mt-2 text-sm text-[#4d5c56]">{{ $order->status }}</p></div>
                     <div><p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Payment status</p><p class="mt-2 text-sm text-[#4d5c56]">{{ $order->payment_status ?? 'pending' }}</p></div>
                     <div><p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Payment method</p><p class="mt-2 text-sm text-[#4d5c56]">{{ strtoupper($order->payment_method ?? 'cod') }}</p></div>
+                    <div><p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Promotion</p><p class="mt-2 text-sm text-[#4d5c56]">{{ $order->coupon_code ?: ($order->coupon_id ? 'Automatic offer' : 'None') }}</p></div>
+                    <div><p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Delivery savings</p><p class="mt-2 text-sm text-[#4d5c56]">৳{{ number_format((float) $order->delivery_discount, 2) }}</p></div>
                     <div><p class="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a48335]">Grand total</p><p class="mt-2 text-sm font-bold text-[#145943]">৳{{ number_format((float) $order->total, 2) }}</p></div>
                 </div>
             </div>
@@ -159,6 +161,15 @@
                     <input type="hidden" name="courier_code" value="steadfast">
                     <button type="submit" class="w-full rounded-xl border border-[#145943] px-4 py-3 text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Check Steadfast customer history</button>
                 </form>
+
+                @if (filled($order->phone))
+                    <p class="mt-4 text-xs leading-5 text-[#738078]">For Pathao and REDX, the customer number will be copied. Paste it into the courier merchant portal's manual fraud-check search.</p>
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                        <a href="https://merchant.pathao.com/" target="_blank" rel="noopener noreferrer" data-manual-courier-lookup data-courier-name="Pathao" data-customer-phone="{{ $order->phone }}" class="flex items-center justify-center rounded-xl border border-[#145943] px-3 py-3 text-center text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Copy number &amp; open Pathao</a>
+                        <a href="https://redx.com.bd/login/" target="_blank" rel="noopener noreferrer" data-manual-courier-lookup data-courier-name="REDX" data-customer-phone="{{ $order->phone }}" class="flex items-center justify-center rounded-xl border border-[#145943] px-3 py-3 text-center text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Copy number &amp; open REDX</a>
+                    </div>
+                    <p data-manual-lookup-status class="mt-2 min-h-5 text-xs text-[#59615e]" role="status" aria-live="polite"></p>
+                @endif
 
                 @if (is_array(session('courierHistory')))
                     @php($history = session('courierHistory'))

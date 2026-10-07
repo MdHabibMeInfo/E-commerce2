@@ -81,9 +81,7 @@ class AdminSessionController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        $requiresTwoFactor = $canUseAdmin
-            ? $settings->boolean('security_admin_2fa_required')
-            : $user->two_factor_confirmed_at !== null;
+        $requiresTwoFactor = $canUseAdmin || $user->two_factor_confirmed_at !== null;
 
         if ($requiresTwoFactor) {
             $request->session()->forget('security.two_factor_verified_user');

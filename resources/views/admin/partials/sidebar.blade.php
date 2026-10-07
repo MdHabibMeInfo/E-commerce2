@@ -113,10 +113,18 @@
             </details>
         @endcanany
 
-        <a href="#" class="flex items-center justify-between rounded-xl px-3 py-2.5 text-[#4d5c56] hover:bg-[#f5f4ec]">
-            <span>Customers</span>
-            <span class="text-xs">›</span>
-        </a>
+        @can('customers.view')
+            <a href="{{ route('admin.customers.index') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ request()->routeIs('admin.customers.*') ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
+                <span>Customers</span>
+                <span class="text-xs">›</span>
+            </a>
+        @endcan
+        @can('coupons.view')
+            <a href="{{ route('admin.coupons.index') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ request()->routeIs('admin.coupons.*') ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
+                <span>Promotions</span>
+                <span class="text-xs">›</span>
+            </a>
+        @endcan
         @canany(['roles.view', 'roles.create', 'roles.update'])
             <a href="{{ route('admin.roles.index') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ $isRolesMenuOpen ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
                 <span>Roles & Permissions</span>

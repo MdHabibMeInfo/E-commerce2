@@ -264,11 +264,7 @@
 
                 <fieldset class="space-y-4 border-t border-[#eef0ea] pt-5">
                     <legend class="text-sm font-bold text-[#173b32]">Authentication policy</legend>
-                    <label class="flex min-h-11 items-center gap-3 text-sm font-semibold text-[#4d5c56]">
-                        <input type="hidden" name="security_admin_2fa_required" value="0">
-                        <input type="checkbox" name="security_admin_2fa_required" value="1" {{ $sensitiveSettings['security_admin_2fa_required'] ? 'checked' : '' }} class="h-4 w-4 accent-[#145943]">
-                        Require authenticator verification for admin access
-                    </label>
+                    <p class="text-sm font-semibold text-[#4d5c56]">Authenticator verification is always required for management accounts.</p>
                     <div class="grid gap-4 sm:grid-cols-3">
                         <label class="block text-sm font-semibold text-[#4d5c56]">
                             Failed login attempts

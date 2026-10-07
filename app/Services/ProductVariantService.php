@@ -236,7 +236,7 @@ class ProductVariantService
 
         if ($duplicateSku) {
             throw ValidationException::withMessages([
-                'sku' => ['The SKU has already been taken.'],
+                'sku' => ['The sku has already been taken.'],
             ]);
         }
 
@@ -406,13 +406,13 @@ class ProductVariantService
     }
 
     /**
-     * Delete a product variant.
+     * Permanently delete a product variant.
      */
     public function deleteVariant(
         ProductVariant $variant
     ): void {
         DB::transaction(function () use ($variant) {
-            $variant->delete();
+            $variant->forceDelete();
         });
     }
 

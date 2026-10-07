@@ -62,7 +62,6 @@ class AdminSettingsController extends Controller
                     'delivery_fee_outside_dhaka',
                     $outsideDhakaDeliveryFeeDefault,
                 ),
-                'security_admin_2fa_required' => $settings->boolean('security_admin_2fa_required'),
                 'security_login_attempts' => $settings->integer('security_login_attempts'),
                 'security_login_lockout_minutes' => $settings->integer('security_login_lockout_minutes'),
                 'security_password_min_length' => $settings->integer('security_password_min_length'),
@@ -251,12 +250,10 @@ class AdminSettingsController extends Controller
             'about_us_article' => ['nullable', 'string', 'max:10000'],
             'whatsapp_number' => ['nullable', 'string', 'max:30'],
             'whatsapp_url' => ['nullable', 'url:http,https', 'max:2048'],
-            'security_admin_2fa_required' => ['required', 'boolean'],
             'security_login_attempts' => ['required', 'integer', 'between:3,10'],
             'security_login_lockout_minutes' => ['required', 'integer', 'between:1,60'],
             'security_password_min_length' => ['required', 'integer', 'between:12,32'],
         ]);
-        $validated['security_admin_2fa_required'] = $validated['security_admin_2fa_required'] ? '1' : '0';
         $values = array_map(static fn (mixed $value): ?string => $value === null ? null : (string) $value, $validated);
 
         $settings->update($values, (int) $request->user()->getAuthIdentifier());

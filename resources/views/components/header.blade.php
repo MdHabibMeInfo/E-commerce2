@@ -28,7 +28,7 @@
                             {{ strtoupper(substr(auth()->user()?->name ?? 'SO', 0, 1)) }}
                         @endif
                     </summary>
-                    <div class="absolute right-0 top-full z-[70] mt-2 w-48 overflow-hidden rounded-[4px] border border-[#e7e7e1] bg-white py-1 shadow-lg">
+                    <div class="absolute right-0 top-full z-[70] mt-1 w-48 overflow-hidden rounded-[4px] border border-[#e7e7e1] bg-white py-1 shadow-lg">
                         <a href="{{ route('admin.profile') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
                             <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.3" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg>
                             <span>Profile</span>
@@ -49,10 +49,16 @@
 @php
     $profileRoute = auth()->user()?->can('access-admin') ? route('admin.profile') : route('account.profile');
     $whatsappNumber = $siteBranding['whatsapp_number'] ?? null;
+    $whatsappDigits = preg_replace('/\D+/', '', (string) $whatsappNumber) ?? '';
+
+    if (str_starts_with($whatsappDigits, '0')) {
+        $whatsappDigits = '880'.substr($whatsappDigits, 1);
+    }
+
     $whatsappUrl = filled($siteBranding['whatsapp_url'] ?? null)
         ? $siteBranding['whatsapp_url']
-        : (filled($whatsappNumber) ? 'https://wa.me/'.preg_replace('/\D+/', '', $whatsappNumber) : null);
-    $callUrl = filled($whatsappNumber) ? 'tel:'.preg_replace('/\D+/', '', $whatsappNumber) : null;
+        : (filled($whatsappDigits) ? 'https://wa.me/'.$whatsappDigits : null);
+    $callUrl = filled($whatsappDigits) ? 'tel:+'.$whatsappDigits : null;
 @endphp
 <header class="sticky top-0 z-50 lg:relative">
     {{-- Announcement bar --}}
@@ -152,7 +158,7 @@
                             @endif
                             <span class="hidden text-[10px] leading-3 sm:block">Profile</span>
                         </summary>
-                        <div class="absolute right-0 top-full z-[70] mt-2 w-48 overflow-hidden rounded-[4px] border border-[#e7e7e1] bg-white py-1 shadow-lg">
+                        <div class="absolute right-0 top-full z-[70] mt-1 w-48 overflow-hidden rounded-[4px] border border-[#e7e7e1] bg-white py-1 shadow-lg">
                             <a href="{{ $profileRoute }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
                                 <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.3" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg>
                                 <span>Profile</span>
@@ -184,7 +190,7 @@
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
                         <span class="hidden text-[10px] leading-3 sm:block">More</span>
                     </summary>
-                    <div class="absolute right-0 top-full z-[70] mt-2 w-56 overflow-hidden rounded-xl border border-[#e7e7e1] bg-white py-1 shadow-lg">
+                    <div class="absolute right-0 top-full z-[70] mt-1 w-56 overflow-hidden rounded-xl border border-[#e7e7e1] bg-white py-1 shadow-lg">
                         <a href="{{ route('shop') }}" @if (request()->routeIs('shop')) aria-current="page" @endif class="hidden max-[374px]:flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
                             <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 10h18l-1.5-6h-15L3 10Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></svg>
                             <span>Shop</span>
@@ -200,13 +206,13 @@
                         @if (filled($callUrl))
                             <a href="{{ $callUrl }}" aria-label="Call Us" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
                                 <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.2 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.96.35 1.9.69 2.8a2 2 0 0 1-.45 2.11L8.08 9.92a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.84.57 2.8.69A2 2 0 0 1 22 16.92Z" /></svg>
-                                <span>Call Us</span>
+                                <span>Call Us · {{ $whatsappNumber }}</span>
                             </a>
                         @endif
                         @if (filled($whatsappUrl))
                             <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
                                 <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#25D366" /><path fill="#fff" d="M17.1 14.2c-.28-.14-1.65-.81-1.9-.9-.26-.1-.44-.14-.63.14-.19.28-.72.9-.88 1.08-.16.19-.32.21-.6.07-.28-.14-1.18-.44-2.25-1.39-.83-.74-1.39-1.65-1.55-1.93-.16-.28-.02-.43.12-.57.13-.12.28-.32.42-.48.14-.16.19-.28.28-.47.1-.19.05-.35-.02-.49-.07-.14-.63-1.52-.86-2.08-.22-.54-.45-.47-.63-.48h-.54c-.19 0-.49.07-.75.35-.26.28-.98.95-.98 2.31s1 2.68 1.14 2.87c.14.19 1.97 3.01 4.78 4.22.67.29 1.2.46 1.61.59.68.22 1.3.19 1.79.12.55-.08 1.65-.67 1.89-1.32.23-.65.23-1.2.16-1.32-.07-.12-.26-.19-.54-.33ZM12 2.5a9.47 9.47 0 0 0-8.12 14.34L2.5 21.5l4.78-1.25A9.5 9.5 0 1 0 12 2.5Zm0 17.2a7.67 7.67 0 0 1-3.91-1.07l-.28-.17-2.84.74.76-2.77-.18-.29A7.7 7.7 0 1 1 12 19.7Z" /></svg>
-                                <span>WhatsApp{{ filled($whatsappNumber) ? ' · '.$whatsappNumber : '' }}</span>
+                                <span>WhatsApp</span>
                             </a>
                         @endif
                     </div>

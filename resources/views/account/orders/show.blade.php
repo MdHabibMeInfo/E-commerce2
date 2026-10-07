@@ -103,7 +103,13 @@
                     <h2 class="text-lg font-extrabold text-[#145943]">Price Summary</h2>
                     <div class="mt-5 space-y-3 text-sm">
                         <div class="flex justify-between"><span class="text-[#4d5c56]">Subtotal</span><span class="font-semibold text-[#173b32]">৳{{ number_format((float) $order->subtotal, 2) }}</span></div>
+                        @if ($order->coupon)
+                            <div class="flex justify-between"><span class="text-[#4d5c56]">Offer</span><span class="font-semibold text-[#173b32]">{{ $order->coupon->code ?: 'Automatic offer' }}</span></div>
+                        @endif
                         <div class="flex justify-between"><span class="text-[#4d5c56]">Discount</span><span class="font-semibold text-[#173b32]">৳{{ number_format((float) $order->discount, 2) }}</span></div>
+                        @if ((float) $order->delivery_discount > 0)
+                            <div class="flex justify-between"><span class="text-[#4d5c56]">Delivery offer</span><span class="font-semibold text-[#173b32]">-৳{{ number_format((float) $order->delivery_discount, 2) }}</span></div>
+                        @endif
                         <div class="flex justify-between"><span class="text-[#4d5c56]">Shipping</span><span class="font-semibold text-[#173b32]">৳{{ number_format((float) $order->delivery_fee, 2) }}</span></div>
                         <div class="flex justify-between border-t border-[#eef0ea] pt-3"><span class="font-bold text-[#173b32]">Grand total</span><span class="text-lg font-extrabold text-[#145943]">৳{{ number_format((float) $order->total, 2) }}</span></div>
                     </div>

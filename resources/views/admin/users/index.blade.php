@@ -36,15 +36,7 @@
                         Email
                         <input type="email" name="email" value="{{ old('email') }}" required maxlength="255" class="mt-2 h-11 w-full rounded-lg border border-[#d9dfd2] bg-[#fafaf5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
                     </label>
-                    <label class="block text-sm font-semibold text-[#4d5c56]">
-                        Temporary password
-                        <input type="password" name="password" required minlength="12" autocomplete="new-password" class="mt-2 h-11 w-full rounded-lg border border-[#d9dfd2] bg-[#fafaf5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
-                        <span class="mt-1 block text-xs font-normal text-[#738078]">12+ characters with uppercase, lowercase, a number and a symbol.</span>
-                    </label>
-                    <label class="block text-sm font-semibold text-[#4d5c56]">
-                        Confirm password
-                        <input type="password" name="password_confirmation" required minlength="12" autocomplete="new-password" class="mt-2 h-11 w-full rounded-lg border border-[#d9dfd2] bg-[#fafaf5] px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
-                    </label>
+                    <p class="text-sm text-[#66736d]">A one-time password setup link and email verification link will be sent to this address. Authenticator enrollment is required before management access.</p>
                     <label class="block text-sm font-semibold text-[#4d5c56]">
                         Roles
                         <select name="roles[]" multiple required class="mt-2 min-h-28 w-full rounded-lg border border-[#d9dfd2] bg-[#fafaf5] px-3 py-2 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">

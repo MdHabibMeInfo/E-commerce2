@@ -4,7 +4,9 @@ use App\Models\Order;
 use App\Models\User;
 use App\Notifications\LoginNotification;
 use App\Notifications\PasswordResetNotification;
+use App\Notifications\SecurityAlertNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -148,7 +150,11 @@ it('returns the same password reset response for an unknown email', function () 
 });
 
 it('resets the password once and invalidates database sessions', function () {
-    $user = User::factory()->create(['email' => 'reset-user@example.com']);
+    $user = User::factory()->create([
+        'email' => 'reset-user@example.com',
+        'account_type' => 'admin',
+        'password_change_required' => true,
+    ]);
     $token = Password::broker()->createToken($user);
     DB::table('sessions')->insert([
         'id' => 'other-device-session',
@@ -173,6 +179,7 @@ it('resets the password once and invalidates database sessions', function () {
     ])->assertRedirect(route('login'));
 
     expect(Hash::check('NewSecurePassword456!', $user->fresh()->password))->toBeTrue();
+    expect($user->fresh()->password_change_required)->toBeFalse();
     $this->assertDatabaseMissing('sessions', ['id' => 'other-device-session']);
 
     $this->post(route('password.update'), [
@@ -374,8 +381,6 @@ it('lets the system owner create an admin account with an assigned role', functi
         ->post(route('admin.users.store'), [
             'name' => 'Order Staff',
             'email' => 'order-staff@example.com',
-            'password' => 'StrongPassword123!',
-            'password_confirmation' => 'StrongPassword123!',
             'roles' => [$role->id],
         ])
         ->assertRedirect(route('admin.users.index'));
@@ -392,6 +397,8 @@ it('lets the system owner create an admin account with an assigned role', functi
         'model_type' => User::class,
     ]);
     Notification::assertSentTo($user, VerifyEmail::class);
+    Notification::assertSentTo($user, PasswordResetNotification::class);
+    Notification::assertSentTo($user, SecurityAlertNotification::class);
 
     $this->get(route('admin.users.index'))
         ->assertOk()
@@ -400,6 +407,7 @@ it('lets the system owner create an admin account with an assigned role', functi
     $this->actingAs(completeManagementTwoFactorForTest($owner))
         ->patch(route('admin.users.status.update', $user), ['status' => 'suspended'])
         ->assertRedirect(route('admin.users.index'));
+    Notification::assertSentTo($user, SecurityAlertNotification::class);
 
     $user->refresh()->markEmailAsVerified();
     $this->actingAs($user)
@@ -435,8 +443,100 @@ it('creates the first system owner through the protected console prompt', functi
     ]);
 
     $user = User::query()->where('email', 'first-admin@example.com')->firstOrFail();
-    Notification::assertNothingSent();
+    Notification::assertSentTo($user, VerifyEmail::class);
     expect($user->getDirectPermissions())->toHaveCount(Permission::query()->count());
+});
+
+it('requires the system owner for staff and role administration', function () {
+    $staffRole = Role::create([
+        'name' => 'User Administrator',
+        'guard_name' => 'web',
+    ]);
+    $staffRole->givePermissionTo([
+        Permission::findOrCreate('users.view', 'web'),
+        Permission::findOrCreate('users.create', 'web'),
+        Permission::findOrCreate('roles.view', 'web'),
+        Permission::findOrCreate('roles.create', 'web'),
+    ]);
+    $staff = User::factory()->create();
+    $staff->forceFill(['account_type' => 'admin'])->save();
+    $staff->assignRole($staffRole);
+
+    $this->actingAs(completeManagementTwoFactorForTest($staff))
+        ->get(route('admin.users.index'))
+        ->assertForbidden();
+    $this->get(route('admin.roles.index'))->assertForbidden();
+    $this->post(route('admin.users.store'), [])->assertForbidden();
+});
+
+it('does not allow owner-only permissions to be assigned to staff roles', function () {
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $role = Role::create([
+        'name' => 'Support Lead',
+        'guard_name' => 'web',
+    ]);
+    $ownerOnlyPermission = Permission::findOrCreate('users.create', 'web');
+
+    $this->actingAs($owner)
+        ->put(route('admin.roles.permissions.update', $role), [
+            'permissions' => [$ownerOnlyPermission->id],
+        ])
+        ->assertSessionHasErrors('permissions.0');
+
+    $this->assertDatabaseMissing('role_has_permissions', [
+        'role_id' => $role->id,
+        'permission_id' => $ownerOnlyPermission->id,
+    ]);
+});
+
+it('revokes staff sessions and notifies both parties when roles change', function () {
+    config(['session.driver' => 'database']);
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $previousRole = Role::create(['name' => 'Old Fulfillment', 'guard_name' => 'web']);
+    $newRole = Role::create(['name' => 'New Fulfillment', 'guard_name' => 'web']);
+    $staff = User::factory()->create(['account_type' => 'admin']);
+    $staff->assignRole($previousRole);
+    DB::table('sessions')->insert([
+        'id' => 'staff-role-change-session',
+        'user_id' => $staff->id,
+        'ip_address' => '192.0.2.21',
+        'user_agent' => 'test-agent',
+        'payload' => '',
+        'last_activity' => time(),
+    ]);
+    Notification::fake();
+
+    $this->actingAs($owner)
+        ->put(route('admin.users.roles.update', $staff), ['roles' => [$newRole->id]])
+        ->assertRedirect(route('admin.users.index'));
+
+    $this->assertDatabaseMissing('sessions', ['id' => 'staff-role-change-session']);
+    Notification::assertSentTo($staff, SecurityAlertNotification::class);
+    Notification::assertSentTo($owner, SecurityAlertNotification::class);
+});
+
+it('revokes sessions when the owner deactivates a staff role', function () {
+    config(['session.driver' => 'database']);
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $role = Role::create(['name' => 'Temporary Team', 'guard_name' => 'web']);
+    $staff = User::factory()->create(['account_type' => 'admin']);
+    $staff->assignRole($role);
+    DB::table('sessions')->insert([
+        'id' => 'staff-role-deactivation-session',
+        'user_id' => $staff->id,
+        'ip_address' => '192.0.2.22',
+        'user_agent' => 'test-agent',
+        'payload' => '',
+        'last_activity' => time(),
+    ]);
+    Notification::fake();
+
+    $this->actingAs($owner)
+        ->patch(route('admin.roles.status.update', $role), ['is_active' => false])
+        ->assertRedirect(route('admin.roles.index'));
+
+    $this->assertDatabaseMissing('sessions', ['id' => 'staff-role-deactivation-session']);
+    Notification::assertSentTo($staff, SecurityAlertNotification::class);
 });
 
 it('does not create a second system owner', function () {
@@ -447,6 +547,16 @@ it('does not create a second system owner', function () {
         ->assertExitCode(1);
 
     $this->assertDatabaseCount('users', 1);
+});
+
+it('enforces the single system owner at the database level', function () {
+    createSystemOwnerUser();
+    $secondUser = User::factory()->create();
+
+    expect(fn () => $secondUser->forceFill([
+        'account_type' => 'admin',
+        'is_system_owner' => true,
+    ])->save())->toThrow(QueryException::class);
 });
 
 it('seeds permissions without creating users or predefined roles', function () {

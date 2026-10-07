@@ -31,7 +31,10 @@ class Order extends Model
         'notes',
         'subtotal',
         'delivery_fee',
+        'delivery_discount',
         'discount',
+        'coupon_id',
+        'coupon_code',
         'total',
         'status',
         'payment_status',
@@ -46,6 +49,7 @@ class Order extends Model
         return [
             'subtotal' => 'decimal:2',
             'delivery_fee' => 'decimal:2',
+            'delivery_discount' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
             'payment_amount' => 'decimal:2',
@@ -71,6 +75,11 @@ class Order extends Model
     public function paymentReviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'payment_reviewed_by');
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function items(): HasMany

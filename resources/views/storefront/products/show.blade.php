@@ -158,12 +158,24 @@
                         <div class="mt-6 flex flex-wrap items-center gap-3">
                             <span data-variant-price-display class="text-2xl font-extrabold text-[#145943]">
                                 @if ($startingVariant)
-                                    From ৳{{ number_format((float) $startingVariant->price, 2) }}
+                                    From ৳{{ number_format((float) ($startingVariant->catalog_offer['price'] ?? $startingVariant->price), 2) }}
                                 @else
                                     No variants available
                                 @endif
                             </span>
-                            <span data-variant-compare-display class="hidden text-sm text-[#9aa19c] line-through"></span>
+                            <span data-variant-compare-display class="{{ $startingVariant?->catalog_offer ? 'text-sm text-[#9aa19c] line-through' : 'hidden text-sm text-[#9aa19c] line-through' }}">
+                                {{ $startingVariant?->catalog_offer ? '৳'.number_format((float) $startingVariant->price, 2) : '' }}
+                            </span>
+                            @php
+                                $startingBadge = trim($startingVariant?->catalog_offer['badge'] ?? '');
+                            @endphp
+                            <span data-variant-offer-display class="{{ $startingVariant?->catalog_offer && $startingBadge !== '' ? 'inline-flex' : 'hidden' }} rounded-full bg-green-100 px-2.5 py-1 text-xs font-extrabold text-green-800 ring-1 ring-inset ring-green-200">
+                                {{ $startingBadge }}
+                            </span>
+                            <span data-variant-offer-terms class="text-xs text-[#66736d]">
+                                @if (data_get($startingVariant?->catalog_offer, 'code')) Use code {{ data_get($startingVariant->catalog_offer, 'code') }} @endif
+                                @if (data_get($startingVariant?->catalog_offer, 'condition')) · {{ data_get($startingVariant->catalog_offer, 'condition') }} @endif
+                            </span>
                         </div>
 
                         <label for="product-variant-select" class="mt-5 block text-sm font-bold text-[#173b32]">Choose a variant</label>
@@ -179,11 +191,15 @@
                                     value="{{ $variant->id }}"
                                     data-price="{{ $variant->price }}"
                                     data-compare-at-price="{{ $variant->compare_at_price }}"
+                                    data-promotion-price="{{ $variant->catalog_offer['price'] ?? '' }}"
+                                    data-promotion-badge="{{ $variant->catalog_offer['badge'] ?? '' }}"
+                                    data-promotion-code="{{ $variant->catalog_offer['code'] ?? '' }}"
+                                    data-promotion-condition="{{ $variant->catalog_offer['condition'] ?? '' }}"
                                     data-unavailable="{{ $variant->is_out_of_stock ? 'true' : 'false' }}"
                                     @selected((string) $variant->id === $selectedVariantId)
                                     @disabled($variant->is_out_of_stock || $product->is_out_of_stock)
                                 >
-                                    {{ $variant->displayName() }} · ৳{{ number_format((float) $variant->price, 2) }}{{ $variant->is_out_of_stock ? ' · Out of stock' : '' }}
+                                    {{ $variant->displayName() }} · ৳{{ number_format((float) ($variant->catalog_offer['price'] ?? $variant->price), 2) }}{{ $variant->catalog_offer ? ' · '.$variant->catalog_offer['badge'] : '' }}{{ $variant->is_out_of_stock ? ' · Out of stock' : '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -197,16 +213,30 @@
                     @elseif ($product->price !== null || $product->compare_at_price !== null)
                         <div class="mt-6 flex flex-wrap items-center gap-3">
                             @if ($product->price !== null)
-                                <span class="text-2xl font-extrabold text-[#145943]">৳{{ number_format((float) $product->price, 2) }}</span>
+                                <span class="text-2xl font-extrabold text-[#145943]">৳{{ number_format((float) ($product->catalog_offer['price'] ?? $product->price), 2) }}</span>
                             @endif
 
-                            @if ($product->compare_at_price !== null)
+                            @if ($product->catalog_offer)
+                                <span class="text-sm text-[#9aa19c] line-through">৳{{ number_format((float) $product->price, 2) }}</span>
+                            @elseif ($product->compare_at_price !== null)
                                 <span class="text-sm text-[#9aa19c] line-through">
                                     ৳{{ number_format((float) $product->compare_at_price, 2) }}
                                 </span>
                             @endif
-
                         </div>
+                        @if ($product->catalog_offer)
+                            <p class="mt-2 inline-flex flex-wrap items-center gap-1.5">
+                                @if (filled(trim($product->catalog_offer['badge'] ?? '')))
+                                    <span class="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-extrabold text-green-800 ring-1 ring-inset ring-green-200">{{ $product->catalog_offer['badge'] }}</span>
+                                @endif
+                                @if ($product->catalog_offer['code'])
+                                    <span class="text-xs font-semibold text-[#4d5c56]">Use code {{ $product->catalog_offer['code'] }}</span>
+                                @endif
+                                @if ($product->catalog_offer['condition'])
+                                    <span class="text-xs text-[#66736d]">{{ $product->catalog_offer['condition'] }}</span>
+                                @endif
+                            </p>
+                        @endif
                     @endif
 
                     <div class="mt-7 flex flex-col gap-3 sm:flex-row">

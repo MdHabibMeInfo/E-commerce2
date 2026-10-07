@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Web\AccountSecurityController;
 use App\Http\Controllers\Web\AdminController;
+use App\Http\Controllers\Web\AdminCouponController;
+use App\Http\Controllers\Web\AdminCustomerController;
 use App\Http\Controllers\Web\AdminReviewController;
 use App\Http\Controllers\Web\AdminRoleController;
 use App\Http\Controllers\Web\AdminSessionController;
@@ -37,6 +39,8 @@ Route::controller(ShopController::class)->group(function () {
 
 Route::controller(CheckoutController::class)->group(function () {
     Route::get('/checkout', 'index')->name('checkout');
+    Route::post('/checkout/coupon', 'applyCoupon')->middleware('throttle:10,1')->name('checkout.coupon.apply');
+    Route::post('/checkout/coupon/remove', 'removeCoupon')->middleware('throttle:10,1')->name('checkout.coupon.remove');
     Route::post('/checkout', 'store')->name('checkout.store');
     Route::get('/checkout/success/{order}', 'success')->name('checkout.success');
 });
@@ -83,7 +87,7 @@ Route::middleware(['auth', 'management.2fa'])
         Route::delete('/', [TwoFactorController::class, 'disableCustomer'])->middleware(['throttle:two-factor'])->name('disable');
     });
 
-Route::middleware(['auth', 'management.verified'])->group(function () {
+Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(function () {
     Route::get('/account/profile', [AccountSecurityController::class, 'profile'])->name('account.profile');
     Route::put('/account/profile', [AccountSecurityController::class, 'updateProfile'])
         ->middleware(['management.2fa', 'throttle:5,1'])->name('account.profile.update');
@@ -168,17 +172,25 @@ Route::middleware(['auth', 'management.verified'])->group(function () {
         Route::patch('/reviews/{review}', [AdminReviewController::class, 'update'])
             ->middleware(['can:reviews.moderate', 'throttle:10,1'])->name('reviews.update');
 
-        Route::get('/roles', [AdminRoleController::class, 'index'])->middleware('can:roles.view')->name('roles.index');
-        Route::post('/roles', [AdminRoleController::class, 'store'])->middleware('can:roles.create')->name('roles.store');
-        Route::put('/roles/{role}', [AdminRoleController::class, 'update'])->middleware('can:roles.update')->name('roles.update');
-        Route::put('/roles/{role}/permissions', [AdminRoleController::class, 'updatePermissions'])->middleware('can:roles.update')->name('roles.permissions.update');
-        Route::patch('/roles/{role}/status', [AdminRoleController::class, 'updateStatus'])->middleware('can:roles.update')->name('roles.status.update');
-        Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy'])->middleware('can:roles.delete')->name('roles.destroy');
+        Route::get('/roles', [AdminRoleController::class, 'index'])->middleware(['can:roles.view', 'can:system-owner-settings'])->name('roles.index');
+        Route::post('/roles', [AdminRoleController::class, 'store'])->middleware(['can:roles.create', 'can:system-owner-settings'])->name('roles.store');
+        Route::put('/roles/{role}', [AdminRoleController::class, 'update'])->middleware(['can:roles.update', 'can:system-owner-settings'])->name('roles.update');
+        Route::put('/roles/{role}/permissions', [AdminRoleController::class, 'updatePermissions'])->middleware(['can:roles.update', 'can:system-owner-settings'])->name('roles.permissions.update');
+        Route::patch('/roles/{role}/status', [AdminRoleController::class, 'updateStatus'])->middleware(['can:roles.update', 'can:system-owner-settings'])->name('roles.status.update');
+        Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy'])->middleware(['can:roles.delete', 'can:system-owner-settings'])->name('roles.destroy');
 
-        Route::get('/users', [AdminUserController::class, 'index'])->middleware('can:users.view')->name('users.index');
-        Route::post('/users', [AdminUserController::class, 'store'])->middleware('can:users.create')->name('users.store');
-        Route::put('/users/{user}/roles', [AdminUserController::class, 'updateRoles'])->middleware('can:users.update')->name('users.roles.update');
-        Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->middleware('can:users.suspend')->name('users.status.update');
+        Route::get('/users', [AdminUserController::class, 'index'])->middleware(['can:users.view', 'can:system-owner-settings'])->name('users.index');
+        Route::post('/users', [AdminUserController::class, 'store'])->middleware(['can:users.create', 'can:system-owner-settings'])->name('users.store');
+        Route::put('/users/{user}/roles', [AdminUserController::class, 'updateRoles'])->middleware(['can:users.update', 'can:system-owner-settings'])->name('users.roles.update');
+        Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->middleware(['can:users.suspend', 'can:system-owner-settings'])->name('users.status.update');
+        Route::get('/customers', [AdminCustomerController::class, 'index'])->middleware('can:customers.view')->name('customers.index');
+        Route::get('/customers/{user}', [AdminCustomerController::class, 'show'])->middleware('can:customers.view')->name('customers.show');
+        Route::patch('/customers/{user}/status', [AdminCustomerController::class, 'updateStatus'])->middleware('can:customers.update')->name('customers.status.update');
+        Route::get('/coupons', [AdminCouponController::class, 'index'])->middleware('can:coupons.view')->name('coupons.index');
+        Route::get('/coupons/targets', [AdminCouponController::class, 'targetSuggestions'])->middleware(['can:coupons.view', 'throttle:60,1'])->name('coupons.targets');
+        Route::post('/coupons', [AdminCouponController::class, 'store'])->middleware('can:coupons.create')->name('coupons.store');
+        Route::put('/coupons/{coupon}', [AdminCouponController::class, 'update'])->middleware('can:coupons.update')->name('coupons.update');
+        Route::patch('/coupons/{coupon}/status', [AdminCouponController::class, 'updateStatus'])->middleware('can:coupons.update')->name('coupons.status.update');
         Route::get('/security/events', [AdminController::class, 'securityEvents'])->middleware('can:audit-logs.view')->name('security.events');
 
         Route::get('/categories', [AdminController::class, 'categoriesIndex'])->middleware('can:categories.view')->name('categories.index');
