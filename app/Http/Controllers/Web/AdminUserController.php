@@ -59,6 +59,8 @@ class AdminUserController extends Controller
             ],
         ]);
 
+        $roleIds = array_map('intval', $validated['roles']);
+
         $user = User::query()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -68,7 +70,7 @@ class AdminUserController extends Controller
             'account_type' => 'admin',
             'status' => 'active',
         ])->save();
-        $user->syncRoles($validated['roles']);
+        $user->syncRoles($roleIds);
         $user->sendPasswordResetNotification(Password::broker()->createToken($user));
         $user->sendEmailVerificationNotification();
         $user->notify(new SecurityAlertNotification(
@@ -78,7 +80,7 @@ class AdminUserController extends Controller
         $events->record($request, $request->user(), 'management_user_created', [
             'target_user_id' => $user->getKey(),
             'target_email' => $user->email,
-            'role_ids' => $validated['roles'],
+            'role_ids' => $roleIds,
         ]);
         $request->user()?->notify(new SecurityAlertNotification(
             'Management account created',
@@ -102,10 +104,11 @@ class AdminUserController extends Controller
             ],
         ]);
 
-        $previousRoleIds = $user->roles()->pluck('roles.id')->all();
-        $user->syncRoles($validated['roles']);
-        $addedRoleIds = array_values(array_diff($validated['roles'], $previousRoleIds));
-        $removedRoleIds = array_values(array_diff($previousRoleIds, $validated['roles']));
+        $roleIds = array_map('intval', $validated['roles']);
+        $previousRoleIds = array_map('intval', $user->roles()->pluck('roles.id')->all());
+        $user->syncRoles($roleIds);
+        $addedRoleIds = array_values(array_diff($roleIds, $previousRoleIds));
+        $removedRoleIds = array_values(array_diff($previousRoleIds, $roleIds));
 
         if ($addedRoleIds !== [] || $removedRoleIds !== []) {
             $this->revokeStaffSessions($user);

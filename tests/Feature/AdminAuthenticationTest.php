@@ -360,6 +360,36 @@ it('lets the system owner create a role with selected permissions', function () 
     ]);
 });
 
+it('lets the system owner create a role with selected permissions passed as string IDs', function () {
+    $owner = createSystemOwnerUser();
+    $permission = Permission::findOrCreate('products.view', 'web');
+
+    $this->actingAs(completeManagementTwoFactorForTest($owner))
+        ->post(route('admin.roles.store'), [
+            'name' => 'Catalog Reviewer',
+            'permissions' => [(string) $permission->id],
+        ])
+        ->assertRedirect(route('admin.roles.index'));
+
+    $role = Role::query()->where('name', 'Catalog Reviewer')->firstOrFail();
+    $this->assertDatabaseHas('role_has_permissions', [
+        'role_id' => $role->id,
+        'permission_id' => $permission->id,
+    ]);
+
+    $permission2 = Permission::findOrCreate('products.create', 'web');
+    $this->actingAs(completeManagementTwoFactorForTest($owner))
+        ->put(route('admin.roles.permissions.update', $role), [
+            'permissions' => [(string) $permission2->id],
+        ])
+        ->assertRedirect(route('admin.roles.index'));
+
+    $this->assertDatabaseHas('role_has_permissions', [
+        'role_id' => $role->id,
+        'permission_id' => $permission2->id,
+    ]);
+});
+
 it('validates role names without coercing malformed input', function () {
     $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()))
         ->post(route('admin.roles.store'), [

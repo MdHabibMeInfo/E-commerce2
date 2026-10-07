@@ -4,11 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionSeeder extends Seeder
 {
     public function run(): void
     {
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
         $permissions = [
             // Products
             'products.view',
@@ -108,9 +111,8 @@ class PermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::findOrCreate(
-                $permission,
-                'web'
+            Permission::firstOrCreate(
+                ['name' => $permission, 'guard_name' => 'web']
             );
         }
     }

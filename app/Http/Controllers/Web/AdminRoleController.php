@@ -70,15 +70,17 @@ class AdminRoleController extends Controller
             ],
         ]);
 
+        $permissionIds = array_map('intval', $validated['permissions'] ?? []);
+
         $role = Role::query()->create([
             'name' => $validated['name'],
             'guard_name' => 'web',
         ]);
-        $role->syncPermissions($validated['permissions'] ?? []);
+        $role->syncPermissions($permissionIds);
         $events->record($request, $request->user(), 'role_created', [
             'role_id' => $role->getKey(),
             'role_name' => $role->name,
-            'permission_ids' => $validated['permissions'] ?? [],
+            'permission_ids' => $permissionIds,
         ]);
         $this->notifyOwner($request, 'Management role created', 'A management role was created with permissions.');
 
@@ -99,14 +101,15 @@ class AdminRoleController extends Controller
             ],
         ]);
 
-        $previousPermissionIds = $role->permissions()->pluck('permissions.id')->all();
-        $role->syncPermissions($validated['permissions'] ?? []);
-        $permissionIds = $role->permissions()->pluck('permissions.id')->all();
+        $permissionIds = array_map('intval', $validated['permissions'] ?? []);
+        $previousPermissionIds = array_map('intval', $role->permissions()->pluck('permissions.id')->all());
+        $role->syncPermissions($permissionIds);
+        $currentPermissionIds = array_map('intval', $role->permissions()->pluck('permissions.id')->all());
         $events->record($request, $request->user(), 'role_permissions_updated', [
             'role_id' => $role->getKey(),
             'role_name' => $role->name,
-            'added_permission_ids' => array_values(array_diff($permissionIds, $previousPermissionIds)),
-            'removed_permission_ids' => array_values(array_diff($previousPermissionIds, $permissionIds)),
+            'added_permission_ids' => array_values(array_diff($currentPermissionIds, $previousPermissionIds)),
+            'removed_permission_ids' => array_values(array_diff($previousPermissionIds, $currentPermissionIds)),
         ]);
         $this->notifyRoleMembers($role, 'Management role permissions changed', 'Permissions assigned to your management role were changed.');
         $this->notifyOwner($request, 'Management permissions changed', 'Permissions assigned to a management role were changed.');
