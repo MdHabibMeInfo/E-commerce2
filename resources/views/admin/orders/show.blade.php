@@ -6,7 +6,18 @@
             <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#a48335]">Admin</p>
             <h1 class="mt-2 text-3xl font-extrabold text-[#145943]">Order Details</h1>
         </div>
-        <a href="{{ route('admin.orders') }}" class="rounded-xl border border-[#dfe3cf] bg-white px-4 py-2 text-sm font-bold text-[#145943]">Back to Orders</a>
+        <div class="flex items-center gap-3">
+            @if ($order->status !== 'cancelled')
+                <form method="POST" action="{{ route('admin.orders.cancel', $order) }}" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100">
+                        Cancel Order
+                    </button>
+                </form>
+            @endif
+            <a href="{{ route('admin.orders') }}" class="rounded-xl border border-[#dfe3cf] bg-white px-4 py-2 text-sm font-bold text-[#145943]">Back to Orders</a>
+        </div>
     </div>
 
     @if (session('success'))
@@ -109,48 +120,52 @@
         <aside class="space-y-6">
             <div class="rounded-[22px] border border-[#e4e3d8] bg-white p-6 shadow-sm">
                 <h2 class="text-lg font-extrabold text-[#145943]">Courier Information</h2>
-                @php $shipment = $order->shipments->last(); @endphp
-                @if ($shipment)
-                    <div class="mt-5 space-y-3 text-sm text-[#4d5c56]">
-                        <p><span class="font-bold text-[#173b32]">Courier:</span> {{ ucfirst($shipment->courier_code) }}</p>
-                        <p><span class="font-bold text-[#173b32]">Shipment status:</span> {{ $shipment->status }}</p>
-                        <p><span class="font-bold text-[#173b32]">Consignment ID:</span> {{ $shipment->consignment_id ?? 'N/A' }}</p>
-                        <p><span class="font-bold text-[#173b32]">Tracking ID:</span> {{ $shipment->tracking_code ?? 'N/A' }}</p>
-                    </div>
-                    @if ($shipment->error_message)
-                        <p class="mt-4 rounded-[4px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ $shipment->error_message }}</p>
-                    @endif
-                    @if ($shipment->status === 'failed')
-                        <form method="POST" action="{{ route('admin.orders.shipments.store', $order) }}" class="mt-5">
-                            @csrf
-                            <input type="hidden" name="courier_code" value="{{ $shipment->courier_code }}">
-                            <button type="submit" class="w-full rounded-xl border border-[#145943] px-4 py-3 text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Retry shipment</button>
-                        </form>
-                    @elseif (in_array($shipment->status, ['creating', 'unknown'], true))
-                        <p class="mt-4 text-xs font-semibold text-amber-900">Check the courier merchant portal before retrying this shipment.</p>
-                        @if ($canReconcileShipment)
-                            <form method="POST" action="{{ route('admin.orders.shipments.reconcile', $order) }}" class="mt-3">
-                                @csrf
-                                <input type="hidden" name="courier_code" value="steadfast">
-                                <button type="submit" class="w-full rounded-xl border border-amber-700 px-4 py-3 text-sm font-bold text-amber-900 hover:bg-amber-50">Reconcile by invoice</button>
-                            </form>
-                        @endif
-                    @endif
-                @elseif ($availableCouriers === [])
-                    <p class="mt-5 text-sm text-[#738078]">No verified courier integration is enabled for this store.</p>
+                @if ($order->status === 'cancelled')
+                    <p class="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">This order is cancelled. Courier options are not available for cancelled orders.</p>
                 @else
-                    <form method="POST" action="{{ route('admin.orders.shipments.store', $order) }}" class="mt-5 space-y-4">
-                        @csrf
-                        <label class="block text-sm font-semibold text-[#173b32]">
-                            Courier
-                            <select name="courier_code" class="mt-2 block w-full rounded-xl border border-[#dfe3cf] bg-white px-3 py-3 text-sm text-[#173b32]">
-                                @foreach ($availableCouriers as $courier)
-                                    <option value="{{ $courier->code() }}">{{ $courier->label() }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <button type="submit" class="w-full rounded-xl bg-[#145943] px-4 py-3 text-sm font-bold text-white">Create Shipment</button>
-                    </form>
+                    @php $shipment = $order->shipments->last(); @endphp
+                    @if ($shipment)
+                        <div class="mt-5 space-y-3 text-sm text-[#4d5c56]">
+                            <p><span class="font-bold text-[#173b32]">Courier:</span> {{ ucfirst($shipment->courier_code) }}</p>
+                            <p><span class="font-bold text-[#173b32]">Shipment status:</span> {{ $shipment->status }}</p>
+                            <p><span class="font-bold text-[#173b32]">Consignment ID:</span> {{ $shipment->consignment_id ?? 'N/A' }}</p>
+                            <p><span class="font-bold text-[#173b32]">Tracking ID:</span> {{ $shipment->tracking_code ?? 'N/A' }}</p>
+                        </div>
+                        @if ($shipment->error_message)
+                            <p class="mt-4 rounded-[4px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{{ $shipment->error_message }}</p>
+                        @endif
+                        @if ($shipment->status === 'failed')
+                            <form method="POST" action="{{ route('admin.orders.shipments.store', $order) }}" class="mt-5">
+                                @csrf
+                                <input type="hidden" name="courier_code" value="{{ $shipment->courier_code }}">
+                                <button type="submit" class="w-full rounded-xl border border-[#145943] px-4 py-3 text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Retry shipment</button>
+                            </form>
+                        @elseif (in_array($shipment->status, ['creating', 'unknown'], true))
+                            <p class="mt-4 text-xs font-semibold text-amber-900">Check the courier merchant portal before retrying this shipment.</p>
+                            @if ($canReconcileShipment)
+                                <form method="POST" action="{{ route('admin.orders.shipments.reconcile', $order) }}" class="mt-3">
+                                    @csrf
+                                    <input type="hidden" name="courier_code" value="steadfast">
+                                    <button type="submit" class="w-full rounded-xl border border-amber-700 px-4 py-3 text-sm font-bold text-amber-900 hover:bg-amber-50">Reconcile by invoice</button>
+                                </form>
+                            @endif
+                        @endif
+                    @elseif ($availableCouriers === [])
+                        <p class="mt-5 text-sm text-[#738078]">No verified courier integration is enabled for this store.</p>
+                    @else
+                        <form method="POST" action="{{ route('admin.orders.shipments.store', $order) }}" class="mt-5 space-y-4">
+                            @csrf
+                            <label class="block text-sm font-semibold text-[#173b32]">
+                                Courier
+                                <select name="courier_code" class="mt-2 block w-full rounded-xl border border-[#dfe3cf] bg-white px-3 py-3 text-sm text-[#173b32]">
+                                    @foreach ($availableCouriers as $courier)
+                                        <option value="{{ $courier->code() }}">{{ $courier->label() }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <button type="submit" class="w-full rounded-xl bg-[#145943] px-4 py-3 text-sm font-bold text-white">Create Shipment</button>
+                        </form>
+                    @endif
                 @endif
             </div>
 

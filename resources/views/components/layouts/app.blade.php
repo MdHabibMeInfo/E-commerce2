@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 @php
     $isAdminArea = request()->routeIs('admin*')
-        || (auth()->user()?->can('access-admin') && request()->routeIs('account.orders*', 'account.security*'));
+        || (auth()->user()?->can('access-admin') && request()->routeIs('account*'));
     $configuredMetaPixelId = (string) config('services.meta.pixel_id');
     $metaPixelId = $isAdminArea || preg_match('/^\d+$/', $configuredMetaPixelId) !== 1
         ? null

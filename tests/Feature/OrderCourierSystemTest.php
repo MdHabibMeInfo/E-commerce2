@@ -6,6 +6,7 @@ use App\Services\Courier\CourierManager;
 use App\Services\Courier\PathaoCourier;
 use App\Services\Courier\RedxCourier;
 use App\Services\Courier\SteadfastCourier;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -103,6 +104,31 @@ it('does not allow a customer to cancel another customers pending order', functi
         ->assertForbidden();
 
     expect($order->fresh()->status)->toBe('pending');
+});
+
+it('allows an admin to cancel an order and hides courier options for cancelled orders', function () {
+    $this->seed(PermissionSeeder::class);
+    $admin = createSystemOwnerUser();
+    completeManagementTwoFactorForTest($admin);
+
+    $order = Order::factory()->create([
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($admin)
+        ->from(route('admin.orders.show', $order))
+        ->withSession(['management_2fa_verified_until' => now()->addMinutes(30)->timestamp])
+        ->patch(route('admin.orders.cancel', $order))
+        ->assertRedirect(route('admin.orders.show', $order));
+
+    expect($order->fresh()->status)->toBe('cancelled');
+
+    $this->actingAs($admin)
+        ->withSession(['management_2fa_verified_until' => now()->addMinutes(30)->timestamp])
+        ->get(route('admin.orders.show', $order))
+        ->assertOk()
+        ->assertSee('This order is cancelled. Courier options are not available for cancelled orders.')
+        ->assertDontSee('Create Shipment');
 });
 
 it('shows only the customers past orders in order history', function () {

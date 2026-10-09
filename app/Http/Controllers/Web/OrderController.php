@@ -188,4 +188,18 @@ class OrderController extends Controller
             (string) $order->phone,
         ));
     }
+
+    public function adminCancel(Request $request, Order $order): RedirectResponse
+    {
+        $this->authorize('cancel', $order);
+
+        if ($order->status === 'cancelled') {
+            return back()->withErrors(['order' => 'This order is already cancelled.']);
+        }
+
+        $order->status = 'cancelled';
+        $order->save();
+
+        return back()->with('success', 'Order has been cancelled successfully.');
+    }
 }

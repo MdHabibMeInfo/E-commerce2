@@ -238,3 +238,7 @@ input {
         animation: none;
     }
 }
+
+body[data-admin-area="true"] [data-floating-cart] {
+    display: none !important;
+}

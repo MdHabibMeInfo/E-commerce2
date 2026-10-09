@@ -56,35 +56,24 @@
     </div>
 
     @if ($canViewOrders)
-        <div class="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
-            <section class="overflow-hidden border border-[#e5e2d9] bg-white">
-                <div class="flex items-center justify-between border-b border-[#e5e2d9] px-5 py-4">
-                    <div><h2 class="text-lg font-bold text-[#173b32]">Recent orders</h2><p class="mt-1 text-xs text-[#738078]">Latest eight orders</p></div>
-                    <a href="{{ route('admin.orders') }}" class="text-sm font-bold text-[#145943]">View all</a>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm">
-                        <thead class="bg-[#f7f4ee] text-[#145943]"><tr><th class="px-4 py-3 font-bold">Order</th><th class="px-4 py-3 font-bold">Customer</th><th class="px-4 py-3 font-bold">Total</th><th class="px-4 py-3 font-bold">Payment</th><th class="px-4 py-3 font-bold">Status</th></tr></thead>
-                        <tbody>
-                            @forelse ($recentOrders as $order)
-                                <tr class="border-t border-[#e5e2d9]"><td class="px-4 py-3"><a href="{{ route('admin.orders.show', $order) }}" class="font-bold text-[#145943]">{{ $order->order_number }}</a><p class="text-xs text-[#738078]">{{ $order->created_at->diffForHumans() }}</p></td><td class="px-4 py-3">{{ $order->customer_name }}</td><td class="px-4 py-3">৳{{ number_format((float) $order->total, 2) }}</td><td class="px-4 py-3">{{ ucfirst($order->payment_status) }}</td><td class="px-4 py-3">{{ ucfirst($order->status) }}</td></tr>
-                            @empty
-                                <tr><td colspan="5" class="px-4 py-8 text-center text-[#738078]">No orders yet.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section class="border border-[#e5e2d9] bg-white p-5">
-                <h2 class="text-lg font-bold text-[#173b32]">Payments confirmed · 7 days</h2>
-                <ol class="mt-4 space-y-3">
-                    @foreach ($salesTrend as $day)
-                        <li class="flex items-center justify-between gap-3 text-sm"><span class="text-[#66736d]">{{ $day['label'] }} <span class="text-xs">{{ \Illuminate\Support\Carbon::parse($day['date'])->format('d M') }}</span></span><span class="font-bold text-[#145943]">৳{{ number_format($day['revenue'], 2) }}</span></li>
-                    @endforeach
-                </ol>
-            </section>
-        </div>
+        <section class="overflow-hidden border border-[#e5e2d9] bg-white">
+            <div class="flex items-center justify-between border-b border-[#e5e2d9] px-5 py-4">
+                <div><h2 class="text-lg font-bold text-[#173b32]">Recent orders</h2><p class="mt-1 text-xs text-[#738078]">Latest eight orders</p></div>
+                <a href="{{ route('admin.orders') }}" class="text-sm font-bold text-[#145943]">View all</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-[#f7f4ee] text-[#145943]"><tr><th class="px-4 py-3 font-bold">Order</th><th class="px-4 py-3 font-bold">Customer</th><th class="px-4 py-3 font-bold">Total</th><th class="px-4 py-3 font-bold">Payment</th><th class="px-4 py-3 font-bold">Status</th></tr></thead>
+                    <tbody>
+                        @forelse ($recentOrders as $order)
+                            <tr class="border-t border-[#e5e2d9]"><td class="px-4 py-3"><a href="{{ route('admin.orders.show', $order) }}" class="font-bold text-[#145943]">{{ $order->order_number }}</a><p class="text-xs text-[#738078]">{{ $order->created_at->diffForHumans() }}</p></td><td class="px-4 py-3">{{ $order->customer_name }}</td><td class="px-4 py-3">৳{{ number_format((float) $order->total, 2) }}</td><td class="px-4 py-3">{{ ucfirst($order->payment_status) }}</td><td class="px-4 py-3">{{ ucfirst($order->status) }}</td></tr>
+                        @empty
+                            <tr><td colspan="5" class="px-4 py-8 text-center text-[#738078]">No orders yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
     @endif
 
     @if ($canViewProducts && $lowStockProducts->isNotEmpty())
@@ -153,7 +142,7 @@
                     <a href="{{ route('admin.customers.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Manage Customers</a>
                 @endif
                 @if ($canViewCoupons)
-                    <a href="{{ route('admin.coupons.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Manage Promotions</a>
+                    <a href="{{ route('admin.coupons.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">Manage Coupons &amp; Promotions</a>
                 @endif
                 @if ($currentUser?->is_system_owner)
                     <a href="{{ route('admin.roles.index') }}" class="block rounded-xl border border-[#e5e2d9] bg-[#f9f8f3] px-3 py-2.5 text-[#173b32] transition hover:border-[#145943] hover:text-[#145943]">

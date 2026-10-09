@@ -137,6 +137,9 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
     Route::post('/admin/orders/{order}/shipments/reconcile', [OrderController::class, 'reconcileShipment'])
         ->middleware(['can:access-admin', 'management.2fa', 'throttle:5,1'])
         ->name('admin.orders.shipments.reconcile');
+    Route::patch('/admin/orders/{order}/cancel', [OrderController::class, 'adminCancel'])
+        ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa', 'throttle:10,1'])
+        ->name('admin.orders.cancel');
 
     Route::prefix('admin')->name('admin.')->middleware(['can:access-admin', 'management.2fa'])->group(function () {
         Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('settings');

@@ -1260,8 +1260,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(cartUi);
 
     const floatingCart = cartUi.querySelector('[data-floating-cart]');
-    if (document.body.dataset.adminArea === 'true') {
-        floatingCart.classList.add('hidden');
+    if (document.body.dataset.adminArea === 'true' || window.location.pathname.startsWith('/admin')) {
+        floatingCart?.remove();
     }
 
     const adminNotificationsLink = document.querySelector('[data-admin-notifications]');

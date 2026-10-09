@@ -51,7 +51,16 @@
                             <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? $shipment->status : 'Not created' }}</td>
                             <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? ($shipment->tracking_code ?? $shipment->consignment_id ?? 'N/A') : 'N/A' }}</td>
                             <td class="px-5 py-4">
-                                <a href="{{ route('admin.orders.show', $order) }}" class="rounded-xl bg-[#145943] px-3 py-2 text-xs font-bold text-white">View</a>
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('admin.orders.show', $order) }}" class="rounded-xl bg-[#145943] px-3 py-2 text-xs font-bold text-white">View</a>
+                                    @if ($order->status !== 'cancelled')
+                                        <form method="POST" action="{{ route('admin.orders.cancel', $order) }}" onsubmit="return confirm('Are you sure you want to cancel order {{ $order->order_number }}?');" class="inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100">Cancel</button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
