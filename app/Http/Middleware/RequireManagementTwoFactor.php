@@ -52,8 +52,9 @@ class RequireManagementTwoFactor
         }
 
         $verifiedAt = $request->session()->get('security.two_factor_verified_at');
+        $sessionLifetimeMinutes = (int) config('session.lifetime', 120);
         $verifiedRecently = is_numeric($verifiedAt)
-            && Carbon::createFromTimestamp((int) $verifiedAt)->greaterThan(now()->subMinutes(10));
+            && Carbon::createFromTimestamp((int) $verifiedAt)->greaterThan(now()->subMinutes($sessionLifetimeMinutes));
 
         if ((string) $request->session()->get('security.two_factor_verified_user') !== (string) $user->getKey() || ! $verifiedRecently) {
             return $request->expectsJson()

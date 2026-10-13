@@ -1372,7 +1372,7 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.classList.remove('hidden');
             drawer.classList.remove('translate-x-full');
             drawer.setAttribute('aria-hidden', 'false');
-            floatingCart.setAttribute('aria-expanded', 'true');
+            floatingCart?.setAttribute('aria-expanded', 'true');
             overlay.setAttribute('aria-hidden', 'false');
             requestAnimationFrame(() => overlay.classList.remove('opacity-0'));
             document.body.classList.add('overflow-hidden');
@@ -1383,11 +1383,11 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.add('opacity-0');
         drawer.classList.add('translate-x-full');
         drawer.setAttribute('aria-hidden', 'true');
-        floatingCart.setAttribute('aria-expanded', 'false');
+        floatingCart?.setAttribute('aria-expanded', 'false');
         overlay.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('overflow-hidden');
         window.setTimeout(() => overlay.classList.add('hidden'), 220);
-        floatingCart.focus();
+        floatingCart?.focus();
     };
 
     const renderCart = () => {
@@ -1396,15 +1396,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const savings = cart.reduce((sum, item) => sum + Number(item.promotion_discount ?? 0), 0);
         const total = Math.max(0, subtotal - savings);
 
-        cartUi.querySelector('[data-cart-count]').textContent = `${quantity} ${quantity === 1 ? 'Item' : 'Items'}`;
-        cartUi.querySelector('[data-cart-total]').textContent = money(total);
+        const cartCountEl = cartUi.querySelector('[data-cart-count]');
+        if (cartCountEl) {
+            cartCountEl.textContent = `${quantity} ${quantity === 1 ? 'Item' : 'Items'}`;
+        }
+        const cartTotalEl = cartUi.querySelector('[data-cart-total]');
+        if (cartTotalEl) {
+            cartTotalEl.textContent = money(total);
+        }
         const totalAmountEl = cartUi.querySelector('[data-cart-total-amount]') || cartUi.querySelector('[data-cart-subtotal]');
         if (totalAmountEl) {
             totalAmountEl.textContent = money(total);
         }
-        cartUi.querySelector('[data-cart-subtotal-amount]').textContent = money(subtotal);
-        cartUi.querySelector('[data-cart-savings-row]').hidden = savings <= 0;
-        cartUi.querySelector('[data-cart-savings-amount]').textContent = `-${money(savings)}`;
+        const subtotalAmountEl = cartUi.querySelector('[data-cart-subtotal-amount]');
+        if (subtotalAmountEl) {
+            subtotalAmountEl.textContent = money(subtotal);
+        }
+        const savingsRowEl = cartUi.querySelector('[data-cart-savings-row]');
+        if (savingsRowEl) {
+            savingsRowEl.hidden = savings <= 0;
+        }
+        const savingsAmountEl = cartUi.querySelector('[data-cart-savings-amount]');
+        if (savingsAmountEl) {
+            savingsAmountEl.textContent = `-${money(savings)}`;
+        }
 
         document.querySelectorAll('[data-cart-count-badge]').forEach((badge) => {
             badge.textContent = String(quantity);
@@ -1732,7 +1747,7 @@ document.addEventListener('DOMContentLoaded', () => {
         variantSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    floatingCart.addEventListener('click', () => setCartDrawerState(true));
+    floatingCart?.addEventListener('click', () => setCartDrawerState(true));
     overlay.addEventListener('click', () => setCartDrawerState(false));
     cartUi.querySelectorAll('[data-close-cart]').forEach((button) => {
         button.addEventListener('click', () => setCartDrawerState(false));
@@ -1761,7 +1776,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    cartUi.querySelector('[data-cart-checkout]').addEventListener('click', () => {
+    cartUi.querySelector('[data-cart-checkout]')?.addEventListener('click', () => {
         if (!cart.length) {
             alert('Your cart is empty. Please add products before checking out.');
             return;

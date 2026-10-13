@@ -14,6 +14,7 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -105,10 +106,12 @@ class TwoFactorController extends Controller
         }
 
         $verifiedAt = $request->session()->get('security.two_factor_verified_at');
+        $sessionLifetimeMinutes = (int) config('session.lifetime', 120);
+        $verifiedRecently = is_numeric($verifiedAt)
+            && Carbon::createFromTimestamp((int) $verifiedAt)->greaterThan(now()->subMinutes($sessionLifetimeMinutes));
 
         if ((string) $request->session()->get('security.two_factor_verified_user') === (string) $user->getKey()
-            && is_numeric($verifiedAt)
-            && now()->diffInMinutes(now()->setTimestamp((int) $verifiedAt)) < 10) {
+            && $verifiedRecently) {
             return redirect()->route('admin');
         }
 
