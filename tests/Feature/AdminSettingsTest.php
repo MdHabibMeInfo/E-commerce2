@@ -324,7 +324,7 @@ it('allows a settings editor to add update order and delete hero images', functi
     $response = $this->get(route('home'))
         ->assertSee(Storage::disk('public')->url($secondPath))
         ->assertSee(Storage::disk('public')->url($firstPath))
-        ->assertSee('class="h-full w-full object-contain"', false)
+        ->assertSee('class="h-full w-full object-cover"', false)
         ->assertDontSee('Fresh · Natural · Organic')
         ->assertSee('data-hero-pagination', false);
     expect(strpos($response->getContent(), Storage::disk('public')->url($secondPath)))

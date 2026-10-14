@@ -3,24 +3,29 @@
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 it('stores a customer review and its uploaded photo', function () {
     Storage::fake('public');
     $product = createReviewTestProduct();
-    $image = UploadedFile::fake()->image('review.jpg');
-
-    $response = $this->post(route('products.reviews.store', ['product' => $product->slug]), [
+    $user = User::factory()->create([
         'name' => 'Amina Rahman',
         'email' => 'amina@example.com',
+    ]);
+    $image = UploadedFile::fake()->image('review.jpg');
+
+    $response = $this->actingAs($user)->post(route('products.reviews.store', ['product' => $product->slug]), [
+        'name' => 'Forged Reviewer',
+        'email' => 'forged@example.com',
         'rating' => 5,
         'body' => 'Fresh and excellent quality.',
         'images' => [$image],
         'is_approved' => true,
     ]);
 
-    $response->assertRedirect(route('products.show', ['product' => $product->slug]).'#customer-reviews');
+    $response->assertRedirect(route('products.show', ['product' => $product->slug]) . '#customer-reviews');
     $response->assertSessionHas('status');
     $this->assertDatabaseHas('product_reviews', [
         'product_id' => $product->id,
@@ -35,6 +40,19 @@ it('stores a customer review and its uploaded photo', function () {
     expect($review->is_approved)->toBeFalse();
     expect($review->images)->toHaveCount(1);
     Storage::disk('public')->assertExists($review->images[0]);
+});
+
+it('shows signed-in reviewers a form without name or email inputs', function () {
+    $product = createReviewTestProduct();
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('products.show', ['product' => $product->slug]));
+
+    $response->assertSee('name="rating"', false);
+    $response->assertSee('name="body"', false);
+    $response->assertDontSee('name="name"', false);
+    $response->assertDontSee('name="email"', false);
 });
 
 it('shows the product details and saved reviews without exposing reviewer email', function () {
@@ -91,26 +109,45 @@ it('shows the product details and saved reviews without exposing reviewer email'
     $response->assertDontSee('Would order again.');
     $response->assertDontSee('Karim Hasan');
     $response->assertSee('Write a review');
-    $response->assertSee('name="images[]"', false);
+    $response->assertSee(route('login'));
+    $response->assertSee(route('register'));
+    $response->assertDontSee('name="name"', false);
+    $response->assertDontSee('name="email"', false);
     $response->assertDontSee('<time', false);
     $response->assertDontSee('private@example.com');
 });
 
-it('requires review details before submission', function () {
+it('redirects guests to sign in before accepting a review', function () {
     $product = createReviewTestProduct();
 
     $response = $this->from(route('products.show', ['product' => $product->slug]))
+        ->post(route('products.reviews.store', ['product' => $product->slug]), [
+            'rating' => 5,
+            'body' => 'Fresh and excellent quality.',
+        ]);
+
+    $response->assertRedirect(route('login'));
+    $this->assertDatabaseCount('product_reviews', 0);
+});
+
+it('requires a rating and review body from signed-in customers', function () {
+    $product = createReviewTestProduct();
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->from(route('products.show', ['product' => $product->slug]))
         ->post(route('products.reviews.store', ['product' => $product->slug]), []);
 
-    $response->assertSessionHasErrors(['name', 'email', 'rating', 'body']);
+    $response->assertSessionHasErrors(['rating', 'body']);
     $this->assertDatabaseCount('product_reviews', 0);
 });
 
 it('rejects ratings outside the allowed range and more than three images', function () {
     Storage::fake('public');
     $product = createReviewTestProduct();
+    $user = User::factory()->create();
 
-    $response = $this->post(route('products.reviews.store', ['product' => $product->slug]), [
+    $response = $this->actingAs($user)->post(route('products.reviews.store', ['product' => $product->slug]), [
         'name' => 'Amina Rahman',
         'email' => 'amina@example.com',
         'rating' => 6,
@@ -131,8 +168,9 @@ it('rejects ratings outside the allowed range and more than three images', funct
 it('rejects files that are not images', function () {
     Storage::fake('public');
     $product = createReviewTestProduct();
+    $user = User::factory()->create();
 
-    $response = $this->post(route('products.reviews.store', ['product' => $product->slug]), [
+    $response = $this->actingAs($user)->post(route('products.reviews.store', ['product' => $product->slug]), [
         'name' => 'Amina Rahman',
         'email' => 'amina@example.com',
         'rating' => 5,

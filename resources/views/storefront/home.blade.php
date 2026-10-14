@@ -22,7 +22,7 @@
         <div class="mx-auto max-w-[1600px] px-4 pt-4 sm:px-6 lg:px-8">
             <div class="grid items-stretch gap-4 {{ $showHomeAd ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : '' }}">
                 <div class="min-w-0">
-                    <section data-hero-carousel class="relative h-[clamp(250px,25vw,420px)] w-full overflow-hidden bg-[#fbfaf4]" aria-label="Homepage hero images" aria-roledescription="carousel">
+                    <section data-hero-carousel class="group relative h-[clamp(250px,25vw,420px)] w-full overflow-hidden bg-[#fbfaf4]" aria-label="Homepage hero images" aria-roledescription="carousel">
                         <div data-hero-viewport class="h-full overflow-hidden">
                             <div data-hero-track class="flex h-full transition-transform duration-500 ease-out motion-reduce:transition-none">
                                 @foreach ($heroBanners as $index => $heroBanner)
@@ -44,7 +44,7 @@
                                                 alt=""
                                                 @if ($index === 0) fetchpriority="high" @else loading="lazy" @endif
                                                 decoding="async"
-                                                class="h-full w-full object-contain"
+                                                class="h-full w-full object-cover"
                                             >
                                         </a>
                                     </article>
@@ -53,30 +53,28 @@
                         </div>
 
                         @if ($heroBanners->count() > 1)
-                            <button type="button" data-hero-prev class="absolute left-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/35 text-white transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Previous hero image">
+                            <button type="button" data-hero-prev class="absolute left-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/35 text-white opacity-0 pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-black/60 focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Previous hero image">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
                             </button>
-                            <button type="button" data-hero-next class="absolute right-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/35 text-white transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Next hero image">
+                            <button type="button" data-hero-next class="absolute right-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/35 text-white opacity-0 pointer-events-none transition-all duration-300 group-hover:opacity-100 group-hover:pointer-events-auto hover:bg-black/60 focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Next hero image">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
                             </button>
+
+                            <nav data-hero-pagination class="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center justify-center gap-1.5" aria-label="Choose hero image">
+                                @foreach ($heroBanners as $index => $heroBanner)
+                                    <button
+                                        type="button"
+                                        data-hero-dot="{{ $index }}"
+                                        aria-label="Show hero image {{ $index + 1 }}"
+                                        aria-current="{{ $index === 0 ? 'true' : 'false' }}"
+                                        class="grid h-6 w-6 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943]"
+                                    >
+                                        <span class="h-2.5 {{ $index === 0 ? 'w-6 bg-[#145943]' : 'w-2.5 bg-[#c6c8b9]' }} rounded-full transition-all duration-300" aria-hidden="true"></span>
+                                    </button>
+                                @endforeach
+                            </nav>
                         @endif
                     </section>
-
-                    @if ($heroBanners->count() > 1)
-                        <nav data-hero-pagination class="flex items-center justify-center gap-1 bg-[#fbfaf4] py-1" aria-label="Choose hero image">
-                            @foreach ($heroBanners as $index => $heroBanner)
-                                <button
-                                    type="button"
-                                    data-hero-dot="{{ $index }}"
-                                    aria-label="Show hero image {{ $index + 1 }}"
-                                    aria-current="{{ $index === 0 ? 'true' : 'false' }}"
-                                    class="grid h-8 w-8 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943]"
-                                >
-                                    <span class="h-2.5 {{ $index === 0 ? 'w-6 bg-[#145943]' : 'w-2.5 bg-[#c6c8b9]' }} rounded-full transition-all duration-300" aria-hidden="true"></span>
-                                </button>
-                            @endforeach
-                        </nav>
-                    @endif
                 </div>
 
                 @if ($showHomeAd)
@@ -95,7 +93,7 @@
     @endif
 
     {{-- Categories --}}
-    <section id="categories" class="border-t border-[#e8e6db] bg-[#fbfaf4]">
+    <section id="categories" class="bg-[#fbfaf4]">
         <div class="mx-auto max-w-[1600px] px-4 pt-8 pb-10 sm:px-6 lg:px-8">
             <h2 class="text-center text-xl font-medium text-[#26352f] sm:text-2xl">Featured Categories</h2>
 

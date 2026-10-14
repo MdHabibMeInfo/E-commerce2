@@ -250,7 +250,7 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
 Route::prefix('products')->name('products.')->controller(ProductController::class)->group(function () {
     Route::post('/{product}/reviews', ProductReviewController::class)
         ->where('product', '[a-z0-9-]+')
-        ->middleware('throttle:3,1')
+        ->middleware(['auth', 'throttle:3,1'])
         ->name('reviews.store');
 
     Route::get('/{product}', 'show')

@@ -31,14 +31,14 @@ class ProductReviewController extends Controller
         }
 
         $product->reviews()->create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
+            'name' => $request->user()->name,
+            'email' => $request->user()->email,
             'rating' => $validated['rating'],
             'body' => $validated['body'],
             'images' => $imagePaths,
         ]);
 
-        return redirect()->to(route('products.show', ['product' => $product->slug]).'#customer-reviews')
+        return redirect()->to(route('products.show', ['product' => $product->slug]) . '#customer-reviews')
             ->with('status', 'Thanks, your review has been submitted and is awaiting approval.');
     }
 }

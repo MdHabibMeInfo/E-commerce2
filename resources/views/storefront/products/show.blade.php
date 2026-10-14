@@ -378,6 +378,7 @@
                             </div>
                         @endif
 
+                        @auth
                         <form method="POST" action="{{ route('products.reviews.store', ['product' => $product->slug]) }}" enctype="multipart/form-data" class="mt-5 grid gap-4">
                             @csrf
 
@@ -395,23 +396,6 @@
                                     <p class="mt-1 text-xs text-red-700">{{ $message }}</p>
                                 @enderror
                             </fieldset>
-
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <label class="grid gap-1.5 text-sm font-semibold text-[#26352f]">
-                                    Name <span class="text-red-600" aria-hidden="true">*</span>
-                                    <input type="text" name="name" value="{{ old('name') }}" autocomplete="name" required maxlength="120" class="h-11 rounded-md border border-[#d9ddd4] bg-white px-3 font-normal outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/15">
-                                    @error('name')
-                                        <span class="text-xs font-normal text-red-700">{{ $message }}</span>
-                                    @enderror
-                                </label>
-                                <label class="grid gap-1.5 text-sm font-semibold text-[#26352f]">
-                                    Email <span class="text-red-600" aria-hidden="true">*</span>
-                                    <input type="email" name="email" value="{{ old('email') }}" autocomplete="email" required maxlength="255" class="h-11 rounded-md border border-[#d9ddd4] bg-white px-3 font-normal outline-none focus:border-[#145943] focus:ring-2 focus:ring-[#145943]/15">
-                                    @error('email')
-                                        <span class="text-xs font-normal text-red-700">{{ $message }}</span>
-                                    @enderror
-                                </label>
-                            </div>
 
                             <label class="grid gap-1.5 text-sm font-semibold text-[#26352f]">
                                 Your review <span class="text-red-600" aria-hidden="true">*</span>
@@ -443,6 +427,15 @@
 
                             <button type="submit" class="mt-1 inline-flex h-11 items-center justify-center rounded-md bg-[#145943] px-5 text-sm font-bold text-white transition hover:bg-[#0f4d3a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943] focus-visible:ring-offset-2 sm:w-fit">Submit Review</button>
                         </form>
+                        @else
+                            <div class="mt-5 grid gap-3 text-sm text-[#59675f]">
+                                <p>Sign in to your account to write a review.</p>
+                                <div class="flex flex-wrap gap-3">
+                                    <a href="{{ route('login') }}" class="inline-flex h-10 items-center justify-center rounded-md bg-[#145943] px-4 font-bold text-white transition hover:bg-[#0f4d3a]">Sign in</a>
+                                    <a href="{{ route('register') }}" class="inline-flex h-10 items-center justify-center rounded-md border border-[#145943] px-4 font-bold text-[#145943] transition hover:bg-[#edf5eb]">Create account</a>
+                                </div>
+                            </div>
+                        @endauth
                     </div>
                 </div>
             </section>

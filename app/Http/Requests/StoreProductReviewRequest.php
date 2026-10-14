@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,7 +13,7 @@ class StoreProductReviewRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user() instanceof User;
     }
 
     /**
@@ -23,8 +24,6 @@ class StoreProductReviewRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email', 'max:255'],
             'rating' => ['required', 'integer', 'between:1,5'],
             'body' => ['required', 'string', 'max:3000'],
             'images' => ['nullable', 'array', 'max:3'],

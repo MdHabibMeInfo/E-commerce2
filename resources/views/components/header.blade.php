@@ -59,6 +59,9 @@
         ? $siteBranding['whatsapp_url']
         : (filled($whatsappDigits) ? 'https://wa.me/'.$whatsappDigits : null);
     $callUrl = filled($whatsappDigits) ? 'tel:+'.$whatsappDigits : null;
+    $headerContainerClass = request()->routeIs('shop')
+        ? 'max-w-[1440px] px-3 sm:px-4 lg:px-5'
+        : 'max-w-[1600px] px-4 sm:px-6 lg:px-8';
 @endphp
 <header class="sticky top-0 z-50 lg:relative">
     {{-- Announcement bar --}}
@@ -99,7 +102,7 @@
 
     {{-- Main navigation --}}
     <div class="border-b border-[#e7e4d8] bg-white">
-        <div class="mx-auto flex h-[78px] max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto flex h-[78px] items-center gap-4 {{ $headerContainerClass }}">
 
             <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="{{ config('app.name') }} home">
                 <img
@@ -227,7 +230,7 @@
 
         {{-- Mobile navigation --}}
         <div id="mobile-navigation" data-mobile-menu class="hidden border-t border-[#e7e4d8] bg-[#fffef9] xl:hidden">
-            <div class="mx-auto max-w-[1600px] px-4 py-4 sm:px-6">
+            <div class="mx-auto py-4 {{ $headerContainerClass }}">
                 <form action="{{ route('shop') }}" method="GET" class="relative mb-4" role="search" data-storefront-search data-suggestions-url="{{ route('shop.suggestions') }}">
                     <label for="mobile-search" class="sr-only">Search products</label>
                     <input
