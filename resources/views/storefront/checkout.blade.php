@@ -290,7 +290,7 @@
                     </div>
 
                     <p class="mt-4 text-center text-xs text-[#738078]">
-                        By placing the order, you agree to our terms and policy.
+                        By placing the order, you agree to our <a href="{{ route('terms') }}" class="font-semibold text-[#145943] underline underline-offset-2 hover:text-[#0f4d3a]">Terms &amp; Conditions</a>, acknowledge our <a href="{{ route('privacy') }}" class="font-semibold text-[#145943] underline underline-offset-2 hover:text-[#0f4d3a]">Privacy Policy</a>, and review our <a href="{{ route('returns') }}" class="font-semibold text-[#145943] underline underline-offset-2 hover:text-[#0f4d3a]">Return / Refund Policy</a>.
                     </p>
                 </aside>
             </div>

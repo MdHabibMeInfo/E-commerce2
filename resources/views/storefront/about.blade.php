@@ -19,7 +19,9 @@
                 @if (filled($aboutUsArticle))
                     <article class="mt-8 whitespace-pre-line text-sm leading-[1.86] text-[#737a76]">{{ $aboutUsArticle }}</article>
                 @else
-                    <p class="mt-8 text-sm leading-[1.86] text-[#737a76]">{{ config('app.name') }} is Bangladesh's trusted home for pure, organic, and wholesome food. We are committed to bringing nature's best straight to your dining table, focusing on products that are safe, natural, and full of flavor. Founded with a vision to restore trust in what we eat, {{ config('app.name') }} began its journey to offer safe food products in Bangladesh. Recognizing a growing concern over food safety and chemical contamination, we set out to source foods from regions known for purity, adopt organic and traditional methods, and share them with households across the nation.</p>
+                    <p class="mt-8 rounded-lg border border-[#e7e4dc] bg-white p-5 text-sm leading-[1.86] text-[#59615e]" role="status">
+                        This page has not been published yet. Please check back soon.
+                    </p>
                 @endif
             </div>
         </div>

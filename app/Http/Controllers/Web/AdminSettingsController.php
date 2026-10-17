@@ -52,6 +52,10 @@ class AdminSettingsController extends Controller
                     config('payments.mobile_wallets.rocket.merchant_number'),
                 ),
                 'about_us_article' => $settings->get('about_us_article', ''),
+                'contact_page_content' => $settings->get('contact_page_content', ''),
+                'terms_conditions' => $settings->get('terms_conditions', ''),
+                'privacy_policy' => $settings->get('privacy_policy', ''),
+                'return_refund_policy' => $settings->get('return_refund_policy', ''),
                 'whatsapp_number' => $settings->get('whatsapp_number', ''),
                 'whatsapp_url' => $settings->get('whatsapp_url', ''),
                 'delivery_fee_inside_dhaka' => $settings->get(
@@ -73,7 +77,7 @@ class AdminSettingsController extends Controller
         }
 
         $heroBanners = HeroBanner::query()->orderBy('sort_order')->orderBy('id')->get();
-        $heroBannerTargetLabels = $heroBanners->mapWithKeys(fn (HeroBanner $heroBanner): array => [
+        $heroBannerTargetLabels = $heroBanners->mapWithKeys(fn(HeroBanner $heroBanner): array => [
             $heroBanner->id => $settings->targetLabel($heroBanner->target),
         ]);
 
@@ -92,33 +96,33 @@ class AdminSettingsController extends Controller
             'search' => ['required', 'string', 'min:2', 'max:80'],
         ]);
         $term = addcslashes($validated['search'], '\\%_');
-        $like = '%'.$term.'%';
+        $like = '%' . $term . '%';
 
         $categories = Category::query()
             ->where('is_active', true)
-            ->where(fn ($query) => $query
+            ->where(fn($query) => $query
                 ->where('name', 'like', $like)
                 ->orWhere('slug', 'like', $like))
             ->orderBy('name')
             ->limit(6)
             ->get(['id', 'name'])
-            ->map(fn (Category $category): array => [
-                'value' => 'category:'.$category->id,
+            ->map(fn(Category $category): array => [
+                'value' => 'category:' . $category->id,
                 'label' => $category->name,
                 'type' => 'Category',
             ]);
 
         $products = Product::query()
             ->where('is_active', true)
-            ->where(fn ($query) => $query
+            ->where(fn($query) => $query
                 ->where('name', 'like', $like)
                 ->orWhere('sku', 'like', $like)
                 ->orWhere('slug', 'like', $like))
             ->orderBy('name')
             ->limit(6)
             ->get(['id', 'name'])
-            ->map(fn (Product $product): array => [
-                'value' => 'product:'.$product->id,
+            ->map(fn(Product $product): array => [
+                'value' => 'product:' . $product->id,
                 'label' => $product->name,
                 'type' => 'Product',
             ]);
@@ -126,7 +130,7 @@ class AdminSettingsController extends Controller
         $variants = ProductVariant::query()
             ->where('is_active', true)
             ->where('is_out_of_stock', false)
-            ->whereHas('product', fn ($query) => $query
+            ->whereHas('product', fn($query) => $query
                 ->where('is_active', true)
                 ->where('is_out_of_stock', false)
                 ->where('name', 'like', $like))
@@ -137,7 +141,7 @@ class AdminSettingsController extends Controller
                         $variants->where('name', 'like', $like)
                             ->orWhere('sku', 'like', $like);
                     })
-                    ->whereHas('product', fn ($product) => $product
+                    ->whereHas('product', fn($product) => $product
                         ->where('is_active', true)
                         ->where('is_out_of_stock', false));
             })
@@ -146,9 +150,9 @@ class AdminSettingsController extends Controller
             ->orderBy('id')
             ->limit(6)
             ->get()
-            ->map(fn (ProductVariant $variant): array => [
-                'value' => 'variant:'.$variant->id,
-                'label' => $variant->product->name.' - '.$variant->displayName(),
+            ->map(fn(ProductVariant $variant): array => [
+                'value' => 'variant:' . $variant->id,
+                'label' => $variant->product->name . ' - ' . $variant->displayName(),
                 'type' => 'Variant',
             ]);
 
@@ -173,8 +177,10 @@ class AdminSettingsController extends Controller
             'remove_hero_image' => ['nullable', 'boolean'],
         ]);
 
-        if (filled($validated['hero_target'] ?? null)
-            && $settings->destinationFor($validated['hero_target']) === null) {
+        if (
+            filled($validated['hero_target'] ?? null)
+            && $settings->destinationFor($validated['hero_target']) === null
+        ) {
             throw ValidationException::withMessages([
                 'hero_target' => 'Choose an active category, product, or available variant.',
             ]);
@@ -194,11 +200,13 @@ class AdminSettingsController extends Controller
         $newPaths = [];
 
         try {
-            foreach ([
-                'logo' => 'logo_path',
-                'hero_image' => 'hero_image_path',
-                'home_ad_image' => 'home_ad_image_path',
-            ] as $input => $settingKey) {
+            foreach (
+                [
+                    'logo' => 'logo_path',
+                    'hero_image' => 'hero_image_path',
+                    'home_ad_image' => 'home_ad_image_path',
+                ] as $input => $settingKey
+            ) {
                 if ($request->hasFile($input)) {
                     $path = $request->file($input)->store('branding', 'public');
 
@@ -210,7 +218,7 @@ class AdminSettingsController extends Controller
 
                     $newPaths[] = $path;
                     $updates[$settingKey] = $path;
-                } elseif ($request->boolean('remove_'.$input)) {
+                } elseif ($request->boolean('remove_' . $input)) {
                     $updates[$settingKey] = null;
                 }
             }
@@ -248,19 +256,23 @@ class AdminSettingsController extends Controller
             'delivery_fee_inside_dhaka' => ['required', 'numeric', 'min:0', 'max:100000'],
             'delivery_fee_outside_dhaka' => ['required', 'numeric', 'min:0', 'max:100000'],
             'about_us_article' => ['nullable', 'string', 'max:10000'],
+            'contact_page_content' => ['nullable', 'string', 'max:10000'],
+            'terms_conditions' => ['nullable', 'string', 'max:30000'],
+            'privacy_policy' => ['nullable', 'string', 'max:30000'],
+            'return_refund_policy' => ['nullable', 'string', 'max:30000'],
             'whatsapp_number' => ['nullable', 'string', 'max:30'],
             'whatsapp_url' => ['nullable', 'url:http,https', 'max:2048'],
             'security_login_attempts' => ['required', 'integer', 'between:3,10'],
             'security_login_lockout_minutes' => ['required', 'integer', 'between:1,60'],
             'security_password_min_length' => ['required', 'integer', 'between:12,32'],
         ]);
-        $values = array_map(static fn (mixed $value): ?string => $value === null ? null : (string) $value, $validated);
+        $values = array_map(static fn(mixed $value): ?string => $value === null ? null : (string) $value, $validated);
 
         $settings->update($values, (int) $request->user()->getAuthIdentifier());
         $events->record($request, $request->user(), 'sensitive_site_settings_updated', [
             'keys' => array_keys($values),
         ]);
 
-        return back()->with('success', 'Payment and security settings updated.');
+        return back()->with('success', 'System owner settings updated.');
     }
 }

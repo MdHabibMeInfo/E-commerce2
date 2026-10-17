@@ -21,6 +21,57 @@ class HomeController extends Controller
         ]);
     }
 
+    public function contact(SiteSettings $settings): View
+    {
+        $whatsappNumber = $settings->get('whatsapp_number');
+        $whatsappDigits = preg_replace('/\D+/', '', (string) $whatsappNumber) ?? '';
+
+        if (str_starts_with($whatsappDigits, '0')) {
+            $whatsappDigits = '880' . substr($whatsappDigits, 1);
+        }
+
+        $configuredWhatsappUrl = $settings->get('whatsapp_url');
+
+        return view('storefront.contact', [
+            'contactContent' => $settings->get('contact_page_content', ''),
+            'whatsappNumber' => $whatsappNumber,
+            'callUrl' => filled($whatsappDigits) ? 'tel:+' . $whatsappDigits : null,
+            'whatsappUrl' => filled($configuredWhatsappUrl)
+                ? $configuredWhatsappUrl
+                : (filled($whatsappDigits) ? 'https://wa.me/' . $whatsappDigits : null),
+        ]);
+    }
+
+    public function terms(SiteSettings $settings): View
+    {
+        return $this->policyPage($settings, 'terms_conditions', 'Terms & Conditions', 'শর্তাবলী', 'terms');
+    }
+
+    public function privacyPolicy(SiteSettings $settings): View
+    {
+        return $this->policyPage($settings, 'privacy_policy', 'Privacy Policy', 'গোপনীয়তা নীতি', 'privacy');
+    }
+
+    public function returnRefundPolicy(SiteSettings $settings): View
+    {
+        return $this->policyPage($settings, 'return_refund_policy', 'Return / Refund Policy', 'রিটার্ন ও রিফান্ড পলিসি', 'returns');
+    }
+
+    private function policyPage(
+        SiteSettings $settings,
+        string $settingKey,
+        string $title,
+        string $banglaTitle,
+        string $routeName,
+    ): View {
+        return view('storefront.policy', [
+            'policyTitle' => $title,
+            'policyBanglaTitle' => $banglaTitle,
+            'policyContent' => $settings->get($settingKey, ''),
+            'policyRoute' => $routeName,
+        ]);
+    }
+
     public function index(SiteSettings $settings, CouponService $promotions): View
     {
         $topSellingProducts = Product::query()
@@ -108,13 +159,13 @@ class HomeController extends Controller
             $topSellingProducts
                 ->concat($newArrivals)
                 ->concat($justForYouProducts)
-                ->concat($categoryRows->flatMap(fn (Category $category) => $category->products))
+                ->concat($categoryRows->flatMap(fn(Category $category) => $category->products))
                 ->unique('id'),
         );
 
         $approvedReviews = ProductReview::query()
             ->where('is_approved', true)
-            ->whereHas('product', fn ($query) => $query->where('is_active', true))
+            ->whereHas('product', fn($query) => $query->where('is_active', true))
             ->with([
                 'product:id,name,slug',
                 'reviewer:id,email,profile_photo_path',
@@ -128,7 +179,7 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
-        $heroBannerDestinations = $heroBanners->mapWithKeys(fn (HeroBanner $heroBanner): array => [
+        $heroBannerDestinations = $heroBanners->mapWithKeys(fn(HeroBanner $heroBanner): array => [
             $heroBanner->id => $heroBanner->target
                 ? $settings->destinationFor($heroBanner->target)
                 : null,

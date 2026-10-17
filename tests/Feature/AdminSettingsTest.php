@@ -41,6 +41,10 @@ it('lets a settings editor update branding but denies sensitive settings', funct
         ->assertSee('Homepage Hero Images')
         ->assertDontSee('security_admin_2fa_required', false)
         ->assertDontSee('name="about_us_article"', false)
+        ->assertDontSee('name="contact_page_content"', false)
+        ->assertDontSee('name="terms_conditions"', false)
+        ->assertDontSee('name="privacy_policy"', false)
+        ->assertDontSee('name="return_refund_policy"', false)
         ->assertDontSee('name="whatsapp_number"', false)
         ->assertDontSee('name="security_admin_2fa_required"', false)
         ->assertDontSee('bkash_merchant_number', false);
@@ -58,6 +62,8 @@ it('lets a settings editor update branding but denies sensitive settings', funct
     $this->patch(route('admin.settings.security.update'), [
         'bkash_merchant_number' => '01700000000',
         'nagad_merchant_number' => '01800000000',
+        'contact_page_content' => 'Unauthorized contact content.',
+        'terms_conditions' => 'Unauthorized policy edit.',
         'security_admin_2fa_required' => '1',
         'security_login_attempts' => 5,
         'security_login_lockout_minutes' => 1,
@@ -65,6 +71,8 @@ it('lets a settings editor update branding but denies sensitive settings', funct
     ])->assertForbidden();
 
     $this->assertDatabaseMissing('site_settings', ['key' => 'bkash_merchant_number']);
+    $this->assertDatabaseMissing('site_settings', ['key' => 'contact_page_content']);
+    $this->assertDatabaseMissing('site_settings', ['key' => 'terms_conditions']);
 
     $this->patch(route('admin.settings.branding.update'), [
         'remove_logo' => '1',
@@ -124,6 +132,10 @@ it('lets the system owner update encrypted payment and security settings', funct
         ->assertSee('name="bkash_merchant_number"', false)
         ->assertSee('name="rocket_merchant_number"', false)
         ->assertSee('name="about_us_article"', false)
+        ->assertSee('name="contact_page_content"', false)
+        ->assertSee('name="terms_conditions"', false)
+        ->assertSee('name="privacy_policy"', false)
+        ->assertSee('name="return_refund_policy"', false)
         ->assertSee('name="whatsapp_number"', false)
         ->assertSee('name="delivery_fee_inside_dhaka"', false)
         ->assertSee('name="delivery_fee_outside_dhaka"', false)
@@ -136,6 +148,10 @@ it('lets the system owner update encrypted payment and security settings', funct
         'delivery_fee_inside_dhaka' => '45.50',
         'delivery_fee_outside_dhaka' => '85.50',
         'about_us_article' => 'Our story starts with a promise of quality.',
+        'contact_page_content' => 'Reach our team every day for order support.',
+        'terms_conditions' => "Orders are subject to these terms.\nTerms are updated by the store owner.",
+        'privacy_policy' => 'Customer data is used to fulfill orders.',
+        'return_refund_policy' => 'Contact us within 3 days about damaged items.',
         'whatsapp_number' => '8801712345678',
         'whatsapp_url' => 'https://wa.me/8801712345678',
         'security_login_attempts' => 7,
@@ -151,6 +167,10 @@ it('lets the system owner update encrypted payment and security settings', funct
         ->and(app(SiteSettings::class)->get('delivery_fee_inside_dhaka'))->toBe('45.50')
         ->and(app(SiteSettings::class)->get('delivery_fee_outside_dhaka'))->toBe('85.50')
         ->and(app(SiteSettings::class)->get('about_us_article'))->toBe('Our story starts with a promise of quality.')
+        ->and(app(SiteSettings::class)->get('contact_page_content'))->toBe('Reach our team every day for order support.')
+        ->and(app(SiteSettings::class)->get('terms_conditions'))->toBe("Orders are subject to these terms.\nTerms are updated by the store owner.")
+        ->and(app(SiteSettings::class)->get('privacy_policy'))->toBe('Customer data is used to fulfill orders.')
+        ->and(app(SiteSettings::class)->get('return_refund_policy'))->toBe('Contact us within 3 days about damaged items.')
         ->and(app(SiteSettings::class)->get('whatsapp_number'))->toBe('8801712345678')
         ->and(app(SiteSettings::class)->get('whatsapp_url'))->toBe('https://wa.me/8801712345678')
         ->and(app(SiteSettings::class)->integer('security_login_attempts'))->toBe(7)
@@ -202,18 +222,18 @@ it('resolves only active internal category product and variant targets', functio
     ]);
     $settings = app(SiteSettings::class);
 
-    expect($settings->destinationFor('category:'.$category->id))
+    expect($settings->destinationFor('category:' . $category->id))
         ->toBe(route('shop', ['category' => $category->slug]))
-        ->and($settings->destinationFor('product:'.$product->id))
+        ->and($settings->destinationFor('product:' . $product->id))
         ->toBe(route('products.show', ['product' => $product->slug]))
-        ->and($settings->destinationFor('variant:'.$variant->id))
+        ->and($settings->destinationFor('variant:' . $variant->id))
         ->toBe(route('products.show', ['product' => $product->slug, 'variant' => $variant->id]))
         ->and($settings->destinationFor('https://external.example'))
         ->toBeNull();
 
     $this->get(route('products.show', ['product' => $product->slug, 'variant' => $variant->id]))
         ->assertOk()
-        ->assertSee('value="'.$variant->id.'"', false)
+        ->assertSee('value="' . $variant->id . '"', false)
         ->assertSee('selected', false);
 });
 
@@ -272,9 +292,9 @@ it('searches active categories products and available variants for hero destinat
     $productResponse = $this->getJson(route('admin.settings.hero-targets', ['search' => 'Searchable Campaign Product']));
     $variantResponse = $this->getJson(route('admin.settings.hero-targets', ['search' => 'SEARCH-CAMPAIGN-VARIANT']));
 
-    $categoryResponse->assertOk()->assertJsonPath('items.0.value', 'category:'.$category->id);
-    $productResponse->assertOk()->assertJsonPath('items.0.value', 'product:'.$product->id);
-    $variantResponse->assertOk()->assertJsonPath('items.0.value', 'variant:'.ProductVariant::query()
+    $categoryResponse->assertOk()->assertJsonPath('items.0.value', 'category:' . $category->id);
+    $productResponse->assertOk()->assertJsonPath('items.0.value', 'product:' . $product->id);
+    $variantResponse->assertOk()->assertJsonPath('items.0.value', 'variant:' . ProductVariant::query()
         ->where('sku', 'SEARCH-CAMPAIGN-VARIANT')
         ->value('id'));
     expect($categoryResponse->json('items'))->toHaveCount(1)
@@ -389,16 +409,18 @@ it('links hero images to selected categories products and variants or the homepa
     ]);
     $this->actingAs(completeManagementTwoFactorForTest(createSystemOwnerUser()));
 
-    foreach ([
-        ['hero-category.png', 'category:'.$category->id],
-        ['hero-product.png', 'product:'.$product->id],
-        ['hero-variant.png', 'variant:'.$variant->id],
-        ['hero-home.png', null],
-    ] as [$filename, $target]) {
+    foreach (
+        [
+            ['hero-category.png', 'category:' . $category->id],
+            ['hero-product.png', 'product:' . $product->id],
+            ['hero-variant.png', 'variant:' . $variant->id],
+            ['hero-home.png', null],
+        ] as [$filename, $target]
+    ) {
         $this->post(route('admin.settings.hero-banners.store'), array_filter([
             'image' => UploadedFile::fake()->image($filename, 1200, 600),
             'target' => $target,
-        ], static fn (mixed $value): bool => $value !== null))->assertRedirect();
+        ], static fn(mixed $value): bool => $value !== null))->assertRedirect();
     }
 
     $settingsResponse = $this->get(route('admin.settings'))
@@ -418,10 +440,10 @@ it('links hero images to selected categories products and variants or the homepa
         ->toContain('data-hero-dot="0"')
         ->toContain('data-hero-dot="3"')
         ->toContain('object-contain')
-        ->toContain('<a href="'.route('shop', ['category' => $category->slug]).'" aria-label="Open selected destination"')
-        ->toContain('<a href="'.route('products.show', ['product' => $product->slug]).'" aria-label="Open selected destination"')
-        ->toContain('<a href="'.route('products.show', ['product' => $product->slug, 'variant' => $variant->id]).'" aria-label="Open selected destination"')
-        ->toContain('<a href="'.route('home').'" aria-label="Open homepage"');
+        ->toContain('<a href="' . route('shop', ['category' => $category->slug]) . '" aria-label="Open selected destination"')
+        ->toContain('<a href="' . route('products.show', ['product' => $product->slug]) . '" aria-label="Open selected destination"')
+        ->toContain('<a href="' . route('products.show', ['product' => $product->slug, 'variant' => $variant->id]) . '" aria-label="Open selected destination"')
+        ->toContain('<a href="' . route('home') . '" aria-label="Open homepage"');
 });
 
 it('rejects an external hero image destination without saving the image', function () {

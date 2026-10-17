@@ -10,7 +10,7 @@
                     >
                 </a>
                 <p class="mt-4 max-w-xs text-sm leading-6 text-white/65">
-                    Fresh, quality products delivered to your door with a simple and secure shopping experience.
+                    Discover the products you need, with quality you can trust and service you can rely on.
                 </p>
             </div>
 
@@ -28,9 +28,10 @@
                 <h2 class="text-sm font-bold uppercase tracking-wider text-[#e2c775]">Information</h2>
                 <div class="mt-4 grid gap-3 text-sm text-white/70">
                     <a href="{{ route('about') }}" class="transition hover:text-white">About Us</a>
-                    <a href="#" class="transition hover:text-white">Contact</a>
-                    <a href="#" class="transition hover:text-white">Privacy Policy</a>
-                    <a href="#" class="transition hover:text-white">Terms &amp; Conditions</a>
+                    <a href="{{ route('contact') }}" class="transition hover:text-white">Contact</a>
+                    <a href="{{ route('privacy') }}" class="transition hover:text-white">Privacy Policy</a>
+                    <a href="{{ route('terms') }}" class="transition hover:text-white">Terms &amp; Conditions</a>
+                    <a href="{{ route('returns') }}" class="transition hover:text-white">Return / Refund Policy</a>
                     <button type="button" data-meta-consent-open hidden class="text-left transition hover:text-white">Privacy settings</button>
                 </div>
             </div>
@@ -40,7 +41,7 @@
                 <p class="mt-4 text-sm leading-6 text-white/70">
                     Our support team is here to help with your orders and shopping experience.
                 </p>
-                <a href="#" class="mt-4 inline-flex rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold transition hover:border-[#e2c775] hover:text-[#e2c775]">
+                <a href="{{ route('contact') }}" class="mt-4 inline-flex rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold transition hover:border-[#e2c775] hover:text-[#e2c775]">
                     Contact Support
                 </a>
             </div>
@@ -48,7 +49,7 @@
 
         <div class="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
             <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-            <p>Fresh &amp; natural, every day.</p>
+            <p>Quality You Can Trust.</p>
         </div>
     </div>
 </footer>

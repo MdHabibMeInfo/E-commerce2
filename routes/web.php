@@ -25,6 +25,10 @@ use Illuminate\Support\Facades\Route;
 Route::controller(HomeController::class)->group(function () {
     Route::get('/', 'index')->name('home');
     Route::get('/about-us', 'about')->name('about');
+    Route::get('/contact', 'contact')->name('contact');
+    Route::get('/terms-and-conditions', 'terms')->name('terms');
+    Route::get('/privacy-policy', 'privacyPolicy')->name('privacy');
+    Route::get('/return-refund-policy', 'returnRefundPolicy')->name('returns');
 });
 
 Route::get('/search/suggestions', [ShopController::class, 'suggestions'])

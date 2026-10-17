@@ -250,6 +250,10 @@
                         About Us article
                         <textarea name="about_us_article" rows="8" maxlength="10000" class="mt-2 w-full rounded-xl border border-[#dfe3cf] bg-white px-3 py-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">{{ old('about_us_article', $sensitiveSettings['about_us_article']) }}</textarea>
                     </label>
+                    <label class="block text-sm font-semibold text-[#4d5c56]">
+                        Contact page content
+                        <textarea name="contact_page_content" rows="6" maxlength="10000" class="mt-2 w-full rounded-xl border border-[#dfe3cf] bg-white px-3 py-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">{{ old('contact_page_content', $sensitiveSettings['contact_page_content']) }}</textarea>
+                    </label>
                     <div class="grid gap-4 sm:grid-cols-2">
                         <label class="block text-sm font-semibold text-[#4d5c56]">
                             WhatsApp number
@@ -260,6 +264,23 @@
                             <input type="url" name="whatsapp_url" value="{{ old('whatsapp_url', $sensitiveSettings['whatsapp_url']) }}" maxlength="2048" placeholder="https://wa.me/8801XXXXXXXXX" class="mt-2 h-11 w-full rounded-xl border border-[#dfe3cf] bg-white px-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">
                         </label>
                     </div>
+                </fieldset>
+
+                <fieldset class="space-y-4 border-t border-[#eef0ea] pt-5">
+                    <legend class="text-sm font-bold text-[#173b32]">Store policies</legend>
+                    <p class="text-xs leading-5 text-[#738078]">These pages are public. Add the approved policy wording here; blank pages show a publication notice.</p>
+                    <label class="block text-sm font-semibold text-[#4d5c56]">
+                        Terms &amp; Conditions / শর্তাবলী
+                        <textarea name="terms_conditions" rows="8" maxlength="30000" class="mt-2 w-full rounded-xl border border-[#dfe3cf] bg-white px-3 py-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">{{ old('terms_conditions', $sensitiveSettings['terms_conditions']) }}</textarea>
+                    </label>
+                    <label class="block text-sm font-semibold text-[#4d5c56]">
+                        Privacy Policy / গোপনীয়তা নীতি
+                        <textarea name="privacy_policy" rows="8" maxlength="30000" class="mt-2 w-full rounded-xl border border-[#dfe3cf] bg-white px-3 py-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">{{ old('privacy_policy', $sensitiveSettings['privacy_policy']) }}</textarea>
+                    </label>
+                    <label class="block text-sm font-semibold text-[#4d5c56]">
+                        Return / Refund Policy / রিটার্ন ও রিফান্ড পলিসি
+                        <textarea name="return_refund_policy" rows="8" maxlength="30000" class="mt-2 w-full rounded-xl border border-[#dfe3cf] bg-white px-3 py-3 text-sm outline-none focus:border-[#145943] focus:ring-4 focus:ring-[#145943]/10">{{ old('return_refund_policy', $sensitiveSettings['return_refund_policy']) }}</textarea>
+                    </label>
                 </fieldset>
 
                 <fieldset class="space-y-4 border-t border-[#eef0ea] pt-5">
@@ -292,7 +313,7 @@
                 </fieldset>
 
                 <div class="flex justify-end border-t border-[#eef0ea] pt-5">
-                    <button type="submit" class="min-h-11 rounded-xl bg-[#145943] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0f4d3a]">Save payment &amp; security</button>
+                    <button type="submit" class="min-h-11 rounded-xl bg-[#145943] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0f4d3a]">Save owner settings</button>
                 </div>
             </form>
         </section>

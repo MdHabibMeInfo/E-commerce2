@@ -26,6 +26,10 @@ class SiteSettings
         'hero_description' => 'Discover fresh, high-quality products that bring health and happiness to your everyday life.',
         'hero_target' => null,
         'about_us_article' => '',
+        'contact_page_content' => '',
+        'terms_conditions' => '',
+        'privacy_policy' => '',
+        'return_refund_policy' => '',
         'whatsapp_number' => null,
         'whatsapp_url' => null,
         'security_login_attempts' => '5',
@@ -42,6 +46,10 @@ class SiteSettings
         'hero_description',
         'hero_target',
         'about_us_article',
+        'contact_page_content',
+        'terms_conditions',
+        'privacy_policy',
+        'return_refund_policy',
         'whatsapp_number',
         'whatsapp_url',
         'bkash_merchant_number',
@@ -61,7 +69,7 @@ class SiteSettings
         $encryptedValues = Cache::rememberForever(self::CACHE_KEY, static function (): array {
             return SiteSetting::query()
                 ->get(['key', 'value'])
-                ->mapWithKeys(fn (SiteSetting $setting): array => [$setting->key => $setting->value])
+                ->mapWithKeys(fn(SiteSetting $setting): array => [$setting->key => $setting->value])
                 ->all();
         });
 
@@ -188,7 +196,7 @@ class SiteSettings
             ->whereKey($variantId)
             ->where('is_active', true)
             ->where('is_out_of_stock', false)
-            ->whereHas('product', fn ($query) => $query
+            ->whereHas('product', fn($query) => $query
                 ->where('is_active', true)
                 ->where('is_out_of_stock', false))
             ->with('product:id,slug')
@@ -205,13 +213,13 @@ class SiteSettings
             ->whereKey($variantId)
             ->where('is_active', true)
             ->where('is_out_of_stock', false)
-            ->whereHas('product', fn ($query) => $query
+            ->whereHas('product', fn($query) => $query
                 ->where('is_active', true)
                 ->where('is_out_of_stock', false))
             ->with(['product:id,name', 'attributeValues.productAttribute'])
             ->first();
 
-        return $variant ? $variant->product->name.' - '.$variant->displayName() : null;
+        return $variant ? $variant->product->name . ' - ' . $variant->displayName() : null;
     }
 
     /** @param array<string, string|null> $values */
