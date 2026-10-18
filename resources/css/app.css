@@ -17,11 +17,27 @@
 
 html {
     scroll-behavior: smooth;
-    scrollbar-width: none;
+    scrollbar-width: auto;
+    scrollbar-color: #718079 #e9ede6;
 }
 
 html::-webkit-scrollbar {
-    display: none;
+    width: 14px;
+    height: 14px;
+}
+
+html::-webkit-scrollbar-track {
+    background: #e9ede6;
+}
+
+html::-webkit-scrollbar-thumb {
+    background: #718079;
+    border: 3px solid #e9ede6;
+    border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+    background: #145943;
 }
 
 body {

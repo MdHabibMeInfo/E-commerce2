@@ -125,6 +125,12 @@
                 <span class="text-xs">›</span>
             </a>
         @endcan
+        @can('reports.view')
+            <a href="{{ route('admin.reports.sales') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ request()->routeIs('admin.reports.*') ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
+                <span>Sales Reports</span>
+                <span class="text-xs">›</span>
+            </a>
+        @endcan
         @canany(['roles.view', 'roles.create', 'roles.update'])
             <a href="{{ route('admin.roles.index') }}" class="flex items-center justify-between rounded-xl px-3 py-2.5 {{ $isRolesMenuOpen ? 'bg-[#edf2e4] font-bold text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec]' }}">
                 <span>Roles & Permissions</span>

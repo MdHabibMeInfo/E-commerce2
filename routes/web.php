@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\AdminCouponController;
 use App\Http\Controllers\Web\AdminCustomerController;
 use App\Http\Controllers\Web\AdminReviewController;
 use App\Http\Controllers\Web\AdminRoleController;
+use App\Http\Controllers\Web\AdminSalesReportController;
 use App\Http\Controllers\Web\AdminSessionController;
 use App\Http\Controllers\Web\AdminSettingsController;
 use App\Http\Controllers\Web\AdminUserController;
@@ -178,6 +179,10 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
         Route::get('/reviews/{review}', [AdminReviewController::class, 'show'])->middleware('can:reviews.view')->name('reviews.show');
         Route::patch('/reviews/{review}', [AdminReviewController::class, 'update'])
             ->middleware(['can:reviews.moderate', 'throttle:10,1'])->name('reviews.update');
+        Route::get('/reports/sales', [AdminSalesReportController::class, 'index'])
+            ->middleware('can:reports.view')->name('reports.sales');
+        Route::get('/reports/sales/products', [AdminSalesReportController::class, 'productSuggestions'])
+            ->middleware(['can:reports.view', 'throttle:60,1'])->name('reports.sales.products');
 
         Route::get('/roles', [AdminRoleController::class, 'index'])->middleware(['can:roles.view', 'can:system-owner-settings'])->name('roles.index');
         Route::post('/roles', [AdminRoleController::class, 'store'])->middleware(['can:roles.create', 'can:system-owner-settings'])->name('roles.store');
