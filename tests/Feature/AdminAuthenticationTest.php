@@ -351,7 +351,8 @@ it('lets the system owner create a role with selected permissions', function () 
 
     $this->get(route('admin.roles.index'))
         ->assertOk()
-        ->assertSee('Roles & Permissions');
+        ->assertSee('Roles & Permissions')
+        ->assertSee('Owner access comes from the system owner account flag, not role permissions.');
 
     $role = Role::query()->where('name', 'Catalog Reviewer')->firstOrFail();
     $this->assertDatabaseHas('role_has_permissions', [
@@ -473,8 +474,18 @@ it('creates the first system owner through the protected console prompt', functi
     ]);
 
     $user = User::query()->where('email', 'first-admin@example.com')->firstOrFail();
+    $systemOwnerRole = Role::query()->where('name', 'System Owner')->where('guard_name', 'web')->firstOrFail();
+    $this->assertDatabaseHas('model_has_roles', [
+        'role_id' => $systemOwnerRole->id,
+        'model_id' => $user->id,
+        'model_type' => User::class,
+    ]);
     Notification::assertSentTo($user, VerifyEmail::class);
+    expect($user->getRoleNames()->toArray())->toBe(['System Owner']);
     expect($user->getDirectPermissions())->toHaveCount(Permission::query()->count());
+    expect($user->can('products.create'))->toBeTrue()
+        ->and($user->can('users.create'))->toBeTrue()
+        ->and($user->can('security.manage'))->toBeTrue();
 });
 
 it('requires the system owner for staff and role administration', function () {
@@ -583,7 +594,7 @@ it('enforces the single system owner at the database level', function () {
     createSystemOwnerUser();
     $secondUser = User::factory()->create();
 
-    expect(fn () => $secondUser->forceFill([
+    expect(fn() => $secondUser->forceFill([
         'account_type' => 'admin',
         'is_system_owner' => true,
     ])->save())->toThrow(QueryException::class);

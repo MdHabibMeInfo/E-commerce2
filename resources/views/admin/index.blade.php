@@ -117,8 +117,12 @@
         <div class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-xl font-extrabold text-[#145943]">Current User Permissions</h2>
-                <span class="rounded-full bg-[#edf2e4] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#145943]">Authorized</span>
+                <span class="rounded-full bg-[#edf2e4] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#145943]">{{ $currentUser?->is_system_owner ? 'System Owner' : 'Authorized' }}</span>
             </div>
+
+            @if ($currentUser?->is_system_owner)
+                <p class="mb-4 rounded-xl border border-[#cfe7d6] bg-[#edf8f1] px-3 py-2 text-sm font-semibold text-[#145943]">System Owner has access to all platform capabilities, including owner-only actions.</p>
+            @endif
 
             <div class="grid gap-3 sm:grid-cols-2">
                 @foreach (array_slice($permissions, 0, 8) as $permission)
@@ -127,6 +131,19 @@
                     </div>
                 @endforeach
             </div>
+
+            @if (count($permissions) > 8)
+                <details class="mt-4 border-t border-[#e5e2d9] pt-3">
+                    <summary class="cursor-pointer text-sm font-bold text-[#145943]">View the remaining {{ count($permissions) - 8 }} permissions</summary>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        @foreach (array_slice($permissions, 8) as $permission)
+                            <div class="rounded-xl border border-[#e5e2d9] bg-[#fafaf5] px-3 py-2 text-sm font-medium text-[#173b32]">
+                                {{ str_replace(['.', '_'], ' • ', $permission) }}
+                            </div>
+                        @endforeach
+                    </div>
+                </details>
+            @endif
         </div>
 
         <div class="rounded-[20px] border border-[#e5e2d9] bg-white p-5 shadow-sm">

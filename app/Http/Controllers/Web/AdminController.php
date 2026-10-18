@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Permission;
 
 class AdminController extends Controller
 {
@@ -45,8 +46,12 @@ class AdminController extends Controller
     public function index(): View
     {
         $currentUser = auth()->user();
-        $roleNames = $currentUser?->getRoleNames()->toArray() ?? [];
-        $permissions = $currentUser?->getPermissionNames()->toArray() ?? [];
+        $roleNames = $currentUser?->is_system_owner
+            ? ['System Owner']
+            : ($currentUser?->getRoleNames()->toArray() ?? []);
+        $permissions = $currentUser?->is_system_owner
+            ? Permission::query()->where('guard_name', 'web')->orderBy('name')->pluck('name')->all()
+            : ($currentUser?->getPermissionNames()->toArray() ?? []);
         $canViewProducts = $currentUser?->can('products.view') ?? false;
         $canViewOrders = $currentUser?->can('orders.view') ?? false;
         $canViewCustomers = $currentUser?->can('customers.view') ?? false;
@@ -60,8 +65,8 @@ class AdminController extends Controller
             'revenue' => $canViewOrders ? Order::query()->where('payment_status', 'paid')->sum('total') : null,
             'active_coupons' => $canViewCoupons ? Coupon::query()
                 ->where('is_active', true)
-                ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
-                ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>=', now()))
+                ->where(fn($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>=', now()))
                 ->count() : null,
             'pending_reviews' => $currentUser?->can('reviews.view') ? ProductReview::pending()->count() : 0,
         ];
@@ -75,23 +80,23 @@ class AdminController extends Controller
             : collect();
         $lowStockProducts = $canViewProducts
             ? Product::query()
-                ->where('is_active', true)
-                ->where(function (Builder $query): void {
-                    $query->where('is_out_of_stock', true)
-                        ->orWhere(fn (Builder $stockQuery): Builder => $stockQuery->whereNotNull('stock')->where('stock', '<=', 5));
-                })
-                ->orderByDesc('is_out_of_stock')
-                ->orderBy('stock')
-                ->limit(6)
-                ->get(['id', 'name', 'slug', 'stock', 'is_out_of_stock'])
+            ->where('is_active', true)
+            ->where(function (Builder $query): void {
+                $query->where('is_out_of_stock', true)
+                    ->orWhere(fn(Builder $stockQuery): Builder => $stockQuery->whereNotNull('stock')->where('stock', '<=', 5));
+            })
+            ->orderByDesc('is_out_of_stock')
+            ->orderBy('stock')
+            ->limit(6)
+            ->get(['id', 'name', 'slug', 'stock', 'is_out_of_stock'])
             : collect();
         $paidSales = $canViewOrders
             ? Order::query()
-                ->where('payment_status', 'paid')
-                ->where('created_at', '>=', now()->subDays(6)->startOfDay())
-                ->selectRaw('DATE(created_at) as sales_date, SUM(total) as amount')
-                ->groupBy('sales_date')
-                ->pluck('amount', 'sales_date')
+            ->where('payment_status', 'paid')
+            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
+            ->selectRaw('DATE(created_at) as sales_date, SUM(total) as amount')
+            ->groupBy('sales_date')
+            ->pluck('amount', 'sales_date')
             : collect();
         $salesTrend = collect(range(6, 0))->map(function (int $daysAgo) use ($paidSales): array {
             $date = now()->subDays($daysAgo)->toDateString();
@@ -170,7 +175,7 @@ class AdminController extends Controller
         }
 
         if ($request->boolean('trashed_products')) {
-            $categories->whereHas('products', fn (Builder $products): Builder => $products->onlyTrashed());
+            $categories->whereHas('products', fn(Builder $products): Builder => $products->onlyTrashed());
         }
 
         if ($search !== '') {
@@ -180,7 +185,7 @@ class AdminController extends Controller
         $matches = $categories
             ->orderBy('name')
             ->get(['id', 'name', 'slug'])
-            ->map(fn (Category $category): array => [
+            ->map(fn(Category $category): array => [
                 'id' => $category->id,
                 'label' => $category->name,
                 'detail' => $category->slug,
@@ -313,7 +318,7 @@ class AdminController extends Controller
         $matches = $attributes
             ->orderBy('name')
             ->get(['name', 'slug'])
-            ->map(fn (ProductAttribute $attribute): array => [
+            ->map(fn(ProductAttribute $attribute): array => [
                 'label' => $attribute->name,
                 'detail' => $attribute->slug,
                 'value' => $attribute->name,
@@ -448,7 +453,7 @@ class AdminController extends Controller
         $matches = $products
             ->orderBy('name')
             ->get(['name', 'sku'])
-            ->map(fn (Product $product): array => [
+            ->map(fn(Product $product): array => [
                 'label' => $product->name,
                 'detail' => $product->sku,
                 'value' => $product->name,
@@ -484,8 +489,8 @@ class AdminController extends Controller
 
         return $query->where(function (Builder $query) use ($columns, $lowerSearch): void {
             foreach ($columns as $column) {
-                $query->orWhereRaw('LOWER('.$column.') LIKE ?', [$lowerSearch.'%'])
-                    ->orWhereRaw('LOWER('.$column.') LIKE ?', ['%'.$lowerSearch.'%']);
+                $query->orWhereRaw('LOWER(' . $column . ') LIKE ?', [$lowerSearch . '%'])
+                    ->orWhereRaw('LOWER(' . $column . ') LIKE ?', ['%' . $lowerSearch . '%']);
             }
         });
     }
@@ -505,12 +510,12 @@ class AdminController extends Controller
         ]);
         $availableAttributes = ProductAttribute::query()
             ->where('is_active', true)
-            ->with(['values' => fn (HasMany $values) => $values->where('is_active', true)])
+            ->with(['values' => fn(HasMany $values) => $values->where('is_active', true)])
             ->orderBy('name')
             ->get();
         $canCreateVariants = $product->productAttributes->contains(
-            fn (ProductAttribute $attribute): bool => $attribute->is_active
-                && $attribute->values->contains(fn (AttributeValue $value): bool => $value->is_active),
+            fn(ProductAttribute $attribute): bool => $attribute->is_active
+                && $attribute->values->contains(fn(AttributeValue $value): bool => $value->is_active),
         );
         $variants = $product->variants()
             ->withTrashed()
@@ -902,7 +907,7 @@ class AdminController extends Controller
             $productVariantService->createVariant($product, $validated);
         } catch (ValidationException $exception) {
             throw $exception;
-        } catch (DuplicateVariantCombinationException|InvalidVariantAttributeValueException $exception) {
+        } catch (DuplicateVariantCombinationException | InvalidVariantAttributeValueException $exception) {
             throw ValidationException::withMessages([
                 'attribute_value_ids' => $exception->getMessage(),
             ]);
@@ -919,7 +924,7 @@ class AdminController extends Controller
             $productVariantService->updateVariant($product, $variant, $validated);
         } catch (ValidationException $exception) {
             throw $exception;
-        } catch (DuplicateVariantCombinationException|InvalidVariantAttributeValueException $exception) {
+        } catch (DuplicateVariantCombinationException | InvalidVariantAttributeValueException $exception) {
             throw ValidationException::withMessages([
                 'attribute_value_ids' => $exception->getMessage(),
             ]);

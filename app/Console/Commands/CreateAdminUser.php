@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 #[Signature('admin:create')]
 #[Description('Create a system owner account for the admin dashboard.')]
@@ -20,6 +21,19 @@ class CreateAdminUser extends Command
     {
         if (User::query()->where('is_system_owner', true)->exists()) {
             $this->error('A system owner already exists.');
+
+            return self::FAILURE;
+        }
+
+        $systemOwnerRole = Role::query()
+            ->where('name', 'System Owner')
+            ->where('guard_name', 'web')
+            ->where('is_system', true)
+            ->where('is_active', true)
+            ->first();
+
+        if ($systemOwnerRole === null) {
+            $this->error('The reserved System Owner role is missing or inactive. Run the application migrations first.');
 
             return self::FAILURE;
         }
@@ -46,6 +60,7 @@ class CreateAdminUser extends Command
         }
 
         $validated = $validator->validated();
+        app(PermissionSeeder::class)->run();
         $user = User::query()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -57,7 +72,7 @@ class CreateAdminUser extends Command
             'system_owner_slot' => 1,
             'status' => 'active',
         ])->save();
-        app(PermissionSeeder::class)->run();
+        $user->syncRoles($systemOwnerRole);
         $user->syncPermissions(Permission::query()->where('guard_name', 'web')->get());
         $user->sendEmailVerificationNotification();
 

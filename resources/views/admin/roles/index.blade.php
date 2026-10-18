@@ -56,7 +56,11 @@
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h2 class="text-lg font-extrabold text-[#145943]">{{ $role->name }}</h2>
-                            <p class="mt-1 text-xs text-[#66736d]">{{ $role->permissions->count() }} permissions</p>
+                            @if ($role->name === 'System Owner')
+                                <p class="mt-1 text-xs text-[#66736d]">Owner access comes from the system owner account flag, not role permissions.</p>
+                            @else
+                                <p class="mt-1 text-xs text-[#66736d]">{{ $role->permissions->count() }} permissions</p>
+                            @endif
                         </div>
                         @if ($role->is_system)
                             <span class="rounded-full bg-[#f7f4ee] px-3 py-1 text-xs font-semibold text-[#8a6b2e]">System role</span>

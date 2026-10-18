@@ -4,11 +4,13 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\EmailChangeVerificationNotification;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 
 it('shows profile and notification actions without storefront header controls', function () {
+    $this->seed(PermissionSeeder::class);
     $user = createSystemOwnerUser();
     expect($user->status)->toBe('active');
     expect($user->is_system_owner)->toBeTrue();
@@ -20,9 +22,11 @@ it('shows profile and notification actions without storefront header controls', 
     $response->assertOk()
         ->assertSee(route('admin.profile'), false)
         ->assertSee(route('admin.notifications'), false)
+        ->assertSee('System Owner has access to all platform capabilities')
+        ->assertSee('View the remaining')
         ->assertSee('aria-label="Admin notifications"', false)
         ->assertSee('aria-label="Open profile and logout menu"', false)
-        ->assertSee('action="'.route('logout').'"', false)
+        ->assertSee('action="' . route('logout') . '"', false)
         ->assertSee('>Logout</span>', false)
         ->assertDontSee('Search in...')
         ->assertDontSee('Wishlist')
