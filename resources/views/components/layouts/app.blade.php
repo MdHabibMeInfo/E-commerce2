@@ -36,7 +36,7 @@
         href="{{ $canonicalUrl ?? url()->current() }}"
     >
 
-    <title>{{ config('app.name') }}</title>
+    <title>{{ $title ?? config('app.name') }}</title>
 
     @vite([
         'resources/css/app.css',

@@ -21,6 +21,14 @@ it('loads the home page', function () {
     $response->assertOk();
 });
 
+it('renders the title supplied by each storefront page', function () {
+    $this->get(route('about'))
+        ->assertSee('<title>About Us | ' . config('app.name') . '</title>', false);
+
+    $this->get(route('home'))
+        ->assertSee('<title>' . config('app.name') . ' — Fresh &amp; Quality Food &amp; Grocery Products</title>', false);
+});
+
 it('highlights the active storefront page in the navbar', function () {
     $this->get(route('shop'))
         ->assertSee('href="' . route('shop') . '"', false)
