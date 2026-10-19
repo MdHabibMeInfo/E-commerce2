@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        <link rel="icon" href="{{ app(\App\Services\SiteSettings::class)->logoUrl() }}">
         <title>{{ config('app.name', 'Laravel') }}</title>
 
         @fonts

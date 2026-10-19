@@ -38,6 +38,7 @@ it('lets a settings editor update branding but denies sensitive settings', funct
     $this->get(route('admin.settings'))
         ->assertOk()
         ->assertSee('Site Logo')
+        ->assertDontSee('name="logo"', false)
         ->assertSee('Homepage Hero Images')
         ->assertDontSee('security_admin_2fa_required', false)
         ->assertDontSee('name="about_us_article"', false)
@@ -51,10 +52,15 @@ it('lets a settings editor update branding but denies sensitive settings', funct
 
     $this->patch(route('admin.settings.branding.update'), [
         'logo' => UploadedFile::fake()->image('store-logo.png', 300, 120),
+    ])->assertForbidden();
+
+    expect(app(SiteSettings::class)->get('logo_path'))->toBeNull();
+
+    $this->patch(route('admin.settings.branding.update'), [
+        'hero_title' => 'Updated by a branding editor',
     ])->assertRedirect();
 
-    $logoPath = app(SiteSettings::class)->get('logo_path');
-    Storage::disk('public')->assertExists($logoPath);
+    expect(app(SiteSettings::class)->get('hero_title'))->toBe('Updated by a branding editor');
     $this->get(route('home'))
         ->assertDontSee('data-hero-carousel', false);
     $this->assertDatabaseHas('security_events', ['action' => 'site_branding_updated']);
@@ -76,10 +82,35 @@ it('lets a settings editor update branding but denies sensitive settings', funct
 
     $this->patch(route('admin.settings.branding.update'), [
         'remove_logo' => '1',
+    ])->assertForbidden();
+
+    expect(app(SiteSettings::class)->get('logo_path'))->toBeNull();
+});
+
+it('uses the system owner managed logo as the site favicon', function () {
+    Storage::fake('public');
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $this->actingAs($owner);
+
+    $this->get(route('admin.settings'))
+        ->assertSee('name="logo"', false);
+
+    $this->patch(route('admin.settings.branding.update'), [
+        'logo' => UploadedFile::fake()->image('store-logo.png', 300, 120),
     ])->assertRedirect();
 
-    Storage::disk('public')->assertMissing($logoPath);
+    $logoPath = app(SiteSettings::class)->get('logo_path');
+    Storage::disk('public')->assertExists($logoPath);
+    $this->get(route('home'))
+        ->assertSee('rel="icon" href="' . Storage::disk('public')->url($logoPath) . '"', false);
+
+    $this->patch(route('admin.settings.branding.update'), [
+        'remove_logo' => '1',
+    ])->assertRedirect();
+
     expect(app(SiteSettings::class)->get('logo_path'))->toBeNull();
+    $this->get(route('home'))
+        ->assertSee('rel="icon" href="' . asset('images/brand/ziyanmart-logo.png') . '"', false);
 });
 
 it('shows the homepage side advertisement only when its image and link are configured', function () {

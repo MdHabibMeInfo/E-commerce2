@@ -24,6 +24,8 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <link rel="icon" href="{{ app(\App\Services\SiteSettings::class)->logoUrl() }}">
+
     <meta
         name="description"
         content="{{ $metaDescription ?? 'Discover fresh, high-quality food and grocery products delivered to your door.' }}"
@@ -34,7 +36,7 @@
         href="{{ $canonicalUrl ?? url()->current() }}"
     >
 
-    <title>{{ $title ?? config('app.name') }}</title>
+    <title>{{ config('app.name') }}</title>
 
     @vite([
         'resources/css/app.css',

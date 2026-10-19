@@ -10,6 +10,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 
 class SiteSettings
@@ -87,6 +88,15 @@ class SiteSettings
         $values = $this->all();
 
         return array_key_exists($key, $values) ? $values[$key] : $default;
+    }
+
+    public function logoUrl(): string
+    {
+        $logoPath = $this->get('logo_path');
+
+        return is_string($logoPath) && $logoPath !== ''
+            ? Storage::disk('public')->url($logoPath)
+            : asset('images/brand/ziyanmart-logo.png');
     }
 
     public function boolean(string $key): bool

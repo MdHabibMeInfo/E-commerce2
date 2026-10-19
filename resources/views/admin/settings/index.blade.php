@@ -24,7 +24,7 @@
             <h2 class="text-xl font-extrabold text-[#145943]">Site Logo</h2>
         </div>
 
-        @can('settings.update')
+        @can('system-owner-settings')
             <form method="POST" action="{{ route('admin.settings.branding.update') }}" enctype="multipart/form-data" data-branding-settings-form class="space-y-6">
                 @csrf
                 @method('PATCH')

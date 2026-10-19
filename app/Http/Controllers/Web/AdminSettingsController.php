@@ -164,6 +164,11 @@ class AdminSettingsController extends Controller
     public function updateBranding(Request $request, SiteSettings $settings, SecurityEventService $events): RedirectResponse
     {
         abort_unless($request->user()?->can('settings.update'), 403);
+        abort_if(
+            ($request->hasFile('logo') || $request->boolean('remove_logo'))
+                && ! $request->user()?->is_system_owner,
+            403,
+        );
 
         $validated = $request->validate([
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=2000,max_height=1000'],
