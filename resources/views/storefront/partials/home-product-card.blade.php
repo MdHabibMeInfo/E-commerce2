@@ -14,6 +14,8 @@
     data-product-emoji="🛍️"
     class="group relative shrink-0 overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none max-sm:flex max-sm:flex-col"
 >
+    @include('storefront.partials.product-discount-badge', ['product' => $product])
+
     <a
         href="{{ route('products.show', ['product' => $product->slug]) }}"
         class="block overflow-hidden bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#145943]"
@@ -48,6 +50,7 @@
             'containerClass' => 'flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-1',
             'priceClass' => 'text-base font-extrabold text-[#145943] sm:text-lg',
             'comparePriceClass' => 'text-xs text-[#9aa19c] line-through sm:text-sm',
+            'showPromotionBadge' => false,
         ])
     </div>
 

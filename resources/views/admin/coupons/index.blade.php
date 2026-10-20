@@ -152,7 +152,7 @@
                                     @csrf
                                     @method('PATCH')
                                     <input type="hidden" name="is_active" value="{{ $coupon->is_active ? 0 : 1 }}">
-                                    <button class="text-xs font-bold text-[#145943]">{{ $coupon->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                    <button class="text-xs font-bold text-[#145943]">{{ $coupon->is_automatic ? ($coupon->is_active ? 'Turn discount off' : 'Turn discount on') : ($coupon->is_active ? 'Deactivate coupon' : 'Activate coupon') }}</button>
                                 </form>
                                 @if ($coupon->redemptions_count === 0)
                                     <details>

@@ -239,7 +239,7 @@
                         @endif
                     @endif
 
-                    <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+                    <div data-product-card class="mt-7 flex flex-col gap-3 sm:flex-row">
                         @if ($product->is_out_of_stock)
                             <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex w-full cursor-not-allowed items-center justify-center rounded-xl border border-[#dfe3cf] bg-[#f4f1ea] px-6 py-3.5 text-sm font-bold text-[#738078] sm:w-fit">
                                 Out of stock

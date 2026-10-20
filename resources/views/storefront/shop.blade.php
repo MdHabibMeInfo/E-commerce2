@@ -206,14 +206,14 @@
                                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M7 12h10m-7 5h4" /><circle cx="8" cy="7" r="1.5" fill="white" /><circle cx="15" cy="12" r="1.5" fill="white" /><circle cx="11" cy="17" r="1.5" fill="white" /></svg>
                                 </button>
                                 <span class="hidden text-sm font-semibold text-black lg:inline">Sort by</span>
-                                <details data-shop-select="sort" class="relative col-start-2 row-start-1 min-w-0 lg:static lg:col-auto lg:row-auto">
+                                <details data-shop-select="sort" class="relative col-start-2 row-start-1 min-w-0 lg:col-auto lg:row-auto">
                                     <summary aria-label="Sort products: {{ $sortLabels[$sort] ?? 'Default Sorting' }}" class="flex h-9 w-full cursor-pointer list-none items-center justify-between gap-2 rounded-[4px] border border-[#dfe2d6] bg-white px-2 text-xs font-medium text-[#173b32] [&::-webkit-details-marker]:hidden lg:min-w-[160px] lg:px-3 lg:text-sm">
                                         <span data-shop-select-label class="truncate">{{ $sortLabels[$sort] ?? 'Default Sorting' }}</span>
                                         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
                                     </summary>
-                                    <div role="menu" aria-label="Sort products" class="absolute left-1/2 top-full z-[70] mt-1 w-48 -translate-x-1/2 overflow-hidden rounded-[4px] border border-[#dfe2d6] bg-white py-1 shadow-lg lg:left-0 lg:translate-x-0">
+                                    <div role="menu" aria-label="Sort products" class="absolute left-0 top-full z-[70] mt-1 w-48 overflow-hidden rounded-none border border-[#e7e7e1] bg-white shadow-lg">
                                         @foreach ($sortLabels as $value => $label)
-                                            <button type="button" role="menuitemradio" aria-checked="{{ $sort === $value ? 'true' : 'false' }}" data-shop-option="{{ $value }}" class="block w-full px-3 py-2 text-left text-sm text-[#173b32] hover:bg-[#f5f4ec] aria-checked:bg-[#edf2e4]">
+                                            <button type="button" role="menuitemradio" aria-checked="{{ $sort === $value ? 'true' : 'false' }}" data-shop-option="{{ $value }}" class="block w-full px-4 py-2.5 text-left text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943] aria-checked:bg-[#edf2e4] aria-checked:font-semibold">
                                                 {{ $label }}
                                             </button>
                                         @endforeach
@@ -224,9 +224,9 @@
                                         <span data-shop-select-label>{{ $perPageLabels[$perPageSelection] ?? 'Default' }}</span>
                                         <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
                                     </summary>
-                                    <div role="menu" aria-label="Products per page" class="absolute right-0 top-full z-[70] mt-1 w-32 overflow-hidden rounded-[4px] border border-[#dfe2d6] bg-white py-1 shadow-lg">
+                                    <div role="menu" aria-label="Products per page" class="absolute right-0 top-full z-[70] mt-1 w-32 overflow-hidden rounded-none border border-[#e7e7e1] bg-white shadow-lg">
                                         @foreach ($perPageLabels as $value => $label)
-                                            <button type="button" role="menuitemradio" aria-checked="{{ $perPageSelection === (string) $value ? 'true' : 'false' }}" data-shop-option="{{ $value }}" class="block w-full px-3 py-2 text-left text-sm text-[#173b32] hover:bg-[#f5f4ec] aria-checked:bg-[#edf2e4]">
+                                            <button type="button" role="menuitemradio" aria-checked="{{ $perPageSelection === (string) $value ? 'true' : 'false' }}" data-shop-option="{{ $value }}" class="block w-full px-4 py-2.5 text-left text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943] aria-checked:bg-[#edf2e4] aria-checked:font-semibold">
                                                 {{ $label }}
                                             </button>
                                         @endforeach
@@ -253,11 +253,13 @@
                                 @endphp
 
                                 <article
-                                    class="group flex self-start flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
+                                    class="group relative flex self-start flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
                                     data-product-card
                                     data-product-name="{{ $product->name }}"
                                     data-product-price="{{ (float) $product->price }}"
                                 >
+                                    @include('storefront.partials.product-discount-badge', ['product' => $product])
+
                                     <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex flex-col">
                                         <div class="relative overflow-hidden bg-white">
                                             @if ($primaryImage)
@@ -288,6 +290,7 @@
                                                     'containerClass' => 'flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-1',
                                                     'priceClass' => 'text-base font-extrabold text-[#145943] sm:text-lg',
                                                     'comparePriceClass' => 'text-xs text-[#9aa19c] line-through sm:text-sm',
+                                                    'showPromotionBadge' => false,
                                                 ])
                                             </div>
                                         </div>

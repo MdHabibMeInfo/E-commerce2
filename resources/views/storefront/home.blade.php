@@ -102,7 +102,7 @@
                 <button
                     type="button"
                     data-category-prev
-                    class="absolute left-0 top-1/2 z-20 grid h-10 w-10 -translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] shadow-md transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:opacity-0"
+                    class="absolute left-0 top-1/2 z-20 grid h-10 w-10 -translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] shadow-md transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Previous categories"
                     disabled
                 >
@@ -164,8 +164,9 @@
                 <button
                     type="button"
                     data-category-next
-                    class="absolute right-0 top-1/2 z-20 grid h-10 w-10 translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:opacity-0"
+                    class="absolute right-0 top-1/2 z-20 grid h-10 w-10 translate-x-1/3 -translate-y-1/2 place-items-center rounded-full border border-[#dfe2d6] bg-white text-[#145943] transition-colors hover:border-[#a48335] hover:bg-[#a48335] hover:text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Next categories"
+                    disabled
                 >
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                         <path d="m9 18 6-6-6-6"></path>
@@ -187,8 +188,9 @@
                             $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
                         @endphp
 
-                        <article class="group relative flex min-w-0 flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white md:grid md:min-h-[270px] md:grid-cols-[48%_minmax(0,1fr)] md:rounded-sm md:border-0 lg:min-h-[300px]">
-                            <span class="absolute right-2 top-2 z-10 rounded-[3px] bg-[#ef4938] px-2 py-1 text-[10px] font-bold text-white">Best Selling</span>
+                        <article data-product-card class="group relative flex min-w-0 flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white md:grid md:min-h-[270px] md:grid-cols-[48%_minmax(0,1fr)] md:rounded-sm md:border-0 lg:min-h-[300px]">
+                            <span class="absolute left-2 top-2 z-10 rounded-[3px] bg-[#ef4938] px-2 py-1 text-[10px] font-bold text-white">Best Selling</span>
+                            @include('storefront.partials.product-discount-badge', ['product' => $product])
 
                             <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex aspect-square w-full items-center justify-center overflow-hidden bg-white md:h-full md:aspect-auto md:min-h-0" aria-label="View {{ $product->name }}">
                                 @if ($primaryImage)
@@ -215,6 +217,7 @@
                                     'containerClass' => 'mt-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 md:mt-2',
                                     'priceClass' => 'text-sm font-extrabold text-[#145943] md:text-base',
                                     'comparePriceClass' => 'text-xs text-[#9aa19c] line-through',
+                                    'showPromotionBadge' => false,
                                 ])
 
                                 <div class="mt-3 flex flex-col gap-2.5 md:mt-5 md:flex-row md:flex-wrap max-sm:mt-auto">
@@ -330,8 +333,11 @@
 
                                         <article
                                             data-carousel-item
+                                            data-product-card
                                             class="group relative flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#e9e5db] bg-white shadow-none"
                                         >
+                                            @include('storefront.partials.product-discount-badge', ['product' => $product])
+
                                             <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex flex-1 flex-col">
                                                 <div class="overflow-hidden bg-white">
                                                     @if ($primaryImage)
@@ -361,6 +367,7 @@
                                                         'containerClass' => 'flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 pt-2',
                                                         'priceClass' => 'text-sm font-extrabold text-[#145943] sm:text-base',
                                                         'comparePriceClass' => 'text-xs text-[#9aa19c] line-through sm:text-sm',
+                                                        'showPromotionBadge' => false,
                                                     ])
                                                 </div>
                                             </a>

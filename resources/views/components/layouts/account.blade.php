@@ -11,7 +11,7 @@
             @if ($isManagementAccountRoute)
                 @include('admin.partials.sidebar')
             @else
-            <aside class="border-b border-[#dedfcf] bg-[#f0f2e8] px-4 py-5 sm:px-6 xl:sticky xl:top-0 xl:h-[calc(100vh-80px)] xl:border-b-0 xl:border-r xl:border-[#dedfcf] xl:px-5">
+            <aside class="hidden border-b border-[#dedfcf] bg-[#f0f2e8] px-4 py-5 sm:px-6 xl:sticky xl:top-0 xl:block xl:h-[calc(100vh-80px)] xl:border-b-0 xl:border-r xl:border-[#dedfcf] xl:px-5">
                 <div class="flex items-center gap-3 border-b border-[#dfe3cf] pb-5">
                     @if (auth()->user()?->profile_photo_path)
                         <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url(auth()->user()->profile_photo_path) }}" alt="" class="h-11 w-11 rounded-full border border-white object-cover shadow-sm">

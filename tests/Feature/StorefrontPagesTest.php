@@ -118,6 +118,11 @@ it('opens profile and logout options from the signed-in profile icon', function 
     $response->assertSee('href="' . route('account.profile') . '"', false)
         ->assertSee('aria-label="Open profile and logout menu"', false)
         ->assertSee('aria-label="Avatar for Storefront Shopper"', false)
+        ->assertSee('data-account-menu-toggle', false)
+        ->assertSee('aria-label="Account menu"', false)
+        ->assertSee('class="hidden border-b border-[#dedfcf]', false)
+        ->assertSee('href="' . route('account.orders.history') . '"', false)
+        ->assertSee('href="' . route('account.security') . '"', false)
         ->assertSee('action="' . route('logout') . '"', false)
         ->assertSee('>Profile</span>', false)
         ->assertSee('>Logout</span>', false)
@@ -157,7 +162,11 @@ it('shows five home category rows by skipping categories without active products
     $response = $this->get(route('home'));
 
     foreach (range(3, 7) as $position) {
-        $response->assertSee('data-category-product-track="homepage-category-' . $position . '"', false);
+        $response->assertSeeInOrder([
+            'data-category-product-track="homepage-category-' . $position . '"',
+            'data-product-card',
+            'Homepage Product ' . $position,
+        ], false);
     }
 
     $response->assertDontSee('data-category-product-track="homepage-category-1"', false);
@@ -1784,6 +1793,7 @@ it('shows active variant options and routes variable products to option selectio
 
     $this->get(route('products.show', $product->slug))
         ->assertOk()
+        ->assertSee('data-product-card', false)
         ->assertSee('data-product-variant-select', false)
         ->assertSee('Color: Red')
         ->assertSee('Select an available option to continue.');

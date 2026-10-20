@@ -46,7 +46,7 @@
     {{ $head ?? '' }}
 </head>
 
-<body class="min-h-screen bg-[#fbfaf4] text-[#173b32] antialiased" data-admin-area="{{ $isAdminArea ? 'true' : 'false' }}" data-meta-pixel-id="{{ $metaPixelId }}">
+<body class="min-h-screen {{ $isAdminArea ? '' : 'pb-16 lg:pb-0' }} bg-[#fbfaf4] text-[#173b32] antialiased" data-admin-area="{{ $isAdminArea ? 'true' : 'false' }}" data-meta-pixel-id="{{ $metaPixelId }}">
 
     <x-header />
 

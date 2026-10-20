@@ -28,10 +28,10 @@
                             {{ strtoupper(substr(auth()->user()?->name ?? 'SO', 0, 1)) }}
                         @endif
                     </summary>
-                    <div class="absolute right-0 top-full z-[70] mt-1 w-48 overflow-hidden rounded-[4px] border border-[#e7e7e1] bg-white py-1 shadow-lg">
+                    <div class="absolute right-0 top-full z-[70] mt-1 w-48 overflow-hidden rounded-none border border-[#e7e7e1] bg-white shadow-lg">
                         <a href="{{ route('admin.profile') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
                             <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.3" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg>
-                            <span>Profile</span>
+                            <span>Account</span>
                         </a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -140,19 +140,19 @@
                 </form>
             </div>
 
-            <nav class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2" aria-label="Store actions">
-                <a href="{{ route('shop') }}" title="Shop" aria-label="Shop" @if (request()->routeIs('shop')) aria-current="page" @endif class="flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-full transition hover:bg-[#edf2e4] hover:text-[#145943] max-[374px]:hidden sm:h-12 sm:w-auto sm:min-w-[56px] {{ request()->routeIs('shop') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#26352f]' }}">
+            <nav class="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 lg:-mr-[18px]" aria-label="Store actions">
+                <a href="{{ route('shop') }}" title="Shop" aria-label="Shop" @if (request()->routeIs('shop')) aria-current="page" @endif class="flex h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-full transition hover:bg-[#edf2e4] hover:text-[#145943] {{ request()->routeIs('shop') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#26352f]' }}">
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 10h18l-1.5-6h-15L3 10Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /><path d="M3 10a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0" /></svg>
-                    <span class="hidden text-[10px] leading-3 sm:block">Shop</span>
+                    <span class="text-[10px] leading-3">Shop</span>
                 </a>
 
-                <a href="{{ route('account.orders') }}" title="Track order" aria-label="Track order" @if (request()->routeIs('account.orders*')) aria-current="page" @endif class="flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-full transition hover:bg-[#edf2e4] hover:text-[#145943] max-[374px]:hidden sm:h-12 sm:w-auto sm:min-w-[56px] {{ request()->routeIs('account.orders*') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#26352f]' }}">
+                <a href="{{ route('account.orders') }}" title="Track order" aria-label="Track order" @if (request()->routeIs('account.orders*')) aria-current="page" @endif class="hidden h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-full text-[#26352f] transition hover:bg-[#edf2e4] hover:text-[#145943] lg:flex {{ request()->routeIs('account.orders*') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : '' }}">
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.2" /><path d="M19 20h3" /></svg>
                     <span class="hidden text-[10px] leading-3 sm:block">Track Order</span>
                 </a>
 
                 @auth
-                    <details class="group relative">
+                    <details class="group relative hidden lg:block">
                         <summary title="Profile" aria-label="Open profile and logout menu" @if (request()->routeIs('account.profile*', 'admin.profile')) aria-current="page" @endif class="flex h-10 w-10 cursor-pointer list-none flex-col items-center justify-center gap-0.5 rounded-full transition hover:bg-[#edf2e4] hover:text-[#145943] sm:h-12 sm:w-auto sm:min-w-[56px] [&::-webkit-details-marker]:hidden {{ request()->routeIs('account.profile*', 'admin.profile') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#26352f]' }}">
                             @if (auth()->user()->profile_photo_path)
                                 <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url(auth()->user()->profile_photo_path) }}" alt="" class="h-7 w-7 rounded-full border-2 border-white object-cover shadow-sm">
@@ -161,10 +161,10 @@
                             @endif
                             <span class="hidden text-[10px] leading-3 sm:block">Profile</span>
                         </summary>
-                        <div class="absolute right-0 top-full z-[70] mt-1 w-48 overflow-hidden rounded-[4px] border border-[#e7e7e1] bg-white py-1 shadow-lg">
+                        <div class="absolute right-0 top-full z-[70] mt-1 w-48 overflow-hidden rounded-none border border-[#e7e7e1] bg-white shadow-lg">
                             <a href="{{ $profileRoute }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
                                 <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.3" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg>
-                                <span>Profile</span>
+                                <span>Account</span>
                             </a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
@@ -176,32 +176,24 @@
                         </div>
                     </details>
                 @else
-                    <a href="{{ route('login') }}" title="Sign in" aria-label="Sign in" @if (request()->routeIs('login', 'register')) aria-current="page" @endif class="flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-full transition hover:bg-[#edf2e4] hover:text-[#145943] sm:h-12 sm:w-auto sm:min-w-[56px] {{ request()->routeIs('login', 'register') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#26352f]' }}">
+                    <a href="{{ route('login') }}" title="Sign in" aria-label="Sign in" @if (request()->routeIs('login', 'register')) aria-current="page" @endif class="hidden h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-full text-[#26352f] transition hover:bg-[#edf2e4] hover:text-[#145943] lg:flex {{ request()->routeIs('login', 'register') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : '' }}">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.3" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg>
                         <span class="hidden text-[10px] leading-3 sm:block">Sign In</span>
                     </a>
                 @endauth
 
-                <a href="#" data-open-cart title="Cart" aria-label="Shopping cart" class="relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-full text-[#26352f] transition hover:bg-[#edf2e4] hover:text-[#145943] sm:h-12 sm:w-auto sm:min-w-[56px]">
+                <a href="#" data-open-cart title="Cart" aria-label="Shopping cart" class="relative hidden h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-full text-[#26352f] transition hover:bg-[#edf2e4] hover:text-[#145943] lg:flex">
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L20 8H6" /><circle cx="9" cy="19" r="1.2" /><circle cx="18" cy="19" r="1.2" /></svg>
                     <span data-cart-count-badge class="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#145943] px-1 text-[10px] font-bold text-white">0</span>
                     <span class="hidden text-[10px] leading-3 sm:block">Cart</span>
                 </a>
 
                 <details class="group relative">
-                    <summary title="More" aria-label="More links" class="flex h-10 w-10 cursor-pointer list-none flex-col items-center justify-center gap-0.5 rounded-full transition hover:bg-[#edf2e4] hover:text-[#145943] sm:h-12 sm:w-auto sm:min-w-[56px] [&::-webkit-details-marker]:hidden {{ request()->routeIs('about') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#26352f]' }}">
+                    <summary title="More" aria-label="More links" class="flex h-12 min-w-[56px] cursor-pointer list-none flex-col items-center justify-center gap-0.5 rounded-full transition hover:bg-[#edf2e4] hover:text-[#145943] [&::-webkit-details-marker]:hidden {{ request()->routeIs('about') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#26352f]' }}">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-                        <span class="hidden text-[10px] leading-3 sm:block">More</span>
+                        <span class="text-[10px] leading-3">More</span>
                     </summary>
-                    <div class="absolute right-0 top-full z-[70] mt-1 w-56 overflow-hidden rounded-xl border border-[#e7e7e1] bg-white py-1 shadow-lg">
-                        <a href="{{ route('shop') }}" @if (request()->routeIs('shop')) aria-current="page" @endif class="hidden max-[374px]:flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
-                            <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 10h18l-1.5-6h-15L3 10Z" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></svg>
-                            <span>Shop</span>
-                        </a>
-                        <a href="{{ route('account.orders') }}" @if (request()->routeIs('account.orders*')) aria-current="page" @endif class="hidden max-[374px]:flex items-center gap-3 px-4 py-2.5 text-sm text-[#454c48] hover:bg-[#edf2e4] hover:text-[#145943]">
-                            <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.2" /><path d="M19 20h3" /></svg>
-                            <span>Track Order</span>
-                        </a>
+                    <div class="absolute right-0 top-full z-[70] mt-1 w-56 overflow-hidden rounded-none border border-[#e7e7e1] bg-white shadow-lg">
                         <a href="{{ route('about') }}" @if (request()->routeIs('about')) aria-current="page" @endif class="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[#edf2e4] hover:text-[#145943] {{ request()->routeIs('about') ? 'bg-[#edf2e4] font-semibold text-[#145943]' : 'text-[#454c48]' }}">
                             <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
                             <span>About Us</span>
@@ -221,17 +213,13 @@
                     </div>
                 </details>
 
-                <button type="button" data-mobile-menu-toggle title="Search" class="relative z-[80] grid h-10 w-10 place-items-center rounded-full text-[#26352f] transition hover:bg-[#f3f3f0] hover:text-[#dc762b] lg:hidden" aria-expanded="false" aria-controls="mobile-navigation" aria-label="Open search">
-                    <svg data-menu-open-icon class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.2 4.2" /></svg>
-                    <svg data-menu-close-icon class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
-                </button>
             </nav>
         </div>
 
         {{-- Mobile navigation --}}
         <div id="mobile-navigation" data-mobile-menu class="hidden border-t border-[#e7e4d8] bg-[#fffef9] xl:hidden">
             <div class="mx-auto py-4 {{ $headerContainerClass }}">
-                <form action="{{ route('shop') }}" method="GET" class="relative mb-4" role="search" data-storefront-search data-suggestions-url="{{ route('shop.suggestions') }}">
+                <form action="{{ route('shop') }}" method="GET" class="relative mb-0" role="search" data-storefront-search data-suggestions-url="{{ route('shop.suggestions') }}">
                     <label for="mobile-search" class="sr-only">Search products</label>
                     <input
                         id="mobile-search"
@@ -260,4 +248,97 @@
         </div>
     </div>
 </header>
+@auth
+    <button
+        type="button"
+        data-account-menu-overlay
+        class="fixed inset-0 z-[94] hidden bg-[#102a22]/45 opacity-0 transition-opacity duration-200 lg:hidden"
+        aria-label="Close account menu"
+        aria-hidden="true"
+        tabindex="-1"
+    ></button>
+    <aside
+        id="mobile-account-navigation"
+        data-account-menu
+        class="fixed inset-y-0 right-0 z-[95] flex w-[min(88vw,360px)] translate-x-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden"
+        aria-label="Account menu"
+        aria-modal="true"
+        role="dialog"
+        aria-hidden="true"
+        inert
+    >
+        <div class="flex items-center justify-between gap-3 border-b border-[#e7e4d8] px-5 py-4">
+            <div class="flex min-w-0 items-center gap-3">
+                @if (auth()->user()->profile_photo_path)
+                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url(auth()->user()->profile_photo_path) }}" alt="" class="h-11 w-11 shrink-0 rounded-full border border-[#dfe3cf] object-cover">
+                @else
+                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#145943] text-sm font-bold text-white" aria-hidden="true">{{ strtoupper(substr(trim(auth()->user()->name), 0, 1)) }}</span>
+                @endif
+                <span class="min-w-0">
+                    <span class="block text-[10px] font-bold uppercase tracking-[0.16em] text-[#a48335]">Your account</span>
+                    <span class="mt-1 block truncate text-sm font-extrabold text-[#173b32]">{{ auth()->user()->name }}</span>
+                    <span class="block truncate text-xs text-[#738078]">{{ auth()->user()->email }}</span>
+                </span>
+            </div>
+            <button type="button" data-account-menu-close aria-label="Close account menu" class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#4d5c56] transition hover:bg-[#edf2e4] hover:text-[#145943] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943]">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+            </button>
+        </div>
+
+        <nav aria-label="Account navigation" class="flex-1 space-y-1 overflow-y-auto p-4">
+            <a href="{{ $profileRoute }}" @if (request()->routeIs('account.profile*', 'admin.profile')) aria-current="page" @endif class="flex min-h-12 items-center justify-between gap-4 rounded-lg px-4 py-3 text-sm font-semibold transition {{ request()->routeIs('account.profile*', 'admin.profile') ? 'bg-[#edf2e4] text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec] hover:text-[#145943]' }}">
+                <span>Profile overview</span><span aria-hidden="true">›</span>
+            </a>
+            <a href="{{ route('account.orders') }}" @if (request()->routeIs('account.orders', 'account.orders.show')) aria-current="page" @endif class="flex min-h-12 items-center justify-between gap-4 rounded-lg px-4 py-3 text-sm font-semibold transition {{ request()->routeIs('account.orders', 'account.orders.show') ? 'bg-[#edf2e4] text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec] hover:text-[#145943]' }}">
+                <span>My orders</span><span aria-hidden="true">›</span>
+            </a>
+            <a href="{{ route('account.orders.history') }}" @if (request()->routeIs('account.orders.history')) aria-current="page" @endif class="flex min-h-12 items-center justify-between gap-4 rounded-lg px-4 py-3 text-sm font-semibold transition {{ request()->routeIs('account.orders.history') ? 'bg-[#edf2e4] text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec] hover:text-[#145943]' }}">
+                <span>Order history</span><span aria-hidden="true">›</span>
+            </a>
+            <a href="{{ route('account.security') }}" @if (request()->routeIs('account.security*')) aria-current="page" @endif class="flex min-h-12 items-center justify-between gap-4 rounded-lg px-4 py-3 text-sm font-semibold transition {{ request()->routeIs('account.security*') ? 'bg-[#edf2e4] text-[#145943]' : 'text-[#4d5c56] hover:bg-[#f5f4ec] hover:text-[#145943]' }}">
+                <span>Security</span><span aria-hidden="true">›</span>
+            </a>
+        </nav>
+
+        <div class="space-y-1 border-t border-[#e7e4d8] p-4">
+            <a href="{{ route('home') }}" class="flex min-h-12 items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[#4d5c56] transition hover:bg-[#f5f4ec] hover:text-[#145943]">
+                <span aria-hidden="true">←</span><span>Continue shopping</span>
+            </a>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="flex min-h-12 w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-semibold text-[#4d5c56] transition hover:bg-[#f5f4ec] hover:text-[#145943]">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg>
+                    <span>Logout</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+@endauth
+<nav class="fixed inset-x-0 bottom-0 z-[60] grid h-16 grid-cols-4 border-t border-white/15 bg-[#145943] text-white shadow-[0_-8px_24px_rgba(23,59,50,0.16)] lg:hidden" aria-label="Quick navigation">
+    <a href="{{ route('account.orders') }}" @if (request()->routeIs('account.orders*')) aria-current="page" @endif class="flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium text-white/80 transition hover:bg-white/10 hover:text-white {{ request()->routeIs('account.orders*') ? 'bg-white/10 text-white' : '' }}">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.2" /><path d="M19 20h3" /></svg>
+        <span>Track</span>
+    </a>
+    <a href="#" data-open-cart title="Cart" aria-label="Shopping cart" class="relative flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium text-white/80 transition hover:bg-white/10 hover:text-white">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L20 8H6" /><circle cx="9" cy="19" r="1.2" /><circle cx="18" cy="19" r="1.2" /></svg>
+        <span data-cart-count-badge class="absolute right-[calc(50%-18px)] top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#a48335] px-1 text-[9px] font-bold text-white">0</span>
+        <span>Cart</span>
+    </a>
+    <button type="button" data-mobile-menu-toggle title="Search" class="flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium text-white/80 transition hover:bg-white/10 hover:text-white" aria-expanded="false" aria-controls="mobile-navigation" aria-label="Open search">
+        <svg data-menu-open-icon class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.2 4.2" /></svg>
+        <svg data-menu-close-icon class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        <span>Search</span>
+    </button>
+    @auth
+        <button type="button" data-account-menu-toggle aria-controls="mobile-account-navigation" aria-expanded="false" aria-label="Open account menu" title="Account" class="flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium text-white/80 transition hover:bg-white/10 hover:text-white {{ request()->routeIs('account.profile*', 'admin.profile') ? 'bg-white/10 text-white' : '' }}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.3" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg>
+            <span>Account</span>
+        </button>
+    @else
+        <a href="{{ route('login') }}" @if (request()->routeIs('login', 'register')) aria-current="page" @endif class="flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium text-white/80 transition hover:bg-white/10 hover:text-white {{ request()->routeIs('login', 'register') ? 'bg-white/10 text-white' : '' }}">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="3.3" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0" /></svg>
+            <span>Account</span>
+        </a>
+    @endauth
+</nav>
 @endif

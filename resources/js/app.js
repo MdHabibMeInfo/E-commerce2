@@ -1197,28 +1197,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <aside data-cart-drawer aria-label="Shopping cart" aria-modal="true" role="dialog"
             class="fixed inset-y-0 right-0 z-[90] flex w-full max-w-none translate-x-full flex-col bg-white shadow-2xl transition-transform duration-300 ease-out lg:max-w-[420px]" aria-hidden="true">
-            <div class="flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
-                <h2 class="text-sm font-bold tracking-wider text-gray-900 uppercase">SHOPPING CART</h2>
-                <button type="button" data-close-cart aria-label="Close cart" class="group flex items-center gap-1 text-xs font-semibold text-gray-500 transition hover:text-gray-900">
+            <div class="flex items-center justify-between border-b border-[#e7e4d8] bg-white px-5 py-2">
+                <h2 class="text-base font-bold tracking-wide text-[#26352f] uppercase">SHOPPING CART</h2>
+                <button type="button" data-close-cart aria-label="Close cart" class="group flex min-h-10 items-center gap-1.5 rounded-md px-2 text-base font-semibold text-gray-600 transition hover:bg-[#f5f7ee] hover:text-gray-900">
                     <span>Close</span>
-                    <span class="text-sm font-bold transition group-hover:translate-x-0.5">→</span>
+                    <span class="text-xl font-bold transition group-hover:translate-x-0.5">→</span>
                 </button>
             </div>
 
-            <div data-cart-items class="flex-1 space-y-3 overflow-y-auto px-5 py-4 divide-y divide-gray-100"></div>
+            <div data-cart-items class="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3"></div>
 
-            <div class="border-t border-gray-200 bg-white p-5">
-                <div class="mb-2 flex items-center justify-between text-xs text-gray-500">
-                    <span>Subtotal</span>
-                    <span data-cart-subtotal-amount>৳0.00</span>
+            <section data-cart-recommendations class="hidden shrink-0 border-t border-[#e7e4d8] bg-[#f5f7ee] px-4 py-3" aria-label="You may also like">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                    <h3 class="text-xs font-bold text-[#26352f]">You May Also Like</h3>
+                    <div class="flex shrink-0 items-center gap-1.5">
+                        <button type="button" data-recommendation-scroll="previous" aria-label="Previous suggestions" disabled class="grid h-7 w-7 place-items-center rounded-full bg-white text-[#145943] shadow-sm transition hover:bg-[#145943] hover:text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40">
+                            <span aria-hidden="true">←</span>
+                        </button>
+                        <button type="button" data-recommendation-scroll="next" aria-label="Next suggestions" disabled class="grid h-7 w-7 place-items-center rounded-full bg-white text-[#145943] shadow-sm transition hover:bg-[#145943] hover:text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40">
+                            <span aria-hidden="true">→</span>
+                        </button>
+                    </div>
+                </div>
+                <div data-cart-recommendation-list class="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"></div>
+            </section>
+
+            <div data-cart-footer class="shrink-0 border-t border-gray-200 bg-white p-5">
+                <div class="mb-2 flex items-center justify-between text-base text-[#4d5c56]">
+                    <span class="font-medium">Subtotal</span>
+                    <span data-cart-subtotal-amount class="font-semibold">৳0.00</span>
                 </div>
                 <div data-cart-savings-row hidden class="mb-2 flex items-center justify-between text-xs font-semibold text-emerald-700">
                     <span>Product offer savings</span>
                     <span data-cart-savings-amount>-৳0.00</span>
                 </div>
-                <div class="mb-4 flex items-center justify-between text-sm">
-                    <span class="font-medium text-gray-700">Items total:</span>
-                    <strong data-cart-total-amount class="text-base font-bold text-gray-900">৳0.00</strong>
+                <div class="mb-4 flex items-center justify-between text-lg">
+                    <span class="font-semibold text-[#26352f]">Items total:</span>
+                    <strong data-cart-total-amount class="text-xl font-bold text-gray-900">৳0.00</strong>
                 </div>
                 <button type="button" data-cart-checkout class="w-full rounded-xl bg-[#145943] py-3.5 text-center text-sm font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-[#d96e16] active:scale-[0.99]">
                     CHECKOUT
@@ -1297,6 +1312,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = cartUi.querySelector('[data-cart-overlay]');
     const drawer = cartUi.querySelector('[data-cart-drawer]');
     const itemsContainer = cartUi.querySelector('[data-cart-items]');
+    const recommendationContainer = cartUi.querySelector('[data-cart-recommendations]');
+    const recommendationList = cartUi.querySelector('[data-cart-recommendation-list]');
+    const previousRecommendationButton = cartUi.querySelector('[data-recommendation-scroll="previous"]');
+    const nextRecommendationButton = cartUi.querySelector('[data-recommendation-scroll="next"]');
+    const cartFooter = cartUi.querySelector('[data-cart-footer]');
     const cartLoadingOverlay = cartUi.querySelector('[data-cart-loading-overlay]');
     const cartToast = cartUi.querySelector('[data-cart-toast]');
     let cartToastTimer = null;
@@ -1355,6 +1375,177 @@ document.addEventListener('DOMContentLoaded', () => {
         cartToast.inert = true;
     };
 
+    const updateRecommendationButtons = () => {
+        const maximumScroll = recommendationList.scrollWidth - recommendationList.clientWidth;
+        const canScroll = maximumScroll > 2;
+
+        if (previousRecommendationButton) {
+            previousRecommendationButton.disabled = !canScroll || recommendationList.scrollLeft <= 2;
+        }
+        if (nextRecommendationButton) {
+            nextRecommendationButton.disabled = !canScroll || recommendationList.scrollLeft >= maximumScroll - 2;
+        }
+    };
+
+    const renderCartRecommendations = () => {
+        if (!cart.length) {
+            recommendationList.replaceChildren();
+            recommendationContainer.classList.add('hidden');
+
+            return;
+        }
+
+        const seenProductIds = new Set(cart.map((item) => Number(item.product_id)).filter((id) => id > 0));
+        const recommendations = [];
+
+        document.querySelectorAll('[data-product-card] button[data-product-id][data-product-name][data-product-price]').forEach((button) => {
+            const productId = Number(button.dataset.productId);
+            const productName = (button.dataset.productName || '').trim();
+            const productPrice = Number(button.dataset.productPrice);
+            const productCard = button.closest('[data-product-card]');
+            const productUrl = button.dataset.productUrl || productCard?.querySelector('a[href]')?.href || '';
+
+            if (!productId || !Number.isFinite(productPrice) || productPrice <= 0 || button.disabled || seenProductIds.has(productId) || !productName || !productUrl) {
+                return;
+            }
+
+            seenProductIds.add(productId);
+            recommendations.push({
+                id: productId,
+                name: productName,
+                price: productPrice,
+                type: button.dataset.productType || 'simple',
+                url: productUrl,
+                image: button.dataset.productImage || productCard?.querySelector('img')?.src || '',
+                emoji: button.dataset.productEmoji || '🛍️',
+            });
+        });
+
+        recommendationList.replaceChildren();
+        recommendationContainer.classList.toggle('hidden', recommendations.length === 0);
+
+        recommendations.slice(0, 8).forEach((product) => {
+            const card = document.createElement('article');
+            card.className = 'flex min-w-[300px] max-w-[300px] snap-start items-center gap-3 rounded-lg border border-[#e2e6dc] bg-white p-3';
+
+            const productLink = document.createElement('a');
+            productLink.href = product.url;
+            productLink.className = 'grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-md bg-[#f8faf6]';
+            productLink.setAttribute('aria-label', product.name);
+
+            if (product.image) {
+                const image = document.createElement('img');
+                image.src = product.image;
+                image.alt = '';
+                image.loading = 'lazy';
+                image.className = 'h-full w-full object-contain';
+                productLink.appendChild(image);
+            } else {
+                productLink.textContent = product.emoji;
+            }
+
+            const details = document.createElement('div');
+            details.className = 'min-w-0 flex-1';
+
+            const name = document.createElement('a');
+            name.href = product.url;
+            name.className = 'line-clamp-2 text-sm font-semibold leading-4 text-[#26352f] hover:text-[#145943]';
+            name.textContent = product.name;
+
+            const price = document.createElement('p');
+            price.className = 'mt-0.5 text-sm font-bold text-[#145943]';
+            price.textContent = money(product.price);
+
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'mt-1 inline-flex h-8 items-center rounded-full bg-[#145943] px-3 text-xs font-semibold text-white transition hover:bg-[#a48335]';
+            addButton.setAttribute('aria-label', `Add ${product.name} to cart`);
+            addButton.dataset.productId = String(product.id);
+            addButton.dataset.productName = product.name;
+            addButton.dataset.productPrice = String(product.price);
+            addButton.dataset.productType = product.type;
+            addButton.dataset.productUrl = product.url;
+            addButton.dataset.productImage = product.image;
+            addButton.textContent = '+ Add';
+
+            if (product.type === 'variable') {
+                addButton.setAttribute('data-select-variant', '');
+            }
+
+            details.append(name, price, addButton);
+            card.append(productLink, details);
+            recommendationList.appendChild(card);
+        });
+
+        updateRecommendationButtons();
+    };
+
+    const recommendationScrollStep = () => {
+        const firstCard = recommendationList.firstElementChild;
+
+        if (!firstCard) {
+            return 0;
+        }
+
+        const cardWidth = firstCard.getBoundingClientRect().width;
+        const cardGap = Number.parseFloat(getComputedStyle(recommendationList).columnGap) || 0;
+
+        return cardWidth + cardGap;
+    };
+    let recommendationScrollDirection = 1;
+    let recommendationAutoplayTimer = null;
+
+    const stopRecommendationAutoplay = () => {
+        if (recommendationAutoplayTimer !== null) {
+            window.clearInterval(recommendationAutoplayTimer);
+            recommendationAutoplayTimer = null;
+        }
+    };
+
+    const startRecommendationAutoplay = () => {
+        stopRecommendationAutoplay();
+
+        if (recommendationContainer.classList.contains('hidden') || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+
+        recommendationAutoplayTimer = window.setInterval(() => {
+            if (recommendationContainer.matches(':hover') || recommendationContainer.contains(document.activeElement)) {
+                return;
+            }
+
+            const maximumScroll = recommendationList.scrollWidth - recommendationList.clientWidth;
+            if (maximumScroll <= 1) {
+                return;
+            }
+
+            const scrollStep = recommendationScrollStep();
+            if (scrollStep <= 0) {
+                return;
+            }
+
+            if (recommendationScrollDirection > 0 && recommendationList.scrollLeft + scrollStep > maximumScroll + 1) {
+                recommendationScrollDirection = -1;
+            } else if (recommendationScrollDirection < 0 && recommendationList.scrollLeft - scrollStep < -1) {
+                recommendationScrollDirection = 1;
+            }
+
+            recommendationList.scrollBy({
+                left: recommendationScrollDirection * scrollStep,
+                behavior: 'smooth',
+            });
+        }, 2600);
+    };
+
+    cartUi.querySelector('[data-recommendation-scroll="previous"]')?.addEventListener('click', () => {
+        recommendationList.scrollBy({ left: -recommendationScrollStep(), behavior: 'smooth' });
+    });
+    cartUi.querySelector('[data-recommendation-scroll="next"]')?.addEventListener('click', () => {
+        recommendationList.scrollBy({ left: recommendationScrollStep(), behavior: 'smooth' });
+    });
+    recommendationList.addEventListener('scroll', updateRecommendationButtons, { passive: true });
+    window.addEventListener('resize', updateRecommendationButtons);
+
     const showCartToast = (productName) => {
         cartToast.querySelector('[data-cart-toast-message]').textContent = `${productName} added successfully.`;
         cartToastVisible = true;
@@ -1377,9 +1568,11 @@ document.addEventListener('DOMContentLoaded', () => {
             requestAnimationFrame(() => overlay.classList.remove('opacity-0'));
             document.body.classList.add('overflow-hidden');
             cartUi.querySelector('[data-close-cart]')?.focus();
+            startRecommendationAutoplay();
             return;
         }
 
+        stopRecommendationAutoplay();
         overlay.classList.add('opacity-0');
         drawer.classList.add('translate-x-full');
         drawer.setAttribute('aria-hidden', 'true');
@@ -1390,7 +1583,87 @@ document.addEventListener('DOMContentLoaded', () => {
         floatingCart?.focus();
     };
 
+    const syncProductCardQuantityControls = () => {
+        document.querySelectorAll('[data-product-card]').forEach((card) => {
+            const addButton = card.querySelector('button[data-product-id][aria-label^="Add "][aria-label$=" to cart"]');
+            if (!addButton || !['simple', 'variable'].includes(addButton.dataset.productType)) return;
+
+            const productId = Number(addButton.dataset.productId);
+            const selectedVariantId = Number(addButton.dataset.productVariantId || 0);
+            const item = cart.find((cartItem) => {
+                if (Number(cartItem.product_id) !== productId) {
+                    return false;
+                }
+
+                return addButton.dataset.productType === 'simple'
+                    ? !cartItem.product_variant_id
+                    : selectedVariantId > 0 && Number(cartItem.product_variant_id) === selectedVariantId;
+            });
+            let controls = card.querySelector('[data-card-quantity-controls]');
+
+            if (!item) {
+                addButton.hidden = false;
+                if (controls) {
+                    controls.hidden = true;
+                }
+
+                return;
+            }
+
+            addButton.hidden = true;
+            const itemLabel = [addButton.dataset.productName, item.variant_name].filter(Boolean).join(' · ');
+
+            if (!controls) {
+                controls = document.createElement('div');
+                controls.dataset.cardQuantityControls = '';
+                const responsiveWidthClass = addButton.classList.contains('md:w-auto')
+                    ? ' md:w-auto'
+                    : addButton.classList.contains('sm:w-fit')
+                        ? ' sm:w-fit'
+                        : '';
+                controls.className = `inline-flex h-10 w-full items-stretch overflow-hidden rounded-[4px] border border-[#145943] bg-white text-[#145943]${responsiveWidthClass}`;
+                controls.setAttribute('role', 'group');
+
+                const createQuantityButton = (action, label, text) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.dataset.cardQuantityChange = action;
+                    button.className = 'grid h-full w-10 shrink-0 place-items-center bg-[#145943] text-lg font-bold text-white transition hover:bg-[#0f4d3a] disabled:cursor-wait disabled:opacity-60';
+                    button.setAttribute('aria-label', label);
+                    button.textContent = text;
+
+                    return button;
+                };
+
+                const quantity = document.createElement('span');
+                quantity.dataset.cardQuantityValue = '';
+                quantity.className = 'flex min-w-10 flex-1 items-center justify-center px-2 text-sm font-bold';
+                quantity.setAttribute('aria-live', 'polite');
+
+                controls.append(
+                    createQuantityButton('decrease', `Decrease quantity of ${itemLabel}`, '−'),
+                    quantity,
+                    createQuantityButton('increase', `Increase quantity of ${itemLabel}`, '+'),
+                );
+                addButton.after(controls);
+            }
+
+            controls.setAttribute('aria-label', `Quantity for ${itemLabel}`);
+            controls.querySelector('[data-card-quantity-change="decrease"]')
+                .setAttribute('aria-label', `Decrease quantity of ${itemLabel}`);
+            controls.querySelector('[data-card-quantity-change="increase"]')
+                .setAttribute('aria-label', `Increase quantity of ${itemLabel}`);
+            controls.dataset.cartItemId = String(item.id);
+            controls.querySelector('[data-card-quantity-value]').textContent = String(item.qty);
+            controls.querySelectorAll('button').forEach((button) => {
+                button.disabled = false;
+            });
+            controls.hidden = false;
+        });
+    };
+
     const renderCart = () => {
+        syncProductCardQuantityControls();
         const quantity = cart.reduce((sum, item) => sum + Number(item.qty ?? item.quantity ?? 0), 0);
         const subtotal = cart.reduce((sum, item) => sum + Number(item.price ?? 0) * Number(item.qty ?? item.quantity ?? 0), 0);
         const savings = cart.reduce((sum, item) => sum + Number(item.promotion_discount ?? 0), 0);
@@ -1425,15 +1698,23 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.textContent = String(quantity);
         });
 
+        cartFooter.classList.toggle('hidden', cart.length === 0);
         itemsContainer.replaceChildren();
+        renderCartRecommendations();
 
         if (!cart.length) {
             const empty = document.createElement('div');
             empty.className = 'flex h-full min-h-56 flex-col items-center justify-center text-center';
             empty.innerHTML = `
-                <div class="grid h-16 w-16 place-items-center rounded-full bg-gray-100 text-3xl">🛒</div>
-                <p class="mt-3 text-sm font-bold text-gray-800">Your cart is empty</p>
-                <p class="mt-1 text-xs text-gray-500">Add some fresh products to get started.</p>
+                <svg class="h-24 w-24 text-[#0879e8]" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+                    <circle cx="48" cy="48" r="42" fill="#eff7ff" />
+                    <path d="M18 22h7l8 42a6 6 0 0 0 6 5h35a6 6 0 0 0 5.8-4.6L86 36H30" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="42" cy="78" r="5" fill="white" stroke="currentColor" stroke-width="4" />
+                    <circle cx="71" cy="78" r="5" fill="white" stroke="currentColor" stroke-width="4" />
+                    <circle cx="75" cy="25" r="13" fill="#dceeff" stroke="currentColor" stroke-width="4" />
+                    <path d="m70 20 10 10m0-10L70 30" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+                </svg>
+                <p class="mt-3 text-sm font-bold text-[#26352f]">No items in your cart!</p>
             `;
             itemsContainer.appendChild(empty);
             return;
@@ -1441,10 +1722,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cart.forEach((item) => {
             const row = document.createElement('div');
-            row.className = 'flex items-center gap-3.5 pt-3.5 first:pt-0';
+            row.className = 'flex items-center gap-3 rounded-b-lg border-x border-b border-[#d1d5ce] bg-transparent px-3 py-3 shadow-[0_3px_8px_rgba(23,59,50,0.08)]';
 
             const imgBox = document.createElement('div');
-            imgBox.className = 'h-20 w-20 shrink-0 rounded-xl border border-gray-200 bg-white p-1 flex items-center justify-center overflow-hidden';
+            imgBox.className = 'flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[#dfe3cf] bg-white p-1';
 
             if (item.image_url) {
                 const img = document.createElement('img');
@@ -1461,10 +1742,10 @@ document.addEventListener('DOMContentLoaded', () => {
             row.appendChild(imgBox);
 
             const detail = document.createElement('div');
-            detail.className = 'flex-1 min-w-0 pr-1';
+            detail.className = 'min-w-0 flex-1 py-1 pr-1';
 
             const name = document.createElement('p');
-            name.className = 'text-xs sm:text-sm font-semibold text-gray-800 line-clamp-1 truncate';
+            name.className = 'truncate text-sm font-semibold text-[#26352f]';
             name.textContent = item.name;
             name.title = item.name;
 
@@ -1473,17 +1754,17 @@ document.addEventListener('DOMContentLoaded', () => {
             variantName.textContent = item.variant_name || '';
 
             const bottomRow = document.createElement('div');
-            bottomRow.className = 'mt-2 flex items-center gap-2 flex-wrap';
+            bottomRow.className = 'mt-1.5 flex flex-wrap items-center gap-2';
 
             const qtyBox = document.createElement('div');
-            qtyBox.className = 'inline-flex items-center rounded border border-gray-300 bg-white text-xs';
+            qtyBox.className = 'inline-flex items-center overflow-hidden rounded-full border border-[#d9ded5] bg-white text-xs';
 
             const currentQuantity = Number(item.qty ?? item.quantity ?? 1);
 
             const minusBtn = document.createElement('button');
             minusBtn.type = 'button';
             minusBtn.textContent = '−';
-            minusBtn.className = 'w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-semibold transition';
+            minusBtn.className = 'grid h-5 w-6 place-items-center rounded-full font-semibold text-[#4d5c56] transition';
             minusBtn.setAttribute('aria-label', 'Decrease quantity');
             minusBtn.addEventListener('click', async () => {
                 if (!item.id) return;
@@ -1509,13 +1790,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const qtyNum = document.createElement('span');
-            qtyNum.className = 'min-w-[20px] text-center text-xs font-bold text-gray-800 px-1';
+            qtyNum.className = 'flex min-w-[24px] self-stretch items-center justify-center border-x border-[#aeb8ae] px-1 text-center text-xs font-bold text-[#26352f]';
             qtyNum.textContent = String(currentQuantity);
 
             const plusBtn = document.createElement('button');
             plusBtn.type = 'button';
             plusBtn.textContent = '+';
-            plusBtn.className = 'w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-semibold transition';
+            plusBtn.className = 'grid h-5 w-6 place-items-center rounded-full font-semibold text-[#4d5c56] transition';
             plusBtn.setAttribute('aria-label', 'Increase quantity');
             plusBtn.addEventListener('click', async () => {
                 if (!item.id) return;
@@ -1535,7 +1816,7 @@ document.addEventListener('DOMContentLoaded', () => {
             qtyBox.append(minusBtn, qtyNum, plusBtn);
 
             const priceCalc = document.createElement('span');
-            priceCalc.className = 'text-xs font-semibold text-gray-700 whitespace-nowrap';
+            priceCalc.className = 'whitespace-nowrap text-sm font-semibold text-[#4d5c56]';
             const itemPrice = Number(item.price || 0);
             const itemSubtotal = itemPrice * currentQuantity;
             const promotionDiscount = Number(item.promotion_discount || 0);
@@ -1564,10 +1845,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
-            removeBtn.className = 'shrink-0 p-1 text-gray-400 hover:text-red-500 transition';
+            removeBtn.className = 'grid h-9 w-9 shrink-0 place-items-center rounded-full text-gray-400 transition hover:bg-red-50 hover:text-red-500';
             removeBtn.setAttribute('aria-label', 'Remove ' + item.name);
             removeBtn.innerHTML = `
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             `;
@@ -1741,6 +2022,8 @@ document.addEventListener('DOMContentLoaded', () => {
             offerTerms.textContent = '';
             status.textContent = variantId ? 'This option is unavailable.' : 'Select an available option to continue.';
         }
+
+        syncProductCardQuantityControls();
     });
 
     if (variantSelect?.value) {
@@ -1767,6 +2050,57 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (event) => {
+        const quantityButton = event.target.closest('[data-card-quantity-change]');
+
+        if (quantityButton) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const controls = quantityButton.closest('[data-card-quantity-controls]');
+            const item = cart.find((cartItem) => String(cartItem.id) === controls?.dataset.cartItemId);
+            if (!item?.id) return;
+
+            const cardButtons = controls.querySelectorAll('button');
+            cardButtons.forEach((button) => {
+                button.disabled = true;
+            });
+
+            const nextQuantity = Number(item.qty) + (quantityButton.dataset.cardQuantityChange === 'increase' ? 1 : -1);
+            const updateCartQuantity = async () => {
+                try {
+                    const response = nextQuantity <= 0
+                        ? await fetch(`/api/cart/items/${item.id}`, {
+                            method: 'DELETE',
+                            headers: { ...apiHeaders },
+                            credentials: 'same-origin',
+                        })
+                        : await fetch(`/api/cart/items/${item.id}`, {
+                            method: 'PATCH',
+                            headers: { ...apiHeaders, 'Content-Type': 'application/json' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ quantity: nextQuantity }),
+                        });
+
+                    if (!response.ok) throw new Error('Failed to update cart quantity');
+
+                    const cartResponse = await fetch('/api/cart', { headers: apiHeaders, credentials: 'same-origin' });
+                    if (!cartResponse.ok) throw new Error('Failed to refresh cart');
+
+                    const data = await cartResponse.json();
+                    cart = (data.items || []).map(normalizeCartItem);
+                } catch {
+                    renderCart();
+                    return;
+                }
+
+                renderCart();
+            };
+
+            updateCartQuantity();
+
+            return;
+        }
+
         const button = event.target.closest('button[aria-label^="Add "][aria-label$=" to cart"], button[data-buy-now], button[data-select-variant]');
 
         if (button) {
@@ -2192,6 +2526,74 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const accountMenuToggle = document.querySelector('[data-account-menu-toggle]');
+    const accountMenu = document.querySelector('[data-account-menu]');
+    const accountMenuOverlay = document.querySelector('[data-account-menu-overlay]');
+    const accountMenuClose = document.querySelector('[data-account-menu-close]');
+
+    if (accountMenuToggle && accountMenu && accountMenuOverlay) {
+        let accountMenuOverlayTimer = null;
+
+        const setAccountMenuState = (open) => {
+            window.clearTimeout(accountMenuOverlayTimer);
+            accountMenuToggle.setAttribute('aria-expanded', String(open));
+
+            if (open) {
+                setCartDrawerState(false);
+                document.querySelector('[data-shop-filter-close]')?.click();
+                if (toggle && menu && !menu.classList.contains('hidden')) {
+                    menu.classList.add('hidden');
+                    openIcon?.classList.remove('hidden');
+                    closeIcon?.classList.add('hidden');
+                    toggle.setAttribute('aria-expanded', 'false');
+                    toggle.setAttribute('aria-label', 'Open search');
+                }
+                accountMenu.inert = false;
+                accountMenu.setAttribute('aria-hidden', 'false');
+                accountMenuOverlay.classList.remove('hidden');
+                accountMenuOverlay.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('overflow-hidden');
+                requestAnimationFrame(() => {
+                    accountMenu.classList.remove('translate-x-full');
+                    accountMenuOverlay.classList.remove('opacity-0');
+                });
+                accountMenuClose?.focus();
+
+                return;
+            }
+
+            accountMenu.classList.add('translate-x-full');
+            accountMenu.setAttribute('aria-hidden', 'true');
+            accountMenu.inert = true;
+            accountMenuOverlay.classList.add('opacity-0');
+            accountMenuOverlay.setAttribute('aria-hidden', 'true');
+            if (!document.querySelector('[data-cart-drawer][aria-hidden="false"]')) {
+                document.body.classList.remove('overflow-hidden');
+            }
+            accountMenuOverlayTimer = window.setTimeout(() => accountMenuOverlay.classList.add('hidden'), 220);
+            accountMenuToggle.focus();
+        };
+
+        accountMenuToggle.addEventListener('click', () => {
+            setAccountMenuState(accountMenuToggle.getAttribute('aria-expanded') !== 'true');
+        });
+        accountMenuOverlay.addEventListener('click', () => setAccountMenuState(false));
+        accountMenuClose?.addEventListener('click', () => setAccountMenuState(false));
+        accountMenu.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', () => setAccountMenuState(false));
+        });
+        accountMenu.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                setAccountMenuState(false);
+            }
+        });
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 1024 && accountMenuToggle.getAttribute('aria-expanded') === 'true') {
+                setAccountMenuState(false);
+            }
+        });
+    }
+
     const setupCarousel = ({
         trackSelector,
         prevSelector = null,
@@ -2252,9 +2654,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const updateButtons = () => {
-            const canMove = maxScroll() > 2;
-            if (prev) prev.disabled = !canMove;
-            if (next) next.disabled = !canMove;
+            const maximumScroll = maxScroll();
+            const canMove = maximumScroll > 2;
+            if (prev) prev.disabled = !canMove || track.scrollLeft <= 2;
+            if (next) next.disabled = !canMove || track.scrollLeft >= maximumScroll - 2;
             updatePagination();
         };
 
