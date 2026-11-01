@@ -223,7 +223,9 @@ it('rejects arbitrary hero destinations without changing the saved branding', fu
         ])
         ->assertSessionHasErrors('hero_target');
 
-    expect(app(SiteSettings::class)->get('hero_title'))->toBe('Good Food for a Better You');
+    expect(app(SiteSettings::class)->get('hero_title'))->toBe('Discover Something New')
+        ->and(app(SiteSettings::class)->get('hero_description'))
+        ->toBe('Explore a wide range of products and find what you need.');
 });
 
 it('resolves only active internal category product and variant targets', function () {

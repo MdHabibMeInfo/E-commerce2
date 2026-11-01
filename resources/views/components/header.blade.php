@@ -69,7 +69,7 @@
         <div class="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2 text-[11px] font-medium sm:px-6 sm:text-xs lg:px-8">
             <p class="flex items-center gap-2">
                 <span class="text-[#d7b45a]">✦</span>
-                Fresh &amp; Healthy Products
+                Explore Quality Products
                 <span class="hidden text-white/50 sm:inline">•</span>
                 <span class="hidden sm:inline">Free Shipping on Orders Over ৳1000</span>
             </p>

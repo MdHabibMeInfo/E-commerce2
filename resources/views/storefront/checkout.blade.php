@@ -24,7 +24,7 @@
             <div class="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
                 <div class="rounded-[26px] border border-[#e4e3d8] bg-white p-5 shadow-sm sm:p-7">
                     <h1 class="text-3xl font-extrabold tracking-tight text-[#145943]">Checkout</h1>
-                    <p class="mt-2 text-sm text-[#66736d]">Deliver fresh essentials right to your doorstep.</p>
+                    <p class="mt-2 text-sm text-[#66736d]">Complete your order and get your items ready for delivery.</p>
 
                     @if ($errors->any())
                         <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">

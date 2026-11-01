@@ -4,7 +4,7 @@
     </x-slot:title>
 
     <x-slot:metaDescription>
-        Explore fresh groceries, household essentials and quality food products at {{ config('app.name') }}.
+        Explore a wide range of products and find what you need at {{ config('app.name') }}.
     </x-slot:metaDescription>
 
     <x-slot:canonicalUrl>

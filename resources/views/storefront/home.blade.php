@@ -1,11 +1,11 @@
 <x-layouts.app>
 
     <x-slot:title>
-        {{ config('app.name') }} — Fresh &amp; Quality Food &amp; Grocery Products
+        {{ config('app.name') }}
     </x-slot:title>
 
     <x-slot:metaDescription>
-        Shop fresh, natural and high-quality food and grocery products. Discover quality essentials and everyday products delivered to your door.
+        Discover a wide range of products, with convenient shopping and delivery.
     </x-slot:metaDescription>
 
     <x-slot:canonicalUrl>

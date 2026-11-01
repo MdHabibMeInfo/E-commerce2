@@ -26,7 +26,15 @@ it('renders the title supplied by each storefront page', function () {
         ->assertSee('<title>About Us | ' . config('app.name') . '</title>', false);
 
     $this->get(route('home'))
-        ->assertSee('<title>' . config('app.name') . ' — Fresh &amp; Quality Food &amp; Grocery Products</title>', false);
+        ->assertSee('<title>' . config('app.name') . '</title>', false);
+});
+
+it('uses product-neutral meta descriptions for storefront pages', function () {
+    $this->get(route('home'))
+        ->assertSee('content="Discover a wide range of products, with convenient shopping and delivery."', false);
+
+    $this->get(route('shop'))
+        ->assertSee('content="Explore a wide range of products and find what you need at ' . config('app.name') . '."', false);
 });
 
 it('highlights the active storefront page in the navbar', function () {

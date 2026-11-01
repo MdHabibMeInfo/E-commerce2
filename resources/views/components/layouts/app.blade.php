@@ -28,7 +28,7 @@
 
     <meta
         name="description"
-        content="{{ $metaDescription ?? 'Discover fresh, high-quality food and grocery products delivered to your door.' }}"
+        content="{{ $metaDescription ?? 'Discover a wide range of products.' }}"
     >
 
     <link
