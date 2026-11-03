@@ -163,7 +163,7 @@ class ProductVariantController extends Controller
     ): JsonResponse {
         $this->authorize('delete', $variant);
 
-        $variantService->deleteVariant($variant);
+        $variantService->softDeleteVariant($variant);
 
         return response()->json([
             'message' => 'Product variant deleted successfully.',

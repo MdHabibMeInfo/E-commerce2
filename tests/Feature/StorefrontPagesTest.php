@@ -23,10 +23,10 @@ it('loads the home page', function () {
 
 it('renders the title supplied by each storefront page', function () {
     $this->get(route('about'))
-        ->assertSee('<title>About Us | ' . config('app.name') . '</title>', false);
+        ->assertSee('<title>About Us | '.config('app.name').'</title>', false);
 
     $this->get(route('home'))
-        ->assertSee('<title>' . config('app.name') . '</title>', false);
+        ->assertSee('<title>'.config('app.name').'</title>', false);
 });
 
 it('uses product-neutral meta descriptions for storefront pages', function () {
@@ -34,12 +34,12 @@ it('uses product-neutral meta descriptions for storefront pages', function () {
         ->assertSee('content="Discover a wide range of products, with convenient shopping and delivery."', false);
 
     $this->get(route('shop'))
-        ->assertSee('content="Explore a wide range of products and find what you need at ' . config('app.name') . '."', false);
+        ->assertSee('content="Explore a wide range of products and find what you need at '.config('app.name').'."', false);
 });
 
 it('highlights the active storefront page in the navbar', function () {
     $this->get(route('shop'))
-        ->assertSee('href="' . route('shop') . '"', false)
+        ->assertSee('href="'.route('shop').'"', false)
         ->assertSee('aria-label="Shop"', false)
         ->assertSee('aria-current="page"', false);
 });
@@ -64,9 +64,9 @@ it('shows the saved About Us article and WhatsApp contact in the storefront', fu
         ->assertSee('href="https://wa.me/8801712345678"', false);
 
     $this->get(route('home'))
-        ->assertSee('href="' . route('about') . '"', false)
-        ->assertSee('href="' . route('contact') . '"', false)
-        ->assertSee('href="' . route('shop') . '"', false)
+        ->assertSee('href="'.route('about').'"', false)
+        ->assertSee('href="'.route('contact').'"', false)
+        ->assertSee('href="'.route('shop').'"', false)
         ->assertSee('aria-label="Shop"', false)
         ->assertSee('href="tel:+8801712345678"', false)
         ->assertSee('href="https://wa.me/8801712345678"', false)
@@ -104,9 +104,9 @@ it('shows owner-managed policy pages with escaped text and working navigation li
         ->assertSee('Report damaged items within 3 days.');
 
     $this->get(route('home'))
-        ->assertSee('href="' . route('terms') . '"', false)
-        ->assertSee('href="' . route('privacy') . '"', false)
-        ->assertSee('href="' . route('returns') . '"', false);
+        ->assertSee('href="'.route('terms').'"', false)
+        ->assertSee('href="'.route('privacy').'"', false)
+        ->assertSee('href="'.route('returns').'"', false);
 });
 
 it('does not publish hard-coded About Us copy when the owner has not provided content', function () {
@@ -123,15 +123,17 @@ it('opens profile and logout options from the signed-in profile icon', function 
 
     $response = $this->actingAs($user)->get(route('home'));
 
-    $response->assertSee('href="' . route('account.profile') . '"', false)
+    $response->assertSee('href="'.route('account.profile').'"', false)
         ->assertSee('aria-label="Open profile and logout menu"', false)
         ->assertSee('aria-label="Avatar for Storefront Shopper"', false)
         ->assertSee('data-account-menu-toggle', false)
         ->assertSee('aria-label="Account menu"', false)
-        ->assertSee('class="hidden border-b border-[#dedfcf]', false)
-        ->assertSee('href="' . route('account.orders.history') . '"', false)
-        ->assertSee('href="' . route('account.security') . '"', false)
-        ->assertSee('action="' . route('logout') . '"', false)
+        ->assertSee('role="dialog"', false)
+        ->assertSee('aria-modal="true"', false)
+        ->assertSee('inert', false)
+        ->assertSee('href="'.route('account.orders.history').'"', false)
+        ->assertSee('href="'.route('account.security').'"', false)
+        ->assertSee('action="'.route('logout').'"', false)
         ->assertSee('>Profile</span>', false)
         ->assertSee('>Logout</span>', false)
         ->assertDontSee('My Orders');
@@ -140,8 +142,8 @@ it('opens profile and logout options from the signed-in profile icon', function 
 it('shows five home category rows by skipping categories without active products', function () {
     for ($position = 1; $position <= 8; $position++) {
         $category = Category::create([
-            'name' => 'Homepage Category ' . $position,
-            'slug' => 'homepage-category-' . $position,
+            'name' => 'Homepage Category '.$position,
+            'slug' => 'homepage-category-'.$position,
             'is_active' => true,
             'sort_order' => $position,
         ]);
@@ -159,8 +161,8 @@ it('shows five home category rows by skipping categories without active products
         if ($position >= 3) {
             Product::create([
                 'category_id' => $category->id,
-                'name' => 'Homepage Product ' . $position,
-                'slug' => 'homepage-product-' . $position,
+                'name' => 'Homepage Product '.$position,
+                'slug' => 'homepage-product-'.$position,
                 'type' => 'simple',
                 'is_active' => true,
             ]);
@@ -171,9 +173,9 @@ it('shows five home category rows by skipping categories without active products
 
     foreach (range(3, 7) as $position) {
         $response->assertSeeInOrder([
-            'data-category-product-track="homepage-category-' . $position . '"',
+            'data-category-product-track="homepage-category-'.$position.'"',
             'data-product-card',
-            'Homepage Product ' . $position,
+            'Homepage Product '.$position,
         ], false);
     }
 
@@ -208,14 +210,14 @@ it('shows new arrivals and selected products in Just For You with a non-empty fa
         ->assertSee('New Arrivals')
         ->assertSee('id="just-for-you"', false)
         ->assertSee('Just For You')
-        ->assertViewHas('newArrivals', fn($products) => $products->first()?->is($newArrival))
-        ->assertViewHas('justForYouProducts', fn($products) => $products->contains(fn($product) => $product->is($selectedProduct))
-            && ! $products->contains(fn($product) => $product->is($newArrival)));
+        ->assertViewHas('newArrivals', fn ($products) => $products->first()?->is($newArrival))
+        ->assertViewHas('justForYouProducts', fn ($products) => $products->contains(fn ($product) => $product->is($selectedProduct))
+            && ! $products->contains(fn ($product) => $product->is($newArrival)));
 
     $selectedProduct->forceFill(['is_featured' => false])->save();
 
     $this->get(route('home'))
-        ->assertViewHas('justForYouProducts', fn($products) => $products->first()?->is($newArrival));
+        ->assertViewHas('justForYouProducts', fn ($products) => $products->first()?->is($newArrival));
 });
 
 it('shows the active variant price range on home and shop product cards', function () {
@@ -335,8 +337,8 @@ it('paginates shop products and preserves search and sort on category links', fu
     for ($position = 1; $position <= 17; $position++) {
         Product::create([
             'category_id' => $category->id,
-            'name' => 'Pagination Product ' . str_pad((string) $position, 2, '0', STR_PAD_LEFT),
-            'slug' => 'pagination-product-' . $position,
+            'name' => 'Pagination Product '.str_pad((string) $position, 2, '0', STR_PAD_LEFT),
+            'slug' => 'pagination-product-'.$position,
             'type' => 'simple',
             'is_active' => true,
         ]);
@@ -400,7 +402,7 @@ it('shows all products after leaving a category with a lower maximum price', fun
 
     $categoryResponse
         ->assertOk()
-        ->assertSee('href="' . route('shop', ['sort' => 'price_asc']) . '"', false)
+        ->assertSee('href="'.route('shop', ['sort' => 'price_asc']).'"', false)
         ->assertDontSee('<input type="hidden" name="max_price" value="80">', false);
 
     $this->get(route('shop'))
@@ -418,8 +420,8 @@ it('returns up to eight active products for storefront search suggestions', func
     for ($position = 1; $position <= 10; $position++) {
         $product = Product::create([
             'category_id' => $category->id,
-            'name' => 'Fresh Apple ' . $position,
-            'slug' => 'fresh-apple-' . $position,
+            'name' => 'Fresh Apple '.$position,
+            'slug' => 'fresh-apple-'.$position,
             'price' => 240,
             'type' => 'simple',
             'is_active' => true,
@@ -580,7 +582,7 @@ it('loads the shop page with products', function () {
         ->assertOk();
 
     expect(preg_match(
-        '/<link\s+rel="canonical"\s+href="' . preg_quote($categoryUrl, '/') . '"\s*>/',
+        '/<link\s+rel="canonical"\s+href="'.preg_quote($categoryUrl, '/').'"\s*>/',
         $categoryResponse->getContent(),
     ))->toBe(1);
 });
@@ -961,7 +963,7 @@ it('returns active variant promotion savings for the matching cart line only', f
             'product_id' => $product->id,
             'product_variant_id' => $variant->id,
             'variant_name' => $variant->name,
-            'line_key' => 'variant:' . $variant->id,
+            'line_key' => 'variant:'.$variant->id,
             'name' => $product->name,
             'price' => $variant->price,
             'quantity' => $quantity,
@@ -1215,7 +1217,7 @@ it('checks out a selected variant without changing a stock quantity', function (
         'product_id' => $product->id,
         'product_variant_id' => $variant->id,
         'variant_name' => $variant->displayName(),
-        'line_key' => 'variant:' . $variant->id,
+        'line_key' => 'variant:'.$variant->id,
         'name' => $product->name,
         'price' => 1,
         'quantity' => 2,

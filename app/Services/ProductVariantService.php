@@ -416,6 +416,14 @@ class ProductVariantService
         });
     }
 
+    public function softDeleteVariant(
+        ProductVariant $variant
+    ): void {
+        DB::transaction(function () use ($variant) {
+            $variant->delete();
+        });
+    }
+
     public function restoreVariant(Product $product, ProductVariant $variant): ProductVariant
     {
         if (! $variant->trashed()) {
