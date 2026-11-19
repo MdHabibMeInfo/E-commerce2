@@ -84,6 +84,7 @@ function completeManagementTwoFactorForTest(User $user): User
 
     session()->put('security.two_factor_verified_user', $user->getKey());
     session()->put('security.two_factor_verified_at', now()->timestamp);
+    session()->put('security.two_factor_sensitive_verified_at', now()->timestamp);
 
     return $user;
 }

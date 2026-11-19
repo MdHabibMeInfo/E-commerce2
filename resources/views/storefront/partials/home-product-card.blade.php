@@ -12,7 +12,7 @@
     data-product-name="{{ $product->name }}"
     data-product-price="{{ (float) $product->price }}"
     data-product-emoji="🛍️"
-    class="group relative shrink-0 overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none max-sm:flex max-sm:flex-col"
+    class="group relative flex shrink-0 flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
 >
     @include('storefront.partials.product-discount-badge', ['product' => $product])
 
@@ -38,7 +38,7 @@
         @endif
     </a>
 
-    <div class="px-3 pt-3 sm:px-4 sm:pt-4 max-sm:flex-1">
+    <div class="flex-1 px-3 pt-3 sm:px-4 sm:pt-4">
         <h3 class="line-clamp-2 text-sm font-normal leading-5 text-[#173b32] sm:text-base">
             <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="transition-colors hover:text-[#145943] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#145943]">
                 {{ $product->name }}

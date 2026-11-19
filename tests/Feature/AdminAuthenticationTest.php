@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Notifications\LoginNotification;
 use App\Notifications\PasswordResetNotification;
 use App\Notifications\SecurityAlertNotification;
+use App\Services\TotpService;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,37 @@ it('renders the admin sign-in form', function () {
         ->assertSee('name="email"', false)
         ->assertSee('name="password"', false)
         ->assertSee('aria-controls="login-password"', false);
+});
+
+it('keeps an authenticated admin in the verified session when they open sign-in', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+
+    $this->actingAs($user)
+        ->get(route('login'))
+        ->assertRedirect(route('two-factor.challenge'));
+
+    $this->get(route('two-factor.challenge'))
+        ->assertRedirect(route('admin'));
+
+    $this->get(route('admin'))
+        ->assertOk();
+});
+
+it('does not replace the authenticated account when sign-in is posted again', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $otherUser = User::factory()->create(['email' => 'different-account@example.com']);
+
+    $this->actingAs($user)
+        ->post(route('login.store'), [
+            'email' => $otherUser->email,
+            'password' => 'password',
+        ])
+        ->assertRedirect(route('two-factor.challenge'));
+
+    $this->assertAuthenticatedAs($user);
+
+    $this->get(route('two-factor.challenge'))
+        ->assertRedirect(route('admin'));
 });
 
 it('renders the customer registration form', function () {
@@ -88,6 +120,86 @@ it('requires system owners to enroll an authenticator before dashboard access', 
     $this->assertAuthenticatedAs($user);
     Notification::assertNothingSent();
     $this->get(route('admin'))->assertRedirect(route('admin.two-factor.setup'));
+});
+
+it('keeps admin two-factor verification valid for eight hours', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $verifiedAt = now()->subHours(7)->timestamp;
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => $verifiedAt,
+        ])
+        ->get(route('admin'))
+        ->assertOk();
+});
+
+it('requires admin two-factor verification again after eight hours', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $verifiedAt = now()->subHours(8)->timestamp;
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => $verifiedAt,
+        ])
+        ->get(route('admin'))
+        ->assertRedirect(route('two-factor.challenge'));
+});
+
+it('requires a fresh authenticator code before sensitive admin settings and accepts the code', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $verifiedAt = now()->subMinutes(11)->timestamp;
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => now()->subHours(1)->timestamp,
+            'security.two_factor_sensitive_verified_at' => $verifiedAt,
+        ])
+        ->get(route('admin.settings'))
+        ->assertRedirect(route('two-factor.challenge'));
+
+    $this->get(route('two-factor.challenge'))
+        ->assertOk()
+        ->assertSee('Sensitive action verification');
+
+    $this->post(route('two-factor.verify'), [
+        'code' => app(TotpService::class)->codeAt($user->two_factor_secret, now()->timestamp),
+    ])->assertRedirect(route('admin.settings'));
+
+    $this->get(route('admin.settings'))->assertOk();
+});
+
+it('requires fresh authenticator verification before role and staff access pages', function (string $routeName) {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => now()->subHour()->timestamp,
+            'security.two_factor_sensitive_verified_at' => now()->subMinutes(11)->timestamp,
+        ])
+        ->get(route($routeName))
+        ->assertRedirect(route('two-factor.challenge'));
+})->with([
+    'role management' => 'admin.roles.index',
+    'staff access management' => 'admin.users.index',
+]);
+
+it('requires fresh authenticator verification before a direct sensitive settings update', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => now()->subHour()->timestamp,
+            'security.two_factor_sensitive_verified_at' => now()->subMinutes(11)->timestamp,
+        ])
+        ->patch(route('admin.settings.security.update'), [])
+        ->assertRedirect(route('two-factor.challenge'))
+        ->assertSessionHas('security.two_factor_step_up_required', true);
 });
 
 it('requires unverified system owners to verify email before authenticator enrollment', function () {
@@ -594,7 +706,7 @@ it('enforces the single system owner at the database level', function () {
     createSystemOwnerUser();
     $secondUser = User::factory()->create();
 
-    expect(fn() => $secondUser->forceFill([
+    expect(fn () => $secondUser->forceFill([
         'account_type' => 'admin',
         'is_system_owner' => true,
     ])->save())->toThrow(QueryException::class);

@@ -4,6 +4,7 @@ use App\Exceptions\DuplicateVariantCombinationException;
 use App\Exceptions\InvalidVariantAttributeValueException;
 use App\Http\Middleware\RequireManagementEmailVerification;
 use App\Http\Middleware\RequireManagementTwoFactor;
+use App\Http\Middleware\RequireRecentManagementTwoFactor;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,7 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
+        $middleware->trustHosts(
+            at: static function (): array {
+                $host = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+                return is_string($host) ? ['^'.preg_quote($host, '/').'$'] : [];
+            },
+            subdomains: false,
+        );
+        $middleware->trustProxies();
 
         $middleware->encryptCookies(except: [
             '_fbp',
@@ -28,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'management.verified' => RequireManagementEmailVerification::class,
             'management.2fa' => RequireManagementTwoFactor::class,
+            'management.reauth' => RequireRecentManagementTwoFactor::class,
         ]);
         $middleware->redirectGuestsTo(
             fn (Request $request) => $request->is('api/*')

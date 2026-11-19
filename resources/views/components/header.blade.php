@@ -3,7 +3,7 @@
         <div class="mx-auto flex h-[78px] max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
             <a href="{{ route('home') }}" @if (request()->routeIs('home')) aria-current="page" @endif class="relative flex shrink-0 items-center after:absolute after:-bottom-2 after:left-1/2 after:h-0.5 after:w-5 after:-translate-x-1/2 after:rounded-full after:bg-[#145943] {{ request()->routeIs('home') ? '' : 'after:hidden' }}" aria-label="{{ config('app.name') }} home">
                 <img
-                    src="{{ ! empty($siteBranding['logo_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($siteBranding['logo_path']) : asset('images/brand/ziyanmart-logo.png') }}"
+                    src="{{ ! empty($siteBranding['logo_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($siteBranding['logo_path']) : '/images/brand/ziyanmart-logo.png' }}"
                     alt="{{ config('app.name') }}"
                     class="h-12 w-auto object-contain sm:h-14"
                 >
@@ -106,7 +106,7 @@
 
             <a href="{{ route('home') }}" class="flex shrink-0 items-center" aria-label="{{ config('app.name') }} home">
                 <img
-                    src="{{ ! empty($siteBranding['logo_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($siteBranding['logo_path']) : asset('images/brand/ziyanmart-logo.png') }}"
+                    src="{{ ! empty($siteBranding['logo_path']) ? \Illuminate\Support\Facades\Storage::disk('public')->url($siteBranding['logo_path']) : '/images/brand/ziyanmart-logo.png' }}"
                     alt="{{ config('app.name') }}"
                     class="h-12 w-auto object-contain sm:h-14"
                 >

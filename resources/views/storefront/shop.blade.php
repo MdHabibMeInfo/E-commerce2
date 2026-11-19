@@ -244,7 +244,7 @@
                             <p class="mt-2 text-sm text-[#738078]">Try another keyword or select different filters to browse more items.</p>
                         </div>
                     @else
-                        <div class="grid grid-cols-2 items-start gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div class="grid grid-cols-2 items-stretch gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
                             @foreach ($products as $product)
                                 @php
                                     $primaryImage = $product->primaryImage ?? $product->images->firstWhere('is_primary', true) ?? $product->images->first();
@@ -253,14 +253,14 @@
                                 @endphp
 
                                 <article
-                                    class="group relative flex self-start flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
+                                    class="group relative flex h-full flex-col overflow-hidden rounded-[4px] border border-[#d1d5ce] bg-white shadow-none"
                                     data-product-card
                                     data-product-name="{{ $product->name }}"
                                     data-product-price="{{ (float) $product->price }}"
                                 >
                                     @include('storefront.partials.product-discount-badge', ['product' => $product])
 
-                                    <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex flex-col">
+                                    <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="flex flex-1 flex-col">
                                         <div class="relative overflow-hidden bg-white">
                                             @if ($primaryImage)
                                                 <div class="aspect-square overflow-hidden">

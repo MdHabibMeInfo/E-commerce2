@@ -17,13 +17,21 @@ use Illuminate\Validation\ValidationException;
 
 class AdminSessionController extends Controller
 {
-    public function create(): View
+    public function create(Request $request): View|RedirectResponse
     {
+        if ($redirect = $this->redirectAuthenticatedUser($request)) {
+            return $redirect;
+        }
+
         return view('auth.login');
     }
 
     public function store(Request $request, SecurityEventService $events, SiteSettings $settings): RedirectResponse
     {
+        if ($redirect = $this->redirectAuthenticatedUser($request)) {
+            return $redirect;
+        }
+
         $credentials = $request->validate([
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string'],
@@ -86,6 +94,9 @@ class AdminSessionController extends Controller
         if ($requiresTwoFactor) {
             $request->session()->forget('security.two_factor_verified_user');
             $request->session()->forget('security.two_factor_verified_at');
+            $request->session()->forget('security.two_factor_sensitive_verified_at');
+            $request->session()->forget('security.two_factor_step_up_required');
+            $request->session()->forget('security.two_factor_step_up_destination');
             $request->session()->put('security.pending_login_after_mfa', true);
 
             if ($canUseAdmin && $user->two_factor_confirmed_at === null) {
@@ -108,6 +119,25 @@ class AdminSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    private function redirectAuthenticatedUser(Request $request): ?RedirectResponse
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        if ($user->can('access-admin') && ! $user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+
+        if ($user->can('access-admin') || $user->two_factor_confirmed_at !== null) {
+            return redirect()->route('two-factor.challenge');
+        }
+
+        return redirect()->intended(route('home'));
     }
 
     private function throttleKey(Request $request): string

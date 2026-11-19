@@ -104,19 +104,19 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
         ->middleware('throttle:5,1')->name('account.orders.cancel');
     Route::get('/account/orders/{order}', [OrderController::class, 'show'])->name('account.orders.show');
     Route::get('/account/security', [AccountSecurityController::class, 'index'])
-        ->middleware('management.2fa')->name('account.security');
+        ->middleware(['management.2fa', 'management.reauth'])->name('account.security');
     Route::put('/account/security/email', [AccountSecurityController::class, 'updateEmail'])
-        ->middleware(['management.2fa', 'throttle:5,1'])->name('account.security.email.update');
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:5,1'])->name('account.security.email.update');
     Route::post('/account/security/email/resend', [AccountSecurityController::class, 'resendEmailVerification'])
-        ->middleware(['management.2fa', 'throttle:6,1'])->name('account.security.email.resend');
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:6,1'])->name('account.security.email.resend');
     Route::put('/account/security/password', [AccountSecurityController::class, 'updatePassword'])
-        ->middleware(['management.2fa', 'throttle:5,1'])->name('account.security.password.update');
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:5,1'])->name('account.security.password.update');
     Route::post('/account/security/recovery-codes', [AccountSecurityController::class, 'regenerateRecoveryCodes'])
-        ->middleware(['management.2fa', 'throttle:6,1'])->name('account.security.recovery-codes');
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:6,1'])->name('account.security.recovery-codes');
     Route::delete('/account/security/sessions/{sessionId}', [AccountSecurityController::class, 'destroySession'])
-        ->middleware(['management.2fa', 'throttle:5,1'])->where('sessionId', '[A-Za-z0-9,-]+')->name('account.security.sessions.destroy');
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:5,1'])->where('sessionId', '[A-Za-z0-9,-]+')->name('account.security.sessions.destroy');
     Route::delete('/account/security/sessions', [AccountSecurityController::class, 'destroyOtherSessions'])
-        ->middleware(['management.2fa', 'throttle:5,1'])->name('account.security.sessions.destroy-others');
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:5,1'])->name('account.security.sessions.destroy-others');
 
     Route::get('/admin', [AdminController::class, 'index'])
         ->middleware(['can:access-admin', 'management.2fa'])
@@ -131,35 +131,35 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
         ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa'])
         ->name('admin.orders.payment-proof');
     Route::patch('/admin/orders/{order}/payment', [OrderController::class, 'reviewPayment'])
-        ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa', 'throttle:10,1'])
+        ->middleware(['can:access-admin', 'can:orders.view', 'can:payments.update', 'management.2fa', 'throttle:10,1'])
         ->name('admin.orders.payment.review');
     Route::post('/admin/orders/{order}/shipments', [OrderController::class, 'createShipment'])
-        ->middleware(['can:access-admin', 'management.2fa', 'throttle:5,1'])
+        ->middleware(['can:access-admin', 'can:orders.update', 'management.2fa', 'throttle:5,1'])
         ->name('admin.orders.shipments.store');
     Route::post('/admin/orders/{order}/courier-history', [OrderController::class, 'checkCustomerCourierHistory'])
         ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa', 'throttle:10,1'])
         ->name('admin.orders.courier-history');
     Route::post('/admin/orders/{order}/shipments/reconcile', [OrderController::class, 'reconcileShipment'])
-        ->middleware(['can:access-admin', 'management.2fa', 'throttle:5,1'])
+        ->middleware(['can:access-admin', 'can:orders.update', 'management.2fa', 'throttle:5,1'])
         ->name('admin.orders.shipments.reconcile');
     Route::patch('/admin/orders/{order}/cancel', [OrderController::class, 'adminCancel'])
-        ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa', 'throttle:10,1'])
+        ->middleware(['can:access-admin', 'can:orders.cancel', 'management.2fa', 'throttle:10,1'])
         ->name('admin.orders.cancel');
 
     Route::prefix('admin')->name('admin.')->middleware(['can:access-admin', 'management.2fa'])->group(function () {
-        Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('settings');
+        Route::get('/settings', [AdminSettingsController::class, 'edit'])->middleware('management.reauth')->name('settings');
         Route::get('/settings/hero-targets', [AdminSettingsController::class, 'heroTargetSuggestions'])
             ->middleware('throttle:60,1')->name('settings.hero-targets');
         Route::patch('/settings/branding', [AdminSettingsController::class, 'updateBranding'])
-            ->middleware('can:settings.update')->name('settings.branding.update');
+            ->middleware(['can:settings.update', 'management.reauth'])->name('settings.branding.update');
         Route::post('/settings/hero-banners', [HeroBannerController::class, 'store'])
-            ->middleware('can:settings.update')->name('settings.hero-banners.store');
+            ->middleware(['can:settings.update', 'management.reauth'])->name('settings.hero-banners.store');
         Route::put('/settings/hero-banners/{heroBanner}', [HeroBannerController::class, 'update'])
-            ->middleware('can:settings.update')->name('settings.hero-banners.update');
+            ->middleware(['can:settings.update', 'management.reauth'])->name('settings.hero-banners.update');
         Route::delete('/settings/hero-banners/{heroBanner}', [HeroBannerController::class, 'destroy'])
-            ->middleware('can:settings.update')->name('settings.hero-banners.destroy');
+            ->middleware(['can:settings.update', 'management.reauth'])->name('settings.hero-banners.destroy');
         Route::patch('/settings/security', [AdminSettingsController::class, 'updateSensitive'])
-            ->middleware(['can:system-owner-settings', 'throttle:5,1'])->name('settings.security.update');
+            ->middleware(['can:system-owner-settings', 'management.reauth', 'throttle:5,1'])->name('settings.security.update');
 
         Route::get('/profile', [AdminController::class, 'profile'])
             ->middleware('can:access-admin')
@@ -184,17 +184,17 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
         Route::get('/reports/sales/products', [AdminSalesReportController::class, 'productSuggestions'])
             ->middleware(['can:reports.view', 'throttle:60,1'])->name('reports.sales.products');
 
-        Route::get('/roles', [AdminRoleController::class, 'index'])->middleware(['can:roles.view', 'can:system-owner-settings'])->name('roles.index');
-        Route::post('/roles', [AdminRoleController::class, 'store'])->middleware(['can:roles.create', 'can:system-owner-settings'])->name('roles.store');
-        Route::put('/roles/{role}', [AdminRoleController::class, 'update'])->middleware(['can:roles.update', 'can:system-owner-settings'])->name('roles.update');
-        Route::put('/roles/{role}/permissions', [AdminRoleController::class, 'updatePermissions'])->middleware(['can:roles.update', 'can:system-owner-settings'])->name('roles.permissions.update');
-        Route::patch('/roles/{role}/status', [AdminRoleController::class, 'updateStatus'])->middleware(['can:roles.update', 'can:system-owner-settings'])->name('roles.status.update');
-        Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy'])->middleware(['can:roles.delete', 'can:system-owner-settings'])->name('roles.destroy');
+        Route::get('/roles', [AdminRoleController::class, 'index'])->middleware(['can:roles.view', 'can:system-owner-settings', 'management.reauth'])->name('roles.index');
+        Route::post('/roles', [AdminRoleController::class, 'store'])->middleware(['can:roles.create', 'can:system-owner-settings', 'management.reauth'])->name('roles.store');
+        Route::put('/roles/{role}', [AdminRoleController::class, 'update'])->middleware(['can:roles.update', 'can:system-owner-settings', 'management.reauth'])->name('roles.update');
+        Route::put('/roles/{role}/permissions', [AdminRoleController::class, 'updatePermissions'])->middleware(['can:roles.update', 'can:system-owner-settings', 'management.reauth'])->name('roles.permissions.update');
+        Route::patch('/roles/{role}/status', [AdminRoleController::class, 'updateStatus'])->middleware(['can:roles.update', 'can:system-owner-settings', 'management.reauth'])->name('roles.status.update');
+        Route::delete('/roles/{role}', [AdminRoleController::class, 'destroy'])->middleware(['can:roles.delete', 'can:system-owner-settings', 'management.reauth'])->name('roles.destroy');
 
-        Route::get('/users', [AdminUserController::class, 'index'])->middleware(['can:users.view', 'can:system-owner-settings'])->name('users.index');
-        Route::post('/users', [AdminUserController::class, 'store'])->middleware(['can:users.create', 'can:system-owner-settings'])->name('users.store');
-        Route::put('/users/{user}/roles', [AdminUserController::class, 'updateRoles'])->middleware(['can:users.update', 'can:system-owner-settings'])->name('users.roles.update');
-        Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->middleware(['can:users.suspend', 'can:system-owner-settings'])->name('users.status.update');
+        Route::get('/users', [AdminUserController::class, 'index'])->middleware(['can:users.view', 'can:system-owner-settings', 'management.reauth'])->name('users.index');
+        Route::post('/users', [AdminUserController::class, 'store'])->middleware(['can:users.create', 'can:system-owner-settings', 'management.reauth'])->name('users.store');
+        Route::put('/users/{user}/roles', [AdminUserController::class, 'updateRoles'])->middleware(['can:users.update', 'can:system-owner-settings', 'management.reauth'])->name('users.roles.update');
+        Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->middleware(['can:users.suspend', 'can:system-owner-settings', 'management.reauth'])->name('users.status.update');
         Route::get('/customers', [AdminCustomerController::class, 'index'])->middleware('can:customers.view')->name('customers.index');
         Route::get('/customers/{user}', [AdminCustomerController::class, 'show'])->middleware('can:customers.view')->name('customers.show');
         Route::patch('/customers/{user}/status', [AdminCustomerController::class, 'updateStatus'])->middleware('can:customers.update')->name('customers.status.update');

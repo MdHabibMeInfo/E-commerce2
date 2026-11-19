@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 it('allows a customer to view their own order details', function () {
     $customer = User::factory()->create(['account_type' => 'customer', 'status' => 'active']);
@@ -788,6 +790,23 @@ it('shows and processes the admin invoice reconciliation action for an unknown S
         'tracking_code' => 'SF-ADMIN-RECONCILED-TRACKING',
         'status' => 'in_review',
     ]);
+});
+
+it('forbids order viewers without order update permission from creating shipments', function () {
+    Http::preventStrayRequests();
+    $ordersViewPermission = Permission::findOrCreate('orders.view', 'web');
+    $role = Role::create(['name' => 'Shipment Viewer', 'guard_name' => 'web']);
+    $role->givePermissionTo($ordersViewPermission);
+    $orderViewer = User::factory()->create(['account_type' => 'admin']);
+    $orderViewer->assignRole($role);
+    $orderViewer = completeManagementTwoFactorForTest($orderViewer);
+    $order = Order::factory()->create(['status' => 'confirmed']);
+
+    $this->actingAs($orderViewer)
+        ->post(route('admin.orders.shipments.store', $order), ['courier_code' => 'steadfast'])
+        ->assertForbidden();
+
+    $this->assertDatabaseCount('courier_shipments', 0);
 });
 
 it('checks Steadfast customer history by phone and derives a success ratio from courier counts', function () {

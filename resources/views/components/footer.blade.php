@@ -4,7 +4,7 @@
             <div class="lg:col-span-1">
                 <a href="{{ route('home') }}" class="inline-flex items-center">
                     <img
-                        src="{{ asset('images/brand/ziyanmart-logo.png') }}"
+                        src="/images/brand/ziyanmart-logo.png"
                         alt="{{ config('app.name') }}"
                         class="h-12 w-auto brightness-0 invert"
                     >

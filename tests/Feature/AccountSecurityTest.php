@@ -176,6 +176,25 @@ it('changes a password and revokes all other database sessions', function () {
     ]);
 });
 
+it('requires a fresh authenticator code before changing a management password', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => now()->subHour()->timestamp,
+            'security.two_factor_sensitive_verified_at' => now()->subMinutes(11)->timestamp,
+        ])
+        ->put(route('account.security.password.update'), [
+            'current_password' => 'password',
+            'password' => 'NewSecurePassword456!',
+            'password_confirmation' => 'NewSecurePassword456!',
+        ])
+        ->assertRedirect(route('two-factor.challenge'));
+
+    expect(Hash::check('password', $user->fresh()->password))->toBeTrue();
+});
+
 it('blocks management tools until a required temporary password is changed', function () {
     $user = createSystemOwnerUser();
     $user->forceFill(['password_change_required' => true])->save();
@@ -226,11 +245,16 @@ it('requires an authenticator challenge for customer sign-ins after opt-in', fun
         'password' => 'password',
     ])->assertRedirect(route('two-factor.challenge'));
 
+    $this->get(route('account.orders'))
+        ->assertRedirect(route('two-factor.challenge'));
+
     $this->post(route('two-factor.verify'), [
         'code' => app(TotpService::class)->codeAt($secret, now()->timestamp),
     ])->assertRedirect(route('home'));
 
     $this->assertAuthenticatedAs($customer);
+    $this->get(route('account.orders'))->assertOk();
+    $this->get(route('two-factor.challenge'))->assertRedirect(route('home'));
     $this->assertDatabaseHas('security_events', [
         'user_id' => $customer->id,
         'action' => 'login_success',

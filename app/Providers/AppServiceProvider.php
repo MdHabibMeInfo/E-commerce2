@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View as ViewFacade;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
@@ -31,7 +32,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (request()->header('x-forwarded-proto') === 'https' || app()->environment('production')) {
+        if (app()->isProduction()) {
+            Vite::useHotFile(storage_path('framework/vite.hot'));
+        }
+
+        $applicationScheme = parse_url((string) config('app.url'), PHP_URL_SCHEME);
+
+        if (request()->isSecure() || (app()->isProduction() && $applicationScheme === 'https')) {
             URL::forceScheme('https');
         }
 

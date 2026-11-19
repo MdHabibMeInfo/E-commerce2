@@ -1368,6 +1368,80 @@ document.addEventListener('DOMContentLoaded', () => {
         cartLoadingOverlay.inert = true;
     };
 
+    const cartAnimationDuration = 2500;
+
+    const animateCartItem = (button) => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+
+        const sourceRect = button.getBoundingClientRect();
+        const cartLinks = [...document.querySelectorAll('[data-open-cart]')];
+        const cartLink = cartLinks.find((link) => {
+            const rect = link.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        });
+
+        if (!cartLink || typeof Element.prototype.animate !== 'function') {
+            return;
+        }
+
+        const targetRect = cartLink.getBoundingClientRect();
+        const imageUrl = button.dataset.productImage || '';
+        const emoji = button.dataset.productEmoji || '🛍';
+        const flyingItem = document.createElement('span');
+        flyingItem.setAttribute('aria-hidden', 'true');
+        flyingItem.style.cssText = [
+            'position:fixed',
+            'z-index:100',
+            'left:' + Math.round(sourceRect.left + sourceRect.width / 2 - 22) + 'px',
+            'top:' + Math.round(sourceRect.top + sourceRect.height / 2 - 22) + 'px',
+            'width:44px',
+            'height:44px',
+            'display:grid',
+            'place-items:center',
+            'border-radius:9999px',
+            'overflow:hidden',
+            'border:2px solid rgba(255,255,255,.95)',
+            'background:#edf2e4',
+            'box-shadow:0 8px 24px rgba(20,89,67,.22)',
+            'pointer-events:none',
+            'font-size:22px',
+        ].join(';');
+
+        if (imageUrl) {
+            const image = document.createElement('img');
+            image.src = imageUrl;
+            image.alt = '';
+            image.style.cssText = 'width:100%;height:100%;object-fit:cover';
+            flyingItem.appendChild(image);
+        } else {
+            flyingItem.textContent = emoji;
+        }
+
+        document.body.appendChild(flyingItem);
+
+        const deltaX = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
+        const deltaY = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
+        const animation = flyingItem.animate([
+            { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+            { transform: `translate(${deltaX * 0.72}px, ${deltaY * 0.35 - 35}px) scale(.82)`, opacity: 1, offset: 0.55 },
+            { transform: `translate(${deltaX}px, ${deltaY}px) scale(.18)`, opacity: 0.2 },
+        ], {
+            duration: cartAnimationDuration,
+            easing: 'ease-in-out',
+        });
+
+        animation.finished.then(() => {
+            flyingItem.remove();
+            cartLink.querySelectorAll('[data-cart-count-badge]').forEach((badge) => {
+                badge.classList.remove('cart-badge-bump');
+                void badge.offsetWidth;
+                badge.classList.add('cart-badge-bump');
+            });
+        }).catch(() => flyingItem.remove());
+    };
+
     const hideCartToast = () => {
         cartToastVisible = false;
         cartToast.classList.add('pointer-events-none', 'translate-x-[calc(100%_+_100px)]', 'opacity-0');
@@ -1913,6 +1987,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalLabel = buttonLabel?.textContent ?? button.textContent;
         button.disabled = true;
         button.setAttribute('aria-busy', 'true');
+        button.classList.add('cart-button-loading');
         if (buttonLabel) {
             buttonLabel.textContent = 'Adding...';
         } else {
@@ -1945,6 +2020,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             showCartToast(name);
+            button.classList.remove('cart-button-loading');
+            button.classList.add('cart-button-success');
+            animateCartItem(button);
             if (buttonLabel) {
                 buttonLabel.textContent = 'Added!';
                 buttonSpinner?.classList.add('hidden');
@@ -1968,9 +2046,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     button.textContent = originalLabel;
                 }
+                button.classList.remove('cart-button-loading', 'cart-button-success');
                 button.disabled = false;
                 button.setAttribute('aria-busy', 'false');
-            }, 1000);
+            }, button.classList.contains('cart-button-success') ? cartAnimationDuration : 1000);
         }
     };
 

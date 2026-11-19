@@ -78,6 +78,9 @@ class TwoFactorController extends Controller
         $request->session()->regenerate();
         $request->session()->put('security.two_factor_verified_user', $user->getKey());
         $request->session()->put('security.two_factor_verified_at', now()->timestamp);
+        if ($user->account_type === 'admin') {
+            $request->session()->put('security.two_factor_sensitive_verified_at', now()->timestamp);
+        }
         $events->record($request, $user, 'two_factor_enabled');
         if ($user->account_type === 'admin') {
             $user->notify(new SecurityAlertNotification(
@@ -102,20 +105,33 @@ class TwoFactorController extends Controller
         abort_unless($user instanceof User && $this->canUseAuthenticator($user), 403);
 
         if ($user->two_factor_confirmed_at === null || ! $user->two_factor_secret) {
-            return redirect()->route('admin.two-factor.setup');
+            if ($user->account_type === 'admin') {
+                return redirect()->route('admin.two-factor.setup');
+            }
+
+            if ($user->two_factor_confirmed_at !== null) {
+                abort(403);
+            }
+
+            return redirect()->route('account.security.two-factor.setup');
         }
 
         $verifiedAt = $request->session()->get('security.two_factor_verified_at');
-        $sessionLifetimeMinutes = (int) config('session.lifetime', 120);
+        $verificationLifetimeMinutes = $user->account_type === 'admin'
+            ? (int) config('security.management_two_factor_lifetime', 480)
+            : (int) config('session.lifetime', 120);
         $verifiedRecently = is_numeric($verifiedAt)
-            && Carbon::createFromTimestamp((int) $verifiedAt)->greaterThan(now()->subMinutes($sessionLifetimeMinutes));
+            && Carbon::createFromTimestamp((int) $verifiedAt)->greaterThan(now()->subMinutes($verificationLifetimeMinutes));
 
         if ((string) $request->session()->get('security.two_factor_verified_user') === (string) $user->getKey()
-            && $verifiedRecently) {
-            return redirect()->route('admin');
+            && $verifiedRecently
+            && ! (bool) $request->session()->get('security.two_factor_step_up_required', false)) {
+            return redirect()->route($user->account_type === 'admin' ? 'admin' : 'home');
         }
 
-        return view('auth.two-factor-challenge');
+        return view('auth.two-factor-challenge', [
+            'isStepUpChallenge' => (bool) $request->session()->get('security.two_factor_step_up_required', false),
+        ]);
     }
 
     public function verify(Request $request, TotpService $totp, SecurityEventService $events): RedirectResponse
@@ -142,10 +158,20 @@ class TwoFactorController extends Controller
         $request->session()->regenerate();
         $request->session()->put('security.two_factor_verified_user', $user->getKey());
         $request->session()->put('security.two_factor_verified_at', now()->timestamp);
+        if ($user->account_type === 'admin') {
+            $request->session()->put('security.two_factor_sensitive_verified_at', now()->timestamp);
+        }
         $events->record($request, $user, $usedRecoveryCode ? 'two_factor_recovery_code_used' : 'two_factor_verified');
+
+        $isStepUpChallenge = $request->session()->pull('security.two_factor_step_up_required', false);
+        $stepUpDestination = $request->session()->pull('security.two_factor_step_up_destination');
 
         if ($request->session()->pull('security.pending_login_after_mfa', false)) {
             $this->recordSuccessfulLogin($request, $user, $events);
+        }
+
+        if ($isStepUpChallenge && is_string($stepUpDestination)) {
+            return redirect()->route($stepUpDestination);
         }
 
         return redirect()->intended($user->account_type === 'admin' ? route('admin') : route('home'));

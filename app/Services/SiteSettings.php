@@ -70,7 +70,7 @@ class SiteSettings
         $encryptedValues = Cache::rememberForever(self::CACHE_KEY, static function (): array {
             return SiteSetting::query()
                 ->get(['key', 'value'])
-                ->mapWithKeys(fn(SiteSetting $setting): array => [$setting->key => $setting->value])
+                ->mapWithKeys(fn (SiteSetting $setting): array => [$setting->key => $setting->value])
                 ->all();
         });
 
@@ -96,7 +96,7 @@ class SiteSettings
 
         return is_string($logoPath) && $logoPath !== ''
             ? Storage::disk('public')->url($logoPath)
-            : asset('images/brand/ziyanmart-logo.png');
+            : '/images/brand/ziyanmart-logo.png';
     }
 
     public function boolean(string $key): bool
@@ -206,7 +206,7 @@ class SiteSettings
             ->whereKey($variantId)
             ->where('is_active', true)
             ->where('is_out_of_stock', false)
-            ->whereHas('product', fn($query) => $query
+            ->whereHas('product', fn ($query) => $query
                 ->where('is_active', true)
                 ->where('is_out_of_stock', false))
             ->with('product:id,slug')
@@ -223,13 +223,13 @@ class SiteSettings
             ->whereKey($variantId)
             ->where('is_active', true)
             ->where('is_out_of_stock', false)
-            ->whereHas('product', fn($query) => $query
+            ->whereHas('product', fn ($query) => $query
                 ->where('is_active', true)
                 ->where('is_out_of_stock', false))
             ->with(['product:id,name', 'attributeValues.productAttribute'])
             ->first();
 
-        return $variant ? $variant->product->name . ' - ' . $variant->displayName() : null;
+        return $variant ? $variant->product->name.' - '.$variant->displayName() : null;
     }
 
     /** @param array<string, string|null> $values */

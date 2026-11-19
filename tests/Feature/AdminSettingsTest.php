@@ -102,7 +102,7 @@ it('uses the system owner managed logo as the site favicon', function () {
     $logoPath = app(SiteSettings::class)->get('logo_path');
     Storage::disk('public')->assertExists($logoPath);
     $this->get(route('home'))
-        ->assertSee('rel="icon" href="' . Storage::disk('public')->url($logoPath) . '"', false);
+        ->assertSee('rel="icon" href="'.Storage::disk('public')->url($logoPath).'"', false);
 
     $this->patch(route('admin.settings.branding.update'), [
         'remove_logo' => '1',
@@ -110,7 +110,8 @@ it('uses the system owner managed logo as the site favicon', function () {
 
     expect(app(SiteSettings::class)->get('logo_path'))->toBeNull();
     $this->get(route('home'))
-        ->assertSee('rel="icon" href="' . asset('images/brand/ziyanmart-logo.png') . '"', false);
+        ->assertSee('rel="icon" href="/images/brand/ziyanmart-logo.png"', false)
+        ->assertSee('src="/images/brand/ziyanmart-logo.png"', false);
 });
 
 it('shows the homepage side advertisement only when its image and link are configured', function () {
@@ -255,18 +256,18 @@ it('resolves only active internal category product and variant targets', functio
     ]);
     $settings = app(SiteSettings::class);
 
-    expect($settings->destinationFor('category:' . $category->id))
+    expect($settings->destinationFor('category:'.$category->id))
         ->toBe(route('shop', ['category' => $category->slug]))
-        ->and($settings->destinationFor('product:' . $product->id))
+        ->and($settings->destinationFor('product:'.$product->id))
         ->toBe(route('products.show', ['product' => $product->slug]))
-        ->and($settings->destinationFor('variant:' . $variant->id))
+        ->and($settings->destinationFor('variant:'.$variant->id))
         ->toBe(route('products.show', ['product' => $product->slug, 'variant' => $variant->id]))
         ->and($settings->destinationFor('https://external.example'))
         ->toBeNull();
 
     $this->get(route('products.show', ['product' => $product->slug, 'variant' => $variant->id]))
         ->assertOk()
-        ->assertSee('value="' . $variant->id . '"', false)
+        ->assertSee('value="'.$variant->id.'"', false)
         ->assertSee('selected', false);
 });
 
@@ -325,9 +326,9 @@ it('searches active categories products and available variants for hero destinat
     $productResponse = $this->getJson(route('admin.settings.hero-targets', ['search' => 'Searchable Campaign Product']));
     $variantResponse = $this->getJson(route('admin.settings.hero-targets', ['search' => 'SEARCH-CAMPAIGN-VARIANT']));
 
-    $categoryResponse->assertOk()->assertJsonPath('items.0.value', 'category:' . $category->id);
-    $productResponse->assertOk()->assertJsonPath('items.0.value', 'product:' . $product->id);
-    $variantResponse->assertOk()->assertJsonPath('items.0.value', 'variant:' . ProductVariant::query()
+    $categoryResponse->assertOk()->assertJsonPath('items.0.value', 'category:'.$category->id);
+    $productResponse->assertOk()->assertJsonPath('items.0.value', 'product:'.$product->id);
+    $variantResponse->assertOk()->assertJsonPath('items.0.value', 'variant:'.ProductVariant::query()
         ->where('sku', 'SEARCH-CAMPAIGN-VARIANT')
         ->value('id'));
     expect($categoryResponse->json('items'))->toHaveCount(1)
@@ -444,16 +445,16 @@ it('links hero images to selected categories products and variants or the homepa
 
     foreach (
         [
-            ['hero-category.png', 'category:' . $category->id],
-            ['hero-product.png', 'product:' . $product->id],
-            ['hero-variant.png', 'variant:' . $variant->id],
+            ['hero-category.png', 'category:'.$category->id],
+            ['hero-product.png', 'product:'.$product->id],
+            ['hero-variant.png', 'variant:'.$variant->id],
             ['hero-home.png', null],
         ] as [$filename, $target]
     ) {
         $this->post(route('admin.settings.hero-banners.store'), array_filter([
             'image' => UploadedFile::fake()->image($filename, 1200, 600),
             'target' => $target,
-        ], static fn(mixed $value): bool => $value !== null))->assertRedirect();
+        ], static fn (mixed $value): bool => $value !== null))->assertRedirect();
     }
 
     $settingsResponse = $this->get(route('admin.settings'))
@@ -473,10 +474,10 @@ it('links hero images to selected categories products and variants or the homepa
         ->toContain('data-hero-dot="0"')
         ->toContain('data-hero-dot="3"')
         ->toContain('object-contain')
-        ->toContain('<a href="' . route('shop', ['category' => $category->slug]) . '" aria-label="Open selected destination"')
-        ->toContain('<a href="' . route('products.show', ['product' => $product->slug]) . '" aria-label="Open selected destination"')
-        ->toContain('<a href="' . route('products.show', ['product' => $product->slug, 'variant' => $variant->id]) . '" aria-label="Open selected destination"')
-        ->toContain('<a href="' . route('home') . '" aria-label="Open homepage"');
+        ->toContain('<a href="'.route('shop', ['category' => $category->slug]).'" aria-label="Open selected destination"')
+        ->toContain('<a href="'.route('products.show', ['product' => $product->slug]).'" aria-label="Open selected destination"')
+        ->toContain('<a href="'.route('products.show', ['product' => $product->slug, 'variant' => $variant->id]).'" aria-label="Open selected destination"')
+        ->toContain('<a href="'.route('home').'" aria-label="Open homepage"');
 });
 
 it('rejects an external hero image destination without saving the image', function () {

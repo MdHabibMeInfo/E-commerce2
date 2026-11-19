@@ -29,7 +29,10 @@ class RequireManagementTwoFactor
                 : abort(403);
         }
 
-        if ($user->account_type !== 'admin') {
+        $requiresTwoFactor = $user->account_type === 'admin'
+            || ($user->account_type === 'customer' && $user->two_factor_confirmed_at !== null);
+
+        if (! $requiresTwoFactor) {
             return $next($request);
         }
 
@@ -40,6 +43,12 @@ class RequireManagementTwoFactor
         }
 
         if ($user->two_factor_confirmed_at === null || ! $user->two_factor_secret) {
+            if ($user->account_type === 'customer') {
+                return $request->expectsJson()
+                    ? response()->json(['message' => 'The customer authenticator is unavailable.'], 403)
+                    : abort(403);
+            }
+
             return $request->expectsJson()
                 ? response()->json(['message' => 'Management access requires a verified authenticator session.'], 403)
                 : redirect()->route('admin.two-factor.setup');
@@ -52,9 +61,11 @@ class RequireManagementTwoFactor
         }
 
         $verifiedAt = $request->session()->get('security.two_factor_verified_at');
-        $sessionLifetimeMinutes = (int) config('session.lifetime', 120);
+        $verificationLifetimeMinutes = $user->account_type === 'admin'
+            ? (int) config('security.management_two_factor_lifetime', 480)
+            : (int) config('session.lifetime', 120);
         $verifiedRecently = is_numeric($verifiedAt)
-            && Carbon::createFromTimestamp((int) $verifiedAt)->greaterThan(now()->subMinutes($sessionLifetimeMinutes));
+            && Carbon::createFromTimestamp((int) $verifiedAt)->greaterThan(now()->subMinutes($verificationLifetimeMinutes));
 
         if ((string) $request->session()->get('security.two_factor_verified_user') !== (string) $user->getKey() || ! $verifiedRecently) {
             return $request->expectsJson()

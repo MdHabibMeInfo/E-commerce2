@@ -1,11 +1,17 @@
 <x-layouts.app>
-    <x-slot:title>Verify management sign-in</x-slot:title>
+    <x-slot:title>{{ $isStepUpChallenge ? 'Verify sensitive action' : 'Verify management sign-in' }}</x-slot:title>
 
     <section class="bg-[#fbfaf4] px-4 py-12 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-md rounded-[4px] border border-[#e4e3d8] bg-white p-6 sm:p-8">
-            <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#a48335]">Management sign-in</p>
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#a48335]">{{ $isStepUpChallenge ? 'Sensitive action verification' : 'Management sign-in' }}</p>
             <h1 class="mt-2 text-2xl font-extrabold text-[#145943]">Verify it is you</h1>
-            <p class="mt-3 text-sm leading-6 text-[#4d5c56]">Enter a code from your authenticator app or one unused recovery code.</p>
+            <p class="mt-3 text-sm leading-6 text-[#4d5c56]">
+                @if ($isStepUpChallenge)
+                    Verify again before continuing with this sensitive management action. If you were submitting a change, return to its page and submit it again after verification.
+                @else
+                    Enter a code from your authenticator app or one unused recovery code.
+                @endif
+            </p>
 
             @if ($errors->any())
                 <p class="mt-4 rounded-[4px] bg-red-50 px-4 py-3 text-sm text-red-800">{{ $errors->first() }}</p>

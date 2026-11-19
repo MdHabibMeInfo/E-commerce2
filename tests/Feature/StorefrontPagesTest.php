@@ -9,16 +9,59 @@ use App\Models\ProductAttribute;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Providers\AppServiceProvider;
 use App\Services\CouponService;
 use App\Services\ProductVariantService;
 use App\Services\SiteSettings;
+use Illuminate\Http\Middleware\TrustHosts;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Vite;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 it('loads the home page', function () {
     $response = $this->get(route('home'));
 
     $response->assertOk();
+});
+
+it('ignores an untrusted forwarded host when generating storefront links', function () {
+    $this->get('http://storefront.example.test/', [
+        'HTTP_X_FORWARDED_HOST' => 'attacker.example',
+    ])
+        ->assertSee('href="http://storefront.example.test/shop"', false)
+        ->assertDontSee('attacker.example');
+});
+
+it('keeps production links on HTTP when the configured application URL uses HTTP', function () {
+    $previousEnvironment = app()->environment();
+    $previousUrl = config('app.url');
+
+    try {
+        config(['app.url' => 'http://storefront.example.test']);
+        app()->detectEnvironment(fn (): string => 'production');
+        app()->getProvider(AppServiceProvider::class)->boot();
+
+        $this->get('http://storefront.example.test/')
+            ->assertSee('href="http://storefront.example.test/build/assets/app-', false)
+            ->assertDontSee('href="https://storefront.example.test/build/assets/app-', false);
+
+        config(['app.url' => 'https://storefront.example.test']);
+        app()->getProvider(AppServiceProvider::class)->boot();
+
+        $this->get('http://storefront.example.test/')
+            ->assertSee('href="https://storefront.example.test/build/assets/app-', false);
+    } finally {
+        config(['app.url' => $previousUrl]);
+        app()->detectEnvironment(fn (): string => $previousEnvironment);
+        URL::forceScheme(null);
+        Vite::useHotFile(public_path('hot'));
+        Request::setTrustedHosts([]);
+        TrustHosts::flushState();
+    }
 });
 
 it('renders the title supplied by each storefront page', function () {
@@ -1691,7 +1734,13 @@ it('requires transaction details and a receipt for mobile wallet checkout', func
 });
 
 it('lets an authorized order manager confirm a pending wallet payment', function () {
-    $orderManager = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $paymentPermission = Permission::findOrCreate('payments.update', 'web');
+    $ordersPermission = Permission::findOrCreate('orders.view', 'web');
+    $role = Role::create(['name' => 'Payment Reviewer', 'guard_name' => 'web']);
+    $role->givePermissionTo([$paymentPermission, $ordersPermission]);
+    $orderManager = User::factory()->create(['account_type' => 'admin']);
+    $orderManager->assignRole($role);
+    $orderManager = completeManagementTwoFactorForTest($orderManager);
     $order = Order::factory()->create([
         'payment_method' => 'nagad',
         'payment_transaction_id' => 'NAGAD-TXN-1002',
@@ -1708,6 +1757,41 @@ it('lets an authorized order manager confirm a pending wallet payment', function
         'payment_status' => 'paid',
         'payment_reviewed_by' => $orderManager->id,
     ]);
+});
+
+it('forbids order viewers without payment permission from reviewing a wallet payment', function () {
+    $ordersPermission = Permission::findOrCreate('orders.view', 'web');
+    $role = Role::create(['name' => 'Order Viewer', 'guard_name' => 'web']);
+    $role->givePermissionTo($ordersPermission);
+    $orderViewer = User::factory()->create(['account_type' => 'admin']);
+    $orderViewer->assignRole($role);
+    $orderViewer = completeManagementTwoFactorForTest($orderViewer);
+    $order = Order::factory()->create([
+        'payment_method' => 'nagad',
+        'payment_status' => 'pending',
+    ]);
+
+    $this->actingAs($orderViewer)
+        ->patch(route('admin.orders.payment.review', $order), ['payment_status' => 'paid'])
+        ->assertForbidden();
+
+    expect($order->fresh()->payment_status)->toBe('pending');
+});
+
+it('forbids order viewers without cancel permission from cancelling an order', function () {
+    $ordersPermission = Permission::findOrCreate('orders.view', 'web');
+    $role = Role::create(['name' => 'Order Status Viewer', 'guard_name' => 'web']);
+    $role->givePermissionTo($ordersPermission);
+    $orderViewer = User::factory()->create(['account_type' => 'admin']);
+    $orderViewer->assignRole($role);
+    $orderViewer = completeManagementTwoFactorForTest($orderViewer);
+    $order = Order::factory()->create(['status' => 'confirmed']);
+
+    $this->actingAs($orderViewer)
+        ->patch(route('admin.orders.cancel', $order))
+        ->assertForbidden();
+
+    expect($order->fresh()->status)->toBe('confirmed');
 });
 
 it('displays product detail carousel with all product images and counter', function () {

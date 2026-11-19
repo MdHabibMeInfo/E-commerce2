@@ -20,7 +20,7 @@
 
     @if ($heroBanners->isNotEmpty())
         <div class="mx-auto max-w-[1600px] px-4 pt-4 sm:px-6 lg:px-8">
-            <div class="grid items-stretch gap-4 {{ $showHomeAd ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : '' }}">
+            <div class="grid items-stretch gap-4 {{ $showHomeAd ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:grid-rows-[clamp(250px,25vw,420px)]' : '' }}">
                 <div class="min-w-0">
                     <section data-hero-carousel class="group relative h-[clamp(250px,25vw,420px)] w-full overflow-hidden bg-[#fbfaf4]" aria-label="Homepage hero images" aria-roledescription="carousel">
                         <div data-hero-viewport class="h-full overflow-hidden">
@@ -78,13 +78,13 @@
                 </div>
 
                 @if ($showHomeAd)
-                    <a href="{{ $homeAdUrl }}" target="_blank" rel="noopener noreferrer" aria-label="Open advertisement" class="hidden h-[clamp(250px,25vw,420px)] overflow-hidden bg-[#fbfaf4] lg:block">
+                    <a href="{{ $homeAdUrl }}" target="_blank" rel="noopener noreferrer" aria-label="Open advertisement" class="hidden h-full overflow-hidden bg-[#fbfaf4] lg:block">
                         <img
                             src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($homeAdImagePath) }}"
                             alt="Advertisement"
                             loading="lazy"
                             decoding="async"
-                            class="h-full w-full object-contain"
+                            class="h-full w-full object-cover"
                         >
                     </a>
                 @endif
@@ -208,7 +208,7 @@
                                 @endif
                             </a>
 
-                            <div class="flex min-w-0 flex-col px-3 pt-3 pb-2 sm:px-4 md:justify-center md:px-6 md:py-8 max-sm:flex-1">
+                            <div class="flex min-w-0 flex-col gap-2 px-3 pt-3 pb-2 sm:px-4 md:justify-between md:px-6 md:py-8 max-sm:flex-1">
                                 <a href="{{ route('products.show', ['product' => $product->slug]) }}" class="line-clamp-2 text-sm font-normal leading-5 text-[#173b32] hover:text-[#145943] md:text-lg md:font-semibold md:leading-6">
                                     {{ $product->name }}
                                 </a>
@@ -220,7 +220,7 @@
                                     'showPromotionBadge' => false,
                                 ])
 
-                                <div class="mt-3 flex flex-col gap-2.5 md:mt-5 md:flex-row md:flex-wrap max-sm:mt-auto">
+                                <div class="mt-3 flex flex-col gap-2.5 md:mt-auto md:flex-row md:flex-wrap max-sm:mt-auto">
                                     @if ($product->is_out_of_stock || ($product->type === 'variable' && ! $product->variants->contains(fn ($variant) => $variant->is_active && ! $variant->is_out_of_stock)))
                                         <button type="button" disabled aria-label="{{ $product->name }} is out of stock" class="inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-[4px] border border-[#dfe3cf] bg-[#f4f1ea] px-3 text-sm font-semibold text-[#738078] md:w-auto md:rounded-sm md:px-4">
                                             Out of stock

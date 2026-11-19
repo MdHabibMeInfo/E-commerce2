@@ -23,18 +23,18 @@ class OrderPolicy
 
     public function createShipment(User $user, Order $order): bool
     {
-        return ($user->can('orders.manage') || $user->can('access-admin'))
+        return $user->can('orders.update')
             && $order->status !== 'cancelled';
     }
 
     public function reviewPayment(User $user, Order $order): bool
     {
-        return $user->can('orders.manage') || $user->can('access-admin');
+        return $user->can('payments.update');
     }
 
     public function cancel(User $user, Order $order): bool
     {
-        if ($user->can('orders.manage') || $user->can('access-admin')) {
+        if ($user->can('orders.cancel')) {
             return $order->status !== 'cancelled';
         }
 
