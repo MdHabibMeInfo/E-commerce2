@@ -4,6 +4,7 @@ use App\Models\Order;
 use App\Models\SecurityEvent;
 use App\Models\User;
 use App\Notifications\EmailChangeVerificationNotification;
+use App\Notifications\SecurityAlertNotification;
 use App\Services\TotpService;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -491,4 +492,128 @@ it('shows one-time recovery codes when the user replaces them', function () {
         'user_id' => $user->id,
         'action' => 'two_factor_recovery_codes_regenerated',
     ]);
+});
+
+it('replaces an authenticator only after the new device code is confirmed', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $oldSecret = $user->two_factor_secret;
+    $user->createToken('before-authenticator-change');
+    config(['session.driver' => 'database']);
+    DB::table('sessions')->insert([
+        'id' => 'other-authenticator-device-session',
+        'user_id' => $user->id,
+        'ip_address' => '192.0.2.20',
+        'user_agent' => 'test-agent',
+        'payload' => '',
+        'last_activity' => time(),
+    ]);
+    Notification::fake();
+    $totp = app(TotpService::class);
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => now()->timestamp,
+            'security.two_factor_sensitive_verified_at' => now()->timestamp,
+        ])
+        ->post(route('account.security.two-factor.replace.start'), [
+            'current_password' => 'password',
+            'code' => $totp->codeAt($oldSecret, now()->timestamp),
+        ])
+        ->assertRedirect(route('account.security.two-factor.replace'));
+
+    $this->get(route('account.security.two-factor.replace'))
+        ->assertOk()
+        ->assertSee('Confirm new authenticator')
+        ->assertHeader('Cache-Control', 'no-store, private');
+    $newSecret = Crypt::decryptString(session()->get('security.pending_two_factor_replacement_secret'));
+
+    $this->post(route('account.security.two-factor.replace.confirm'), [
+        'current_password' => 'wrong-password',
+        'code' => $totp->codeAt($newSecret, now()->timestamp),
+    ])->assertSessionHasErrors('current_password');
+
+    $this->post(route('account.security.two-factor.replace.confirm'), [
+        'current_password' => 'password',
+        'code' => '000000',
+    ])
+        ->assertSessionHasErrors('code');
+
+    expect($user->fresh()->two_factor_secret)->toBe($oldSecret);
+
+    $this->post(route('account.security.two-factor.replace.confirm'), [
+        'current_password' => 'password',
+        'code' => $totp->codeAt($newSecret, now()->timestamp),
+    ])->assertRedirect(route('account.security'))
+        ->assertSessionHas('recovery_codes');
+
+    expect($user->fresh()->two_factor_secret)->not->toBe($oldSecret)
+        ->and($user->fresh()->two_factor_recovery_codes)->toHaveCount(8);
+    $this->assertAuthenticatedAs($user);
+    $this->assertDatabaseMissing('sessions', ['id' => 'other-authenticator-device-session']);
+    $this->assertDatabaseCount('personal_access_tokens', 0);
+    $this->assertDatabaseHas('security_events', [
+        'user_id' => $user->id,
+        'action' => 'two_factor_authenticator_replaced',
+    ]);
+    Notification::assertSentTo($user, SecurityAlertNotification::class);
+});
+
+it('lets a recent recovery-code sign-in replace the authenticator even when it used the last code', function () {
+    $user = createSystemOwnerUser();
+    $oldSecret = app(TotpService::class)->generateSecret();
+    $lastRecoveryCode = 'A1B2-C3D4-E5F6-7890';
+    $user->forceFill([
+        'two_factor_secret' => $oldSecret,
+        'two_factor_recovery_codes' => [Hash::make(str_replace('-', '', $lastRecoveryCode))],
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+    Notification::fake();
+    $totp = app(TotpService::class);
+
+    $this->actingAs($user)
+        ->post(route('two-factor.verify'), ['code' => $lastRecoveryCode])
+        ->assertRedirect(route('admin'));
+
+    expect($user->fresh()->two_factor_recovery_codes)->toBe([]);
+
+    $this->post(route('account.security.two-factor.replace.start'), [
+        'current_password' => 'password',
+    ])->assertRedirect(route('account.security.two-factor.replace'));
+
+    $this->get(route('account.security.two-factor.replace'))->assertOk();
+    $newSecret = Crypt::decryptString(session()->get('security.pending_two_factor_replacement_secret'));
+
+    $this->post(route('account.security.two-factor.replace.confirm'), [
+        'current_password' => 'password',
+        'code' => $totp->codeAt($newSecret, now()->timestamp),
+    ])->assertRedirect(route('account.security'))
+        ->assertSessionHas('recovery_codes');
+
+    expect($user->fresh()->two_factor_secret)->not->toBe($oldSecret)
+        ->and($user->fresh()->two_factor_recovery_codes)->toHaveCount(8);
+    $this->assertDatabaseHas('security_events', [
+        'user_id' => $user->id,
+        'action' => 'two_factor_recovery_code_used',
+    ]);
+    Notification::assertSentTo($user, SecurityAlertNotification::class);
+});
+
+it('does not allow authenticator replacement after recovery verification expires', function () {
+    $user = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $oldSecret = $user->two_factor_secret;
+
+    $this->actingAs($user)
+        ->withSession([
+            'security.two_factor_verified_user' => $user->getKey(),
+            'security.two_factor_verified_at' => now()->timestamp,
+            'security.two_factor_sensitive_verified_at' => now()->timestamp,
+            'security.two_factor_recovery_verified_at' => now()->subMinutes(11)->timestamp,
+        ])
+        ->post(route('account.security.two-factor.replace.start'), [
+            'current_password' => 'password',
+        ])
+        ->assertSessionHasErrors('code');
+
+    expect($user->fresh()->two_factor_secret)->toBe($oldSecret);
 });

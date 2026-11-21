@@ -89,6 +89,6 @@ class Order extends Model
 
     public function shipments(): HasMany
     {
-        return $this->hasMany(CourierShipment::class);
+        return $this->hasMany(CourierShipment::class)->orderBy('id');
     }
 }

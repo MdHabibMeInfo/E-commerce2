@@ -393,7 +393,7 @@ it('limits admin roles to their assigned resources', function () {
     $this->actingAs(completeManagementTwoFactorForTest($user))
         ->get(route('admin.products.index'))
         ->assertOk()
-        ->assertDontSee('Admin notifications')
+        ->assertSee('Admin notifications')
         ->assertDontSee(route('admin.orders'), false);
 
     $this->get(route('admin.orders'))->assertForbidden();

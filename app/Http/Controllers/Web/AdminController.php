@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -65,8 +66,8 @@ class AdminController extends Controller
             'revenue' => $canViewOrders ? Order::query()->where('payment_status', 'paid')->sum('total') : null,
             'active_coupons' => $canViewCoupons ? Coupon::query()
                 ->where('is_active', true)
-                ->where(fn($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
-                ->where(fn($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>=', now()))
+                ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>=', now()))
                 ->count() : null,
             'pending_reviews' => $currentUser?->can('reviews.view') ? ProductReview::pending()->count() : 0,
         ];
@@ -80,23 +81,23 @@ class AdminController extends Controller
             : collect();
         $lowStockProducts = $canViewProducts
             ? Product::query()
-            ->where('is_active', true)
-            ->where(function (Builder $query): void {
-                $query->where('is_out_of_stock', true)
-                    ->orWhere(fn(Builder $stockQuery): Builder => $stockQuery->whereNotNull('stock')->where('stock', '<=', 5));
-            })
-            ->orderByDesc('is_out_of_stock')
-            ->orderBy('stock')
-            ->limit(6)
-            ->get(['id', 'name', 'slug', 'stock', 'is_out_of_stock'])
+                ->where('is_active', true)
+                ->where(function (Builder $query): void {
+                    $query->where('is_out_of_stock', true)
+                        ->orWhere(fn (Builder $stockQuery): Builder => $stockQuery->whereNotNull('stock')->where('stock', '<=', 5));
+                })
+                ->orderByDesc('is_out_of_stock')
+                ->orderBy('stock')
+                ->limit(6)
+                ->get(['id', 'name', 'slug', 'stock', 'is_out_of_stock'])
             : collect();
         $paidSales = $canViewOrders
             ? Order::query()
-            ->where('payment_status', 'paid')
-            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
-            ->selectRaw('DATE(created_at) as sales_date, SUM(total) as amount')
-            ->groupBy('sales_date')
-            ->pluck('amount', 'sales_date')
+                ->where('payment_status', 'paid')
+                ->where('created_at', '>=', now()->subDays(6)->startOfDay())
+                ->selectRaw('DATE(created_at) as sales_date, SUM(total) as amount')
+                ->groupBy('sales_date')
+                ->pluck('amount', 'sales_date')
             : collect();
         $salesTrend = collect(range(6, 0))->map(function (int $daysAgo) use ($paidSales): array {
             $date = now()->subDays($daysAgo)->toDateString();
@@ -175,7 +176,7 @@ class AdminController extends Controller
         }
 
         if ($request->boolean('trashed_products')) {
-            $categories->whereHas('products', fn(Builder $products): Builder => $products->onlyTrashed());
+            $categories->whereHas('products', fn (Builder $products): Builder => $products->onlyTrashed());
         }
 
         if ($search !== '') {
@@ -185,7 +186,7 @@ class AdminController extends Controller
         $matches = $categories
             ->orderBy('name')
             ->get(['id', 'name', 'slug'])
-            ->map(fn(Category $category): array => [
+            ->map(fn (Category $category): array => [
                 'id' => $category->id,
                 'label' => $category->name,
                 'detail' => $category->slug,
@@ -318,7 +319,7 @@ class AdminController extends Controller
         $matches = $attributes
             ->orderBy('name')
             ->get(['name', 'slug'])
-            ->map(fn(ProductAttribute $attribute): array => [
+            ->map(fn (ProductAttribute $attribute): array => [
                 'label' => $attribute->name,
                 'detail' => $attribute->slug,
                 'value' => $attribute->name,
@@ -453,7 +454,7 @@ class AdminController extends Controller
         $matches = $products
             ->orderBy('name')
             ->get(['name', 'sku'])
-            ->map(fn(Product $product): array => [
+            ->map(fn (Product $product): array => [
                 'label' => $product->name,
                 'detail' => $product->sku,
                 'value' => $product->name,
@@ -489,8 +490,8 @@ class AdminController extends Controller
 
         return $query->where(function (Builder $query) use ($columns, $lowerSearch): void {
             foreach ($columns as $column) {
-                $query->orWhereRaw('LOWER(' . $column . ') LIKE ?', [$lowerSearch . '%'])
-                    ->orWhereRaw('LOWER(' . $column . ') LIKE ?', ['%' . $lowerSearch . '%']);
+                $query->orWhereRaw('LOWER('.$column.') LIKE ?', [$lowerSearch.'%'])
+                    ->orWhereRaw('LOWER('.$column.') LIKE ?', ['%'.$lowerSearch.'%']);
             }
         });
     }
@@ -510,12 +511,12 @@ class AdminController extends Controller
         ]);
         $availableAttributes = ProductAttribute::query()
             ->where('is_active', true)
-            ->with(['values' => fn(HasMany $values) => $values->where('is_active', true)])
+            ->with(['values' => fn (HasMany $values) => $values->where('is_active', true)])
             ->orderBy('name')
             ->get();
         $canCreateVariants = $product->productAttributes->contains(
-            fn(ProductAttribute $attribute): bool => $attribute->is_active
-                && $attribute->values->contains(fn(AttributeValue $value): bool => $value->is_active),
+            fn (ProductAttribute $attribute): bool => $attribute->is_active
+                && $attribute->values->contains(fn (AttributeValue $value): bool => $value->is_active),
         );
         $variants = $product->variants()
             ->withTrashed()
@@ -907,7 +908,7 @@ class AdminController extends Controller
             $productVariantService->createVariant($product, $validated);
         } catch (ValidationException $exception) {
             throw $exception;
-        } catch (DuplicateVariantCombinationException | InvalidVariantAttributeValueException $exception) {
+        } catch (DuplicateVariantCombinationException|InvalidVariantAttributeValueException $exception) {
             throw ValidationException::withMessages([
                 'attribute_value_ids' => $exception->getMessage(),
             ]);
@@ -924,7 +925,7 @@ class AdminController extends Controller
             $productVariantService->updateVariant($product, $variant, $validated);
         } catch (ValidationException $exception) {
             throw $exception;
-        } catch (DuplicateVariantCombinationException | InvalidVariantAttributeValueException $exception) {
+        } catch (DuplicateVariantCombinationException|InvalidVariantAttributeValueException $exception) {
             throw ValidationException::withMessages([
                 'attribute_value_ids' => $exception->getMessage(),
             ]);
@@ -1048,27 +1049,88 @@ class AdminController extends Controller
         abort_unless($user instanceof User, 403);
         $canViewOrders = $user?->can('orders.view') ?? false;
         $canViewReviews = $user?->can('reviews.view') ?? false;
-        abort_unless($canViewOrders || $canViewReviews, 403);
-
-        $notifications = $canViewOrders
-            ? Order::query()->latest()->limit(10)->get(['id', 'order_number', 'customer_name', 'total', 'status', 'created_at'])
-            : collect();
-        $reviewNotifications = $canViewReviews
-            ? ProductReview::query()->with('product:id,name,slug')->latest()->limit(10)->get()
-            : collect();
+        $canViewSecurityEvents = $user->account_type === 'admin';
+        abort_unless($canViewOrders || $canViewReviews || $canViewSecurityEvents, 403);
 
         if ($canViewOrders) {
+            $lastSeenOrderId = (int) ($user->admin_notifications_last_seen_order_id ?? 0);
             $user->forceFill([
-                'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
+                'admin_notifications_last_seen_order_id' => max($lastSeenOrderId, (int) (Order::query()->max('id') ?? 0)),
             ])->save();
         }
         if ($canViewReviews) {
+            $lastSeenReviewId = (int) ($user->admin_notifications_last_seen_review_id ?? 0);
             $user->forceFill([
-                'admin_notifications_last_seen_review_id' => (int) (ProductReview::query()->max('id') ?? 0),
+                'admin_notifications_last_seen_review_id' => max($lastSeenReviewId, (int) (ProductReview::query()->max('id') ?? 0)),
+            ])->save();
+        }
+        if ($canViewSecurityEvents) {
+            $securityEvents = $this->visibleSecurityEvents($user);
+            $lastSeenSecurityEventId = (int) ($user->admin_notifications_last_seen_security_event_id ?? 0);
+            $user->forceFill([
+                'admin_notifications_last_seen_security_event_id' => max(
+                    $lastSeenSecurityEventId,
+                    (int) ((clone $securityEvents)->max('security_events.id') ?? 0),
+                ),
             ])->save();
         }
 
-        return view('admin.notifications', compact('notifications', 'reviewNotifications'));
+        $activityQueries = [];
+
+        if ($canViewOrders) {
+            $activityQueries[] = DB::table('orders')->select([
+                'id',
+                DB::raw("'order' as notification_type"),
+                'order_number as subject',
+                'customer_name as actor',
+                'status as detail',
+                'total as amount',
+                DB::raw('created_at as occurred_at'),
+            ]);
+        }
+
+        if ($canViewReviews) {
+            $activityQueries[] = DB::table('product_reviews')
+                ->leftJoin('products', 'products.id', '=', 'product_reviews.product_id')
+                ->select([
+                    'product_reviews.id',
+                    DB::raw("'review' as notification_type"),
+                    DB::raw("COALESCE(products.name, 'Deleted product') as subject"),
+                    'product_reviews.name as actor',
+                    'product_reviews.body as detail',
+                    'product_reviews.rating as amount',
+                    'product_reviews.created_at as occurred_at',
+                ]);
+        }
+
+        if ($canViewSecurityEvents) {
+            $activityQueries[] = $this->visibleSecurityEvents($user)
+                ->join('users as security_event_users', 'security_event_users.id', '=', 'security_events.user_id')
+                ->select([
+                    'security_events.id',
+                    DB::raw("'security' as notification_type"),
+                    'security_events.action as subject',
+                    'security_event_users.email as actor',
+                    DB::raw("'Account security activity' as detail"),
+                    DB::raw('NULL as amount'),
+                    'security_events.created_at as occurred_at',
+                ]);
+        }
+
+        $activity = array_shift($activityQueries);
+        foreach ($activityQueries as $query) {
+            $activity->unionAll($query);
+        }
+
+        $notifications = DB::query()
+            ->fromSub($activity, 'activity')
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('notification_type')
+            ->orderByDesc('id')
+            ->paginate(50)
+            ->withQueryString();
+
+        return view('admin.notifications', compact('notifications'));
     }
 
     public function unreadNotifications(Request $request): JsonResponse
@@ -1077,34 +1139,50 @@ class AdminController extends Controller
         abort_unless($user instanceof User, 403);
         $canViewOrders = $user?->can('orders.view') ?? false;
         $canViewReviews = $user?->can('reviews.view') ?? false;
-        abort_unless($canViewOrders || $canViewReviews, 403);
+        $canViewSecurityEvents = $user->account_type === 'admin';
+        abort_unless($canViewOrders || $canViewReviews || $canViewSecurityEvents, 403);
         $count = 0;
 
         if ($canViewOrders) {
             $orders = Order::query();
-            $lastSeenOrderId = $user->admin_notifications_last_seen_order_id;
-
-            if ($lastSeenOrderId !== null) {
-                $orders->where('id', '>', (int) $lastSeenOrderId);
-            }
-
+            $lastSeenOrderId = (int) ($user->admin_notifications_last_seen_order_id ?? 0);
+            $orders->where('id', '>', $lastSeenOrderId);
             $count += $orders->count();
         }
 
         if ($canViewReviews) {
             $reviews = ProductReview::query();
-            $lastSeenReviewId = $user->admin_notifications_last_seen_review_id;
-
-            if ($lastSeenReviewId !== null) {
-                $reviews->where('id', '>', (int) $lastSeenReviewId);
-            }
-
+            $lastSeenReviewId = (int) ($user->admin_notifications_last_seen_review_id ?? 0);
+            $reviews->where('id', '>', $lastSeenReviewId);
             $count += $reviews->count();
+        }
+
+        if ($canViewSecurityEvents) {
+            $securityEvents = $this->visibleSecurityEvents($user);
+            $lastSeenSecurityEventId = (int) (
+                $user->admin_notifications_last_seen_security_event_id
+                ?? 0
+            );
+            $count += $securityEvents->where('security_events.id', '>', $lastSeenSecurityEventId)->count();
         }
 
         return response()->json([
             'count' => $count,
         ]);
+    }
+
+    private function visibleSecurityEvents(User $user): Builder
+    {
+        return SecurityEvent::query()
+            ->notificationActivity()
+            ->when(
+                $user->is_system_owner,
+                fn (Builder $query) => $query->whereHas(
+                    'user',
+                    fn (Builder $users) => $users->where('account_type', 'admin'),
+                ),
+                fn (Builder $query) => $query->where('security_events.user_id', $user->getKey()),
+            );
     }
 
     public function securityEvents(): View

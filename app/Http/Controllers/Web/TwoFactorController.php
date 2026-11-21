@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\ProductReview;
+use App\Models\SecurityEvent;
 use App\Models\User;
 use App\Notifications\LoginNotification;
 use App\Notifications\SecurityAlertNotification;
@@ -14,8 +15,10 @@ use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -158,6 +161,10 @@ class TwoFactorController extends Controller
         $request->session()->regenerate();
         $request->session()->put('security.two_factor_verified_user', $user->getKey());
         $request->session()->put('security.two_factor_verified_at', now()->timestamp);
+        $request->session()->forget('security.two_factor_recovery_verified_at');
+        if ($usedRecoveryCode) {
+            $request->session()->put('security.two_factor_recovery_verified_at', now()->timestamp);
+        }
         if ($user->account_type === 'admin') {
             $request->session()->put('security.two_factor_sensitive_verified_at', now()->timestamp);
         }
@@ -175,6 +182,180 @@ class TwoFactorController extends Controller
         }
 
         return redirect()->intended($user->account_type === 'admin' ? route('admin') : route('home'));
+    }
+
+    public function startAuthenticatorReplacement(Request $request, TotpService $totp): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless(
+            $user instanceof User
+                && $this->canUseAuthenticator($user)
+                && $user->two_factor_confirmed_at !== null
+                && is_string($user->two_factor_secret),
+            403,
+        );
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'code' => ['nullable', 'digits:6'],
+        ]);
+        $code = $validated['code'] ?? null;
+        $verificationMethod = 'recovery_code';
+
+        if (is_string($code) && $code !== '') {
+            if (! $totp->consumeTotpCode($user, $code)) {
+                throw ValidationException::withMessages(['code' => 'The current authenticator code is invalid.']);
+            }
+
+            $verificationMethod = 'authenticator';
+        } elseif (! $this->hasRecentRecoveryCodeVerification($request, $user)) {
+            throw ValidationException::withMessages([
+                'code' => 'Enter a current authenticator code, or sign in with a recovery code within the last 10 minutes.',
+            ]);
+        }
+
+        $request->session()->put(
+            'security.pending_two_factor_replacement_secret',
+            Crypt::encryptString($totp->generateSecret()),
+        );
+        $request->session()->put('security.pending_two_factor_replacement_started_at', now()->timestamp);
+        $request->session()->put('security.pending_two_factor_replacement_existing_secret_hash', hash('sha256', $user->two_factor_secret));
+        $request->session()->put('security.pending_two_factor_replacement_method', $verificationMethod);
+
+        return redirect()->route('account.security.two-factor.replace');
+    }
+
+    public function showAuthenticatorReplacement(Request $request, TotpService $totp): Response|RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless(
+            $user instanceof User
+                && $this->canUseAuthenticator($user)
+                && $user->two_factor_confirmed_at !== null
+                && is_string($user->two_factor_secret),
+            403,
+        );
+
+        $secret = $this->pendingReplacementSecret($request);
+        $existingSecretHash = $request->session()->get('security.pending_two_factor_replacement_existing_secret_hash');
+        $verificationMethod = $request->session()->get('security.pending_two_factor_replacement_method');
+
+        if ($secret === null
+            || ! is_string($existingSecretHash)
+            || ! in_array($verificationMethod, ['authenticator', 'recovery_code'], true)) {
+            return redirect()->route('account.security')->with('status', 'Authenticator setup expired. Start the replacement again.');
+        }
+
+        $provisioningUri = $totp->provisioningUri($secret, $user->email ?? (string) $user->getKey(), config('app.name'));
+
+        return response()
+            ->view('account.security.two-factor-replace', [
+                'secret' => $secret,
+                'qrCodeDataUri' => $totp->qrCodeDataUri($provisioningUri),
+            ])
+            ->header('Cache-Control', 'no-store, private')
+            ->header('Pragma', 'no-cache');
+    }
+
+    public function confirmAuthenticatorReplacement(Request $request, TotpService $totp, SecurityEventService $events): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless(
+            $user instanceof User
+                && $this->canUseAuthenticator($user)
+                && $user->two_factor_confirmed_at !== null
+                && is_string($user->two_factor_secret),
+            403,
+        );
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'code' => ['required', 'digits:6'],
+        ]);
+        $secret = $this->pendingReplacementSecret($request);
+        $existingSecretHash = $request->session()->get('security.pending_two_factor_replacement_existing_secret_hash');
+        $verificationMethod = $request->session()->get('security.pending_two_factor_replacement_method');
+        $matchedTimestamp = is_string($secret)
+            ? $totp->matchingTimestamp($secret, $validated['code'])
+            : null;
+
+        if ($secret === null
+            || ! is_string($existingSecretHash)
+            || ! in_array($verificationMethod, ['authenticator', 'recovery_code'], true)) {
+            return redirect()->route('account.security')->with('status', 'Authenticator setup expired. Start the replacement again.');
+        }
+
+        if ($matchedTimestamp === null) {
+            throw ValidationException::withMessages(['code' => 'The new authenticator code is invalid.']);
+        }
+
+        $recoveryCodes = $totp->generateRecoveryCodes();
+        $lockedUser = DB::transaction(function () use ($user, $secret, $existingSecretHash, $matchedTimestamp, $recoveryCodes): User {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getKey());
+            $currentSecret = $lockedUser->two_factor_secret;
+
+            abort_unless(
+                $this->canUseAuthenticator($lockedUser)
+                    && $lockedUser->two_factor_confirmed_at !== null
+                    && is_string($currentSecret)
+                    && hash_equals($existingSecretHash, hash('sha256', $currentSecret)),
+                409,
+                'The authenticator changed during setup. Start the replacement again.',
+            );
+
+            $lockedUser->forceFill([
+                'two_factor_secret' => $secret,
+                'two_factor_recovery_codes' => array_map(
+                    static fn (string $code): string => Hash::make(str_replace('-', '', $code)),
+                    $recoveryCodes,
+                ),
+                'two_factor_confirmed_at' => now(),
+                'two_factor_last_used_at' => now()->setTimestamp($matchedTimestamp),
+            ])->save();
+
+            return $lockedUser;
+        });
+
+        $request->session()->forget([
+            'security.pending_two_factor_replacement_secret',
+            'security.pending_two_factor_replacement_started_at',
+            'security.pending_two_factor_replacement_existing_secret_hash',
+            'security.pending_two_factor_replacement_method',
+            'security.two_factor_recovery_verified_at',
+        ]);
+        $request->session()->regenerate();
+        $request->session()->put('security.two_factor_verified_user', $lockedUser->getKey());
+        $request->session()->put('security.two_factor_verified_at', now()->timestamp);
+        if ($lockedUser->account_type === 'admin') {
+            $request->session()->put('security.two_factor_sensitive_verified_at', now()->timestamp);
+        }
+
+        if (config('session.driver') === 'database') {
+            DB::table(config('session.table'))
+                ->where('user_id', $lockedUser->getKey())
+                ->where('id', '!=', $request->session()->getId())
+                ->delete();
+        }
+        $lockedUser->tokens()->delete();
+
+        $events->record($request, $lockedUser, 'two_factor_authenticator_replaced', [
+            'verification_method' => $verificationMethod,
+        ]);
+
+        if ($lockedUser->account_type === 'admin') {
+            $sessionRevocationMessage = config('session.driver') === 'database'
+                ? 'Other sessions and access tokens were signed out, and new recovery codes were issued.'
+                : 'Access tokens were revoked and new recovery codes were issued. Other browser sessions may remain active; sign them out manually.';
+            $lockedUser->notify(new SecurityAlertNotification(
+                'Management authenticator changed',
+                'The authenticator for your management account was changed. '.$sessionRevocationMessage,
+            ));
+        }
+
+        return redirect()->route('account.security')->with(
+            'recovery_codes',
+            Crypt::encryptString(json_encode($recoveryCodes, JSON_THROW_ON_ERROR)),
+        );
     }
 
     public function disableCustomer(Request $request, TotpService $totp, SecurityEventService $events): RedirectResponse
@@ -219,6 +400,18 @@ class TwoFactorController extends Controller
             if ($user->admin_notifications_last_seen_review_id === null) {
                 $notificationReadState['admin_notifications_last_seen_review_id'] = (int) (ProductReview::query()->max('id') ?? 0);
             }
+            if ($user->admin_notifications_last_seen_security_event_id === null) {
+                $securityEvents = SecurityEvent::query()->notificationActivity();
+                if ($user->is_system_owner) {
+                    $securityEvents->management();
+                } else {
+                    $securityEvents->where('user_id', $user->getKey());
+                }
+
+                $notificationReadState['admin_notifications_last_seen_security_event_id'] = (int) (
+                    $securityEvents->max('id') ?? 0
+                );
+            }
 
             if ($notificationReadState !== []) {
                 $user->forceFill($notificationReadState)->save();
@@ -245,5 +438,57 @@ class TwoFactorController extends Controller
         } catch (DecryptException) {
             return null;
         }
+    }
+
+    private function hasRecentRecoveryCodeVerification(Request $request, User $user): bool
+    {
+        $verifiedAt = $request->session()->get('security.two_factor_recovery_verified_at');
+        $verifiedUser = $request->session()->get('security.two_factor_verified_user');
+        $verificationLifetime = (int) config('security.sensitive_reauthentication_lifetime', 10);
+
+        return (string) $verifiedUser === (string) $user->getKey()
+            && is_numeric($verifiedAt)
+            && (int) $verifiedAt <= now()->timestamp
+            && (int) $verifiedAt > now()->subMinutes($verificationLifetime)->timestamp;
+    }
+
+    private function pendingReplacementSecret(Request $request): ?string
+    {
+        $startedAt = $request->session()->get('security.pending_two_factor_replacement_started_at');
+        $verificationLifetime = (int) config('security.sensitive_reauthentication_lifetime', 10);
+
+        if (! is_numeric($startedAt)
+            || (int) $startedAt > now()->timestamp
+            || (int) $startedAt <= now()->subMinutes($verificationLifetime)->timestamp) {
+            $this->clearPendingReplacement($request);
+
+            return null;
+        }
+
+        $encryptedSecret = $request->session()->get('security.pending_two_factor_replacement_secret');
+
+        if (! is_string($encryptedSecret)) {
+            $this->clearPendingReplacement($request);
+
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($encryptedSecret);
+        } catch (DecryptException) {
+            $this->clearPendingReplacement($request);
+
+            return null;
+        }
+    }
+
+    private function clearPendingReplacement(Request $request): void
+    {
+        $request->session()->forget([
+            'security.pending_two_factor_replacement_secret',
+            'security.pending_two_factor_replacement_started_at',
+            'security.pending_two_factor_replacement_existing_secret_hash',
+            'security.pending_two_factor_replacement_method',
+        ]);
     }
 }

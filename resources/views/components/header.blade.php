@@ -10,7 +10,7 @@
             </a>
 
             <nav class="ml-auto flex items-center gap-2 sm:gap-3" aria-label="Admin account">
-                @canany(['orders.view', 'reviews.view'])
+                @canany(['orders.view', 'reviews.view', 'access-admin'])
                     <a href="{{ route('admin.notifications') }}" data-admin-notifications data-count-url="{{ route('admin.notifications.unread') }}" class="relative grid h-10 w-10 place-items-center rounded-full text-[#145943] transition hover:bg-[#eef4e8]" aria-label="Admin notifications">
                     <svg data-admin-notification-bell class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
                         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>

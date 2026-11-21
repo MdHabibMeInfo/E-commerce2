@@ -82,6 +82,19 @@ class AdminSessionController extends Controller
 
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
+        $request->session()->forget([
+            'security.two_factor_verified_user',
+            'security.two_factor_verified_at',
+            'security.two_factor_recovery_verified_at',
+            'security.two_factor_sensitive_verified_at',
+            'security.two_factor_step_up_required',
+            'security.two_factor_step_up_destination',
+            'security.pending_two_factor_replacement_secret',
+            'security.pending_two_factor_replacement_started_at',
+            'security.pending_two_factor_replacement_existing_secret_hash',
+            'security.pending_two_factor_replacement_method',
+            'security.pending_login_after_mfa',
+        ]);
 
         if ($canUseAdmin && ! $user->hasVerifiedEmail()) {
             $events->record($request, $user, 'login_pending_email_verification');
@@ -92,11 +105,6 @@ class AdminSessionController extends Controller
         $requiresTwoFactor = $canUseAdmin || $user->two_factor_confirmed_at !== null;
 
         if ($requiresTwoFactor) {
-            $request->session()->forget('security.two_factor_verified_user');
-            $request->session()->forget('security.two_factor_verified_at');
-            $request->session()->forget('security.two_factor_sensitive_verified_at');
-            $request->session()->forget('security.two_factor_step_up_required');
-            $request->session()->forget('security.two_factor_step_up_destination');
             $request->session()->put('security.pending_login_after_mfa', true);
 
             if ($canUseAdmin && $user->two_factor_confirmed_at === null) {

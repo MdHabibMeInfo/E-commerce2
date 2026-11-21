@@ -806,20 +806,31 @@ it('forbids order viewers without order update permission from creating shipment
         ->post(route('admin.orders.shipments.store', $order), ['courier_code' => 'steadfast'])
         ->assertForbidden();
 
+    $this->post(route('admin.orders.shipments.manual.store', $order))
+        ->assertForbidden();
+
     $this->assertDatabaseCount('courier_shipments', 0);
 });
 
-it('checks Steadfast customer history by phone and derives a success ratio from courier counts', function () {
+it('parses Steadfast customer history reports and delivery ratio', function () {
     Http::preventStrayRequests();
     Http::fake([
         'portal.packzy.com/api/v1/fraud_check/score/01710000013' => Http::response([
             'status' => 'success',
-            'data' => [
-                'total_parcel' => 10,
-                'total_delivered' => 8,
-                'total_returned' => 2,
-                'success_ratio' => 80,
-            ],
+            'score' => 73,
+            'level' => 'low',
+            'reasons' => [],
+            'scoring_disabled' => false,
+            'doubtful_reports' => 0,
+            'total_reports' => 10,
+            'delivery_ratio' => 80,
+            'cancellation_ratio' => 20,
+            'volume_band' => 'normal',
+            'volume_range' => '1-10',
+            'delivered_count' => 8,
+            'cancelled_count' => 2,
+            'fraud_categories' => [],
+            'return_ratio' => 0,
         ]),
     ]);
     config()->set('couriers.couriers.steadfast.enabled', true);
@@ -833,7 +844,7 @@ it('checks Steadfast customer history by phone and derives a success ratio from 
         ->and($history['phone'])->toBe('01710000013')
         ->and($history['total'])->toBe(10)
         ->and($history['delivered'])->toBe(8)
-        ->and($history['returned'])->toBe(2)
+        ->and($history['cancelled'])->toBe(2)
         ->and($history['success_ratio'])->toBe(80.0);
 
     Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
@@ -842,18 +853,54 @@ it('checks Steadfast customer history by phone and derives a success ratio from 
         && $request->hasHeader('Secret-Key', 'steadfast-history-test-secret'));
 });
 
+it('shows safe response field names when Steadfast customer-history data is unrecognized', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'portal.packzy.com/api/v1/fraud_check/score/01710000019' => Http::response([
+            'status' => 'success',
+            'data' => [
+                'parcel_count' => 3,
+                'customer_label' => 'must-not-be-shown',
+            ],
+        ]),
+    ]);
+    config()->set('couriers.couriers.steadfast.enabled', true);
+    config()->set('couriers.couriers.steadfast.api_url', 'https://portal.packzy.com/api/v1');
+    config()->set('couriers.couriers.steadfast.api_key', 'steadfast-history-test-key');
+    config()->set('couriers.couriers.steadfast.secret_key', 'steadfast-history-test-secret');
+
+    $history = app(CourierManager::class)->customerHistory('steadfast', '01710000019');
+
+    expect($history['available'])->toBeFalse()
+        ->and($history['message'])->toContain('HTTP 200')
+        ->toContain('total_reports is missing or is not a non-negative whole number')
+        ->toContain('data.parcel_count')
+        ->toContain('data.customer_label')
+        ->not->toContain('must-not-be-shown');
+
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'GET'
+        && $request->url() === 'https://portal.packzy.com/api/v1/fraud_check/score/01710000019');
+});
+
 it('shows the Steadfast delivery ratio on the order page before a shipment is accepted', function () {
     Http::preventStrayRequests();
     Http::fake([
         'portal.packzy.com/api/v1/fraud_check/score/01710000022' => Http::response([
             'status' => 'success',
-            'data' => [
-                'total_parcel' => 10,
-                'total_delivered' => 8,
-                'total_cancelled' => 2,
-                'success_ratio' => 80,
-                'score' => 73,
-            ],
+            'score' => 73,
+            'level' => 'low',
+            'reasons' => [],
+            'scoring_disabled' => false,
+            'doubtful_reports' => 0,
+            'total_reports' => 10,
+            'delivery_ratio' => 80,
+            'cancellation_ratio' => 20,
+            'volume_band' => 'normal',
+            'volume_range' => '1-10',
+            'delivered_count' => 8,
+            'cancelled_count' => 2,
+            'fraud_categories' => [],
+            'return_ratio' => 0,
         ]),
     ]);
     config()->set('couriers.couriers.steadfast.enabled', true);
@@ -885,6 +932,100 @@ it('shows the Steadfast delivery ratio on the order page before a shipment is ac
         ->assertSee('Success ratio: 80.00%')
         ->assertDontSee('Official courier score')
         ->assertDontSee('Total cancelled parcels');
+
+    Http::assertSentCount(1);
+});
+
+it('shows Steadfast delivery ratio when the API does not provide a delivered count', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'portal.packzy.com/api/v1/fraud_check/score/01710000023' => Http::response([
+            'status' => 'success',
+            'total_reports' => 10,
+            'delivery_ratio' => 72.5,
+            'cancellation_ratio' => 20,
+            'delivered_count' => null,
+            'cancelled_count' => 2,
+            'return_ratio' => 7.5,
+        ]),
+    ]);
+    config()->set('couriers.couriers.steadfast.enabled', true);
+    config()->set('couriers.couriers.steadfast.api_url', 'https://portal.packzy.com/api/v1');
+    config()->set('couriers.couriers.steadfast.api_key', 'steadfast-null-count-test-key');
+    config()->set('couriers.couriers.steadfast.secret_key', 'steadfast-null-count-test-secret');
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $order = Order::factory()->create([
+        'phone' => '01710000023',
+        'status' => 'pending',
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->from(route('admin.orders.show', $order))
+        ->post(route('admin.orders.courier-history', $order), ['courier_code' => 'steadfast'])
+        ->assertRedirect(route('admin.orders.show', $order));
+
+    expect($response->getSession()->get('courierHistory'))->toMatchArray([
+        'available' => true,
+        'total' => 10,
+        'delivered' => null,
+        'success_ratio' => 72.5,
+    ]);
+
+    $this->get(route('admin.orders.show', $order))
+        ->assertSee('Total courier parcels: 10')
+        ->assertSee('Delivered parcels: N/A')
+        ->assertSee('Success ratio: 72.50%');
+
+    Http::assertSentCount(1);
+});
+
+it('shows Steadfast history when delivered count and delivery ratio are unavailable', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'portal.packzy.com/api/v1/fraud_check/score/01710000024' => Http::response([
+            'status' => 'success',
+            'score' => 51,
+            'level' => 'medium',
+            'reasons' => [],
+            'scoring_disabled' => false,
+            'doubtful_reports' => 0,
+            'total_reports' => 4,
+            'delivery_ratio' => null,
+            'cancellation_ratio' => null,
+            'volume_band' => 'low',
+            'volume_range' => '1-5',
+            'delivered_count' => null,
+            'cancelled_count' => null,
+            'fraud_categories' => [],
+            'return_ratio' => null,
+        ]),
+    ]);
+    config()->set('couriers.couriers.steadfast.enabled', true);
+    config()->set('couriers.couriers.steadfast.api_url', 'https://portal.packzy.com/api/v1');
+    config()->set('couriers.couriers.steadfast.api_key', 'steadfast-null-metrics-test-key');
+    config()->set('couriers.couriers.steadfast.secret_key', 'steadfast-null-metrics-test-secret');
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $order = Order::factory()->create([
+        'phone' => '01710000024',
+        'status' => 'pending',
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->from(route('admin.orders.show', $order))
+        ->post(route('admin.orders.courier-history', $order), ['courier_code' => 'steadfast'])
+        ->assertRedirect(route('admin.orders.show', $order));
+
+    expect($response->getSession()->get('courierHistory'))->toMatchArray([
+        'available' => true,
+        'total' => 4,
+        'delivered' => null,
+        'success_ratio' => null,
+    ]);
+
+    $this->get(route('admin.orders.show', $order))
+        ->assertSee('Total courier parcels: 4')
+        ->assertSee('Delivered parcels: N/A')
+        ->assertSee('Success ratio: N/A');
 
     Http::assertSentCount(1);
 });
@@ -1233,4 +1374,82 @@ it('authenticates and applies REDX webhook status events idempotently', function
         ->assertJson(['received' => true, 'duplicate' => true]);
 
     expect($shipment->fresh()->status)->toBe('delivered');
+});
+
+it('lets staff create and advance a manual delivery without a courier API', function () {
+    Http::preventStrayRequests();
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $order = Order::factory()->create([
+        'customer_name' => 'Manual Delivery Customer',
+        'phone' => '01710000031',
+        'address' => 'House 31, Test Street',
+        'status' => 'confirmed',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.orders.show', $order))
+        ->assertOk()
+        ->assertSee('Manual delivery (no courier selection)')
+        ->assertSee('Create manual delivery');
+
+    $this->from(route('admin.orders.show', $order))
+        ->post(route('admin.orders.shipments.manual.store', $order))
+        ->assertRedirect(route('admin.orders.show', $order))
+        ->assertSessionHas('success', 'Manual delivery created. Copy the customer details to your courier portal.');
+
+    $this->assertDatabaseHas('courier_shipments', [
+        'order_id' => $order->id,
+        'courier_code' => 'manual',
+        'courier_id' => null,
+        'status' => 'created',
+    ]);
+    expect($order->fresh()->status)->toBe('processing')
+        ->and($order->fresh()->shipping_status)->toBe('created');
+
+    $this->from(route('admin.orders.show', $order))
+        ->patch(route('admin.orders.shipments.manual.update', $order), ['status' => 'shipped'])
+        ->assertRedirect(route('admin.orders.show', $order))
+        ->assertSessionHas('success', 'Manual delivery marked as on the way.');
+
+    $shipment = $order->shipments()->where('courier_code', 'manual')->firstOrFail();
+    expect($shipment->status)->toBe('shipped')
+        ->and($shipment->shipped_at)->not->toBeNull()
+        ->and($order->fresh()->status)->toBe('shipped')
+        ->and($order->fresh()->shipping_status)->toBe('shipped');
+
+    $this->from(route('admin.orders.show', $order))
+        ->patch(route('admin.orders.shipments.manual.update', $order), ['status' => 'delivered'])
+        ->assertRedirect(route('admin.orders.show', $order))
+        ->assertSessionHas('success', 'Manual delivery marked as delivered successfully.');
+
+    expect($shipment->fresh()->status)->toBe('delivered')
+        ->and($shipment->fresh()->delivered_at)->not->toBeNull()
+        ->and($order->fresh()->status)->toBe('delivered')
+        ->and($order->fresh()->shipping_status)->toBe('delivered');
+
+    $this->get(route('admin.orders'))
+        ->assertOk()
+        ->assertSee('Manual delivery')
+        ->assertSee('Delivered successfully');
+});
+
+it('does not let staff skip the on-the-way step in a manual delivery', function () {
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $order = Order::factory()->create(['status' => 'confirmed']);
+
+    $this->actingAs($admin)
+        ->post(route('admin.orders.shipments.manual.store', $order))
+        ->assertRedirect();
+
+    $this->from(route('admin.orders.show', $order))
+        ->patch(route('admin.orders.shipments.manual.update', $order), ['status' => 'delivered'])
+        ->assertRedirect(route('admin.orders.show', $order))
+        ->assertSessionHasErrors('shipment');
+
+    $this->assertDatabaseHas('courier_shipments', [
+        'order_id' => $order->id,
+        'courier_code' => 'manual',
+        'status' => 'created',
+    ]);
+    expect($order->fresh()->status)->toBe('processing');
 });

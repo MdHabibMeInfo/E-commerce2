@@ -113,6 +113,12 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
         ->middleware(['management.2fa', 'management.reauth', 'throttle:5,1'])->name('account.security.password.update');
     Route::post('/account/security/recovery-codes', [AccountSecurityController::class, 'regenerateRecoveryCodes'])
         ->middleware(['management.2fa', 'management.reauth', 'throttle:6,1'])->name('account.security.recovery-codes');
+    Route::post('/account/security/two-factor/replace', [TwoFactorController::class, 'startAuthenticatorReplacement'])
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:two-factor'])->name('account.security.two-factor.replace.start');
+    Route::get('/account/security/two-factor/replace', [TwoFactorController::class, 'showAuthenticatorReplacement'])
+        ->middleware(['management.2fa', 'management.reauth'])->name('account.security.two-factor.replace');
+    Route::post('/account/security/two-factor/replace/confirm', [TwoFactorController::class, 'confirmAuthenticatorReplacement'])
+        ->middleware(['management.2fa', 'management.reauth', 'throttle:two-factor'])->name('account.security.two-factor.replace.confirm');
     Route::delete('/account/security/sessions/{sessionId}', [AccountSecurityController::class, 'destroySession'])
         ->middleware(['management.2fa', 'management.reauth', 'throttle:5,1'])->where('sessionId', '[A-Za-z0-9,-]+')->name('account.security.sessions.destroy');
     Route::delete('/account/security/sessions', [AccountSecurityController::class, 'destroyOtherSessions'])
@@ -136,6 +142,12 @@ Route::middleware(['auth', 'management.verified', 'management.2fa'])->group(func
     Route::post('/admin/orders/{order}/shipments', [OrderController::class, 'createShipment'])
         ->middleware(['can:access-admin', 'can:orders.update', 'management.2fa', 'throttle:5,1'])
         ->name('admin.orders.shipments.store');
+    Route::post('/admin/orders/{order}/shipments/manual', [OrderController::class, 'createManualShipment'])
+        ->middleware(['can:access-admin', 'can:orders.update', 'management.2fa', 'throttle:5,1'])
+        ->name('admin.orders.shipments.manual.store');
+    Route::patch('/admin/orders/{order}/shipments/manual', [OrderController::class, 'updateManualShipment'])
+        ->middleware(['can:access-admin', 'can:orders.update', 'management.2fa', 'throttle:10,1'])
+        ->name('admin.orders.shipments.manual.update');
     Route::post('/admin/orders/{order}/courier-history', [OrderController::class, 'checkCustomerCourierHistory'])
         ->middleware(['can:access-admin', 'can:orders.view', 'management.2fa', 'throttle:10,1'])
         ->name('admin.orders.courier-history');

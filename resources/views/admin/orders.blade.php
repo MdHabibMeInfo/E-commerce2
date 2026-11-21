@@ -32,7 +32,17 @@
                 </thead>
                 <tbody>
                     @forelse ($orders as $order)
-                        @php $shipment = $order->shipments->last(); @endphp
+                        @php
+                            $shipment = $order->shipments->last();
+                            $shipmentStatus = $shipment?->courier_code === 'manual'
+                                ? match ($shipment->status) {
+                                    'created' => 'Ready for dispatch',
+                                    'shipped' => 'On the way',
+                                    'delivered' => 'Delivered successfully',
+                                    default => ucfirst(str_replace('_', ' ', $shipment->status)),
+                                }
+                                : $shipment?->status;
+                        @endphp
                         <tr class="border-t border-[#e4e3d8] align-top">
                             <td class="px-5 py-4 font-semibold text-[#173b32]">{{ $order->order_number }}</td>
                             <td class="px-5 py-4">
@@ -47,8 +57,8 @@
                                     {{ $order->status }}
                                 </span>
                             </td>
-                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? ucfirst($shipment->courier_code) : 'Not selected' }}</td>
-                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? $shipment->status : 'Not created' }}</td>
+                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? ($shipment->courier_code === 'manual' ? 'Manual delivery' : ucfirst($shipment->courier_code)) : 'Not selected' }}</td>
+                            <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipmentStatus ?? 'Not created' }}</td>
                             <td class="px-5 py-4 text-xs text-[#738078]">{{ $shipment ? ($shipment->tracking_code ?? $shipment->consignment_id ?? 'N/A') : 'N/A' }}</td>
                             <td class="px-5 py-4">
                                 <div class="flex items-center gap-2">

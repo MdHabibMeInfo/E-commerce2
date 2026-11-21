@@ -328,16 +328,31 @@ class SteadfastCourier implements CourierInterface
             return $this->unavailableCustomerHistory('Steadfast could not return customer delivery history (HTTP '.$response->status().').', true);
         }
 
-        $total = $this->historyCount($this->findHistoryField($body, ['total_parcel', 'total_parcels', 'total_orders', 'total']));
-        $delivered = $this->historyCount($this->findHistoryField($body, ['total_delivered', 'total_delivered_parcel', 'delivered', 'delivered_parcel', 'received', 'successful_deliveries']));
+        $total = $this->historyCount($this->findHistoryField($body, ['total_reports', 'total_parcel', 'total_parcels', 'total_orders', 'total']));
+        $delivered = $this->historyCount($this->findHistoryField($body, ['delivered_count', 'total_delivered', 'total_delivered_parcel', 'delivered', 'delivered_parcel', 'received', 'successful_deliveries']));
         $returned = $this->historyCount($this->findHistoryField($body, ['total_returned', 'returned', 'returned_parcels']));
-        $cancelled = $this->historyCount($this->findHistoryField($body, ['total_cancelled', 'cancelled', 'canceled']));
+        $cancelled = $this->historyCount($this->findHistoryField($body, ['cancelled_count', 'total_cancelled', 'cancelled', 'canceled']));
         $failed = $this->historyCount($this->findHistoryField($body, ['total_failed', 'failed', 'not_delivered']));
-        $ratio = $this->historyRatio($this->findHistoryField($body, ['success_ratio', 'success_rate', 'delivery_success_ratio', 'delivery_success_rate']));
+        $ratio = $this->historyRatio($this->findHistoryField($body, ['delivery_ratio', 'success_ratio', 'success_rate', 'delivery_success_ratio', 'delivery_success_rate']));
         $score = $this->historyRatio($this->findHistoryField($body, ['score', 'fraud_score']));
 
-        if ($total === null || $delivered === null || $delivered > $total) {
-            return $this->unavailableCustomerHistory('Steadfast returned an unrecognized customer-history response.');
+        if ($total === null || ($delivered !== null && $delivered > $total)) {
+            $countIssues = [];
+
+            if ($total === null) {
+                $countIssues[] = 'total_reports is missing or is not a non-negative whole number';
+            }
+
+            if ($total !== null && $delivered !== null && $delivered > $total) {
+                $countIssues[] = 'delivered_count is greater than total_reports';
+            }
+
+            $responseFields = $this->historyFieldPaths($body);
+            $fieldList = $responseFields === [] ? 'none' : implode(', ', $responseFields);
+
+            return $this->unavailableCustomerHistory(
+                'Steadfast returned an unrecognized customer-history response (HTTP '.$response->status().'; '.implode('; ', $countIssues).'; response fields: '.$fieldList.').',
+            );
         }
 
         $history = [
@@ -412,6 +427,31 @@ class SteadfastCourier implements CourierInterface
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string|int, mixed>  $payload
+     * @return list<string>
+     */
+    private function historyFieldPaths(array $payload, string $parent = '', int $depth = 0): array
+    {
+        $paths = [];
+
+        foreach ($payload as $key => $value) {
+            $key = is_int($key) ? '['.$key.']' : Str::limit($key, 80, '');
+            $path = $parent === '' ? $key : $parent.'.'.$key;
+            $paths[] = $path;
+
+            if (is_array($value) && $depth < 3) {
+                $paths = [...$paths, ...$this->historyFieldPaths($value, $path, $depth + 1)];
+            }
+
+            if (count($paths) >= 20) {
+                return array_slice($paths, 0, 20);
+            }
+        }
+
+        return $paths;
     }
 
     private function historyCount(mixed $value): ?int

@@ -79,6 +79,16 @@
                             <input name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit authenticator code" aria-label="Authenticator code" class="h-11 rounded-[4px] border border-[#dfe3cf] px-3 font-mono text-sm">
                             <button class="h-11 rounded-[4px] border border-[#145943] px-4 text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Replace recovery codes</button>
                         </form>
+                        <div class="mt-5 border-t border-[#ece8dc] pt-5">
+                            <h3 class="font-bold text-[#173b32]">Change authenticator device</h3>
+                            <p class="mt-1 text-sm leading-6 text-[#66736d]">If you still have the old device, enter its current code. If you signed in with a recovery code in the last 10 minutes, leave the code blank. The old authenticator stays active until the new device is verified.</p>
+                            <form method="POST" action="{{ route('account.security.two-factor.replace.start') }}" class="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                                @csrf
+                                <input type="password" name="current_password" required autocomplete="current-password" placeholder="Current password" aria-label="Current password" class="h-11 rounded-[4px] border border-[#dfe3cf] px-3 text-sm">
+                                <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="Old device code (optional)" aria-label="Old authenticator code, optional after recovery-code sign-in" class="h-11 rounded-[4px] border border-[#dfe3cf] px-3 font-mono text-sm">
+                                <button class="h-11 rounded-[4px] border border-[#145943] px-4 text-sm font-bold text-[#145943] hover:bg-[#edf2e4]">Set up new device</button>
+                            </form>
+                        </div>
                     @endif
                 </section>
             @endif

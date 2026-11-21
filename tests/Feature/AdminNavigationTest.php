@@ -2,12 +2,16 @@
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductReview;
+use App\Models\SecurityEvent;
 use App\Models\User;
 use App\Notifications\EmailChangeVerificationNotification;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 it('shows profile and notification actions without storefront header controls', function () {
     $this->seed(PermissionSeeder::class);
@@ -26,7 +30,7 @@ it('shows profile and notification actions without storefront header controls', 
         ->assertSee('View the remaining')
         ->assertSee('aria-label="Admin notifications"', false)
         ->assertSee('aria-label="Open profile and logout menu"', false)
-        ->assertSee('action="' . route('logout') . '"', false)
+        ->assertSee('action="'.route('logout').'"', false)
         ->assertSee('>Logout</span>', false)
         ->assertDontSee('Search in...')
         ->assertDontSee('Wishlist')
@@ -148,8 +152,12 @@ it('shows recent orders as admin notifications', function () {
         'status' => 'pending',
     ]);
 
-    $this->get(route('admin.notifications'))
+    $notificationResponse = $this->get(route('admin.notifications'));
+    expect($notificationResponse->viewData('notifications')->total())->toBe(1);
+
+    $notificationResponse
         ->assertOk()
+        ->assertSee('Activity history')
         ->assertSee('New order received')
         ->assertSee('ORD-ADMIN-1001')
         ->assertSee('Test Customer');
@@ -194,11 +202,19 @@ it('counts new order and review notifications until the notification page is ope
 
     $this->get(route('admin.notifications'))
         ->assertOk()
-        ->assertSee('A newly submitted review.');
+        ->assertSee('A newly submitted review.')
+        ->assertSee('ORD-ADMIN-1002')
+        ->assertSee('Activity history');
 
     $this->getJson(route('admin.notifications.unread'))
         ->assertOk()
         ->assertJsonPath('count', 0);
+
+    $this->get(route('admin.notifications'))
+        ->assertOk()
+        ->assertSee('Activity history')
+        ->assertSee('A newly submitted review.')
+        ->assertSee('ORD-ADMIN-1002');
 
     $this->post(route('logout'))->assertRedirect(route('login'));
     $this->actingAs(completeManagementTwoFactorForTest($admin));
@@ -222,6 +238,11 @@ it('counts new order and review notifications until the notification page is ope
         ->assertOk()
         ->assertJsonPath('count', 1);
 
+    $this->get(route('admin.notifications'))
+        ->assertOk()
+        ->assertSee('ORD-ADMIN-1003')
+        ->assertSee('A newly submitted review.');
+
     $product->reviews()->create([
         'name' => 'Second Reviewer',
         'email' => 'second-reviewer@example.com',
@@ -232,7 +253,118 @@ it('counts new order and review notifications until the notification page is ope
 
     $this->getJson(route('admin.notifications.unread'))
         ->assertOk()
-        ->assertJsonPath('count', 2);
+        ->assertJsonPath('count', 1);
+});
+
+it('shows every unread order even when its created date is older than other orders', function () {
+    $admin = completeManagementTwoFactorForTest(createSystemOwnerUser());
+    $admin->forceFill([
+        'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
+        'admin_notifications_last_seen_review_id' => (int) (ProductReview::query()->max('id') ?? 0),
+    ])->save();
+    $this->actingAs($admin);
+
+    $olderDatedOrder = Order::create([
+        'order_number' => 'ORD-ADMIN-OLDER-DATE',
+        'customer_name' => 'Older Dated Customer',
+        'phone' => '01700000003',
+        'address' => 'Test address',
+        'city' => 'Dhaka',
+        'subtotal' => 500,
+        'total' => 500,
+        'status' => 'pending',
+    ]);
+    $olderDatedOrder->forceFill(['created_at' => now()->subMonth()])->save();
+
+    foreach (range(1, 10) as $number) {
+        Order::create([
+            'order_number' => 'ORD-ADMIN-NEWER-'.$number,
+            'customer_name' => 'Newer Dated Customer '.$number,
+            'phone' => '01700000004',
+            'address' => 'Test address',
+            'city' => 'Dhaka',
+            'subtotal' => 500,
+            'total' => 500,
+            'status' => 'pending',
+        ]);
+    }
+
+    $this->get(route('admin.notifications'))
+        ->assertOk()
+        ->assertSee('ORD-ADMIN-OLDER-DATE')
+        ->assertSee('ORD-ADMIN-NEWER-10')
+        ->assertSee('ORD-ADMIN-NEWER-1');
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertOk()
+        ->assertJsonPath('count', 0);
+});
+
+it('shows account security history to the account and important staff activity to the system owner', function () {
+    $owner = completeManagementTwoFactorForTest(createSystemOwnerUser([
+        'email' => 'owner-notification@example.com',
+    ]));
+    $staff = User::factory()->create([
+        'account_type' => 'admin',
+        'email' => 'staff-notification@example.com',
+    ]);
+    $staffRole = Role::create([
+        'name' => 'Notification Staff',
+        'guard_name' => 'web',
+        'is_active' => true,
+    ]);
+    $staffRole->givePermissionTo(Permission::findOrCreate('orders.view', 'web'));
+    $staff->assignRole($staffRole);
+    $owner->forceFill([
+        'admin_notifications_last_seen_order_id' => (int) (Order::query()->max('id') ?? 0),
+        'admin_notifications_last_seen_review_id' => (int) (ProductReview::query()->max('id') ?? 0),
+        'admin_notifications_last_seen_security_event_id' => (int) (SecurityEvent::query()->max('id') ?? 0),
+    ])->save();
+    $ownEvent = SecurityEvent::query()->create([
+        'user_id' => $owner->id,
+        'action' => 'password_changed',
+        'context' => ['password' => 'never display this value'],
+    ]);
+    $staffEvent = SecurityEvent::query()->create([
+        'user_id' => $staff->id,
+        'action' => 'management_user_status_updated',
+        'context' => ['target_email' => 'affected-staff@example.com'],
+    ]);
+    SecurityEvent::query()->create([
+        'user_id' => $owner->id,
+        'action' => 'two_factor_recovery_code_used',
+    ]);
+    $this->actingAs($owner);
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertOk()
+        ->assertJsonPath('count', 3);
+
+    $this->get(route('admin.notifications'))
+        ->assertOk()
+        ->assertSee('Password Changed')
+        ->assertSee('Management User Status Updated')
+        ->assertSee('Two Factor Recovery Code Used')
+        ->assertSee($owner->email)
+        ->assertSee($staff->email)
+        ->assertSee('Account security')
+        ->assertSee('datetime="'.$ownEvent->created_at->toIso8601String().'"', false)
+        ->assertDontSee('never display this value')
+        ->assertDontSee('affected-staff@example.com');
+
+    $this->getJson(route('admin.notifications.unread'))
+        ->assertOk()
+        ->assertJsonPath('count', 0);
+
+    $this->post(route('logout'))->assertRedirect(route('login'));
+    $this->actingAs(completeManagementTwoFactorForTest($staff));
+
+    $this->get(route('admin.notifications'))
+        ->assertOk()
+        ->assertSee('Management User Status Updated')
+        ->assertDontSee('Password Changed')
+        ->assertDontSee('Two Factor Recovery Code Used')
+        ->assertDontSee($owner->email);
 });
 
 it('requires a signed-in user to update profile details', function () {

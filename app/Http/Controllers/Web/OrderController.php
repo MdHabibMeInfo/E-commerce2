@@ -8,6 +8,7 @@ use App\Services\Courier\CourierManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -156,6 +157,112 @@ class OrderController extends Controller
         }
 
         return back()->with('success', $response['message']);
+    }
+
+    public function createManualShipment(Order $order): RedirectResponse
+    {
+        $this->authorize('createShipment', $order);
+
+        $result = DB::transaction(function () use ($order): array {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->getKey());
+
+            if (! in_array($lockedOrder->status, ['pending', 'confirmed', 'processing'], true)) {
+                return ['success' => false, 'message' => 'Manual delivery cannot be started for an order in its current status.'];
+            }
+
+            if ($lockedOrder->shipments()->whereNotIn('status', ['failed'])->exists()) {
+                return ['success' => false, 'message' => 'A shipment already exists for this order.'];
+            }
+
+            $shipment = $lockedOrder->shipments()->firstOrCreate(
+                ['courier_code' => 'manual'],
+                ['status' => 'created'],
+            );
+
+            if (! $shipment->wasRecentlyCreated) {
+                return ['success' => false, 'message' => 'Manual delivery has already been created for this order.'];
+            }
+
+            $lockedOrder->forceFill([
+                'courier_name' => 'Manual delivery',
+                'courier_tracking_code' => null,
+                'shipping_status' => 'created',
+                'status' => 'processing',
+            ])->save();
+
+            return ['success' => true, 'message' => 'Manual delivery created. Copy the customer details to your courier portal.'];
+        });
+
+        if (! $result['success']) {
+            return back()->withErrors(['shipment' => $result['message']]);
+        }
+
+        return back()->with('success', $result['message']);
+    }
+
+    public function updateManualShipment(Request $request, Order $order): RedirectResponse
+    {
+        $this->authorize('createShipment', $order);
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['shipped', 'delivered'])],
+        ]);
+
+        $result = DB::transaction(function () use ($order, $validated): array {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->getKey());
+
+            if (in_array($lockedOrder->status, ['cancelled', 'returned'], true)) {
+                return ['success' => false, 'message' => 'A cancelled or returned order cannot be updated as a manual delivery.'];
+            }
+
+            $shipment = $lockedOrder->shipments()
+                ->where('courier_code', 'manual')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $shipment) {
+                return ['success' => false, 'message' => 'Create a manual delivery before changing its status.'];
+            }
+
+            $targetStatus = $validated['status'];
+            if ($shipment->status === $targetStatus) {
+                return ['success' => true, 'message' => 'Manual delivery is already marked as '.str_replace('_', ' ', $targetStatus).'.'];
+            }
+
+            $allowedNextStatus = match ($shipment->status) {
+                'created' => 'shipped',
+                'shipped' => 'delivered',
+                default => null,
+            };
+
+            if ($targetStatus !== $allowedNextStatus) {
+                return ['success' => false, 'message' => 'Update the manual delivery in order: ready for dispatch, on the way, then delivered.'];
+            }
+
+            $timestamp = now();
+            $shipment->forceFill([
+                'status' => $targetStatus,
+                'shipped_at' => $targetStatus === 'shipped' ? $timestamp : $shipment->shipped_at,
+                'delivered_at' => $targetStatus === 'delivered' ? $timestamp : $shipment->delivered_at,
+            ])->save();
+
+            $lockedOrder->forceFill([
+                'shipping_status' => $targetStatus,
+                'status' => $targetStatus,
+            ])->save();
+
+            $message = $targetStatus === 'shipped'
+                ? 'Manual delivery marked as on the way.'
+                : 'Manual delivery marked as delivered successfully.';
+
+            return ['success' => true, 'message' => $message];
+        });
+
+        if (! $result['success']) {
+            return back()->withErrors(['shipment' => $result['message']]);
+        }
+
+        return back()->with('success', $result['message']);
     }
 
     public function reconcileShipment(Request $request, Order $order, CourierManager $courierManager): RedirectResponse
